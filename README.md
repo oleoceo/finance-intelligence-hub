@@ -25,7 +25,7 @@ before advanced analytics, dashboards or AI-driven features.
 Current phase:
 
 ```text
-PRE-IMPLEMENTATION
+PRE-IMPLEMENTATION / READY FOR M01
 ```
 
 Canonical architecture:
@@ -1164,9 +1164,10 @@ Documentation Freeze
 ✅
 
 Operational Docs
-← current preparation
+✅
 
 M01 Local Bootstrap
+← next
 
 Gate 0 VPS Safety
 
@@ -1240,13 +1241,22 @@ README.md
 → ACTIVE
 
 CHANGELOG.md
-→ pending at initial setup
+→ ACTIVE
 
-ADRs
-→ created only where appropriate
+ADR-001
+→ OPEN — M01
+
+ADR-002
+→ PROPOSED — M01 validation
+
+ADR-003
+→ OPEN — Gate 0 evidence required
 ```
 
+The pre-implementation operational-document layer is complete.
+
 ---
+
 
 # 59. Initial ADRs
 
@@ -1504,19 +1514,16 @@ unverified
 
 # 72. Current Next Step
 
-Finish the remaining operational project-control files:
+The documentation baseline and initial Git repository are established.
+
+Before implementation:
 
 ```text
-CHANGELOG.md
-initial ADRs
-```
-
-Then:
-
-```text
-initialize Git repository
+verify Git remote
 ↓
-M01 — Local Bootstrap
+create tag docs-freeze-v0.1
+↓
+begin M01-T01 — Repository and Workspace Bootstrap
 ```
 
-with Gate 0 prepared/executed in parallel when VPS operational work begins.
+Gate 0 may be prepared/executed in parallel when VPS operational inspection begins.

@@ -58,7 +58,7 @@ FINAL-FREEZE-DECISIONS.md
 ```text
 PROJECT PHASE
 =
-PRE-IMPLEMENTATION / OPERATIONAL PREPARATION
+PRE-IMPLEMENTATION / READY FOR M01
 ```
 
 Architecture and canonical documentation are frozen.
@@ -158,19 +158,27 @@ AGENTS.md
 
 PROJECT_STATE.md
 → CREATED / ACTIVE
-```
 
-Still pending:
-
-```text
 README.md
+→ CREATED / ACTIVE
 
 CHANGELOG.md
+→ CREATED / ACTIVE
 
-initial ADRs
+docs/adr/ADR-001 — Application Implementation Stack.md
+→ CREATED / OPEN — M01 decision
+
+docs/adr/ADR-002 — UUID Strategy.md
+→ CREATED / PROPOSED — M01 validation
+
+docs/adr/ADR-003 — VPS Internal Connectivity.md
+→ CREATED / OPEN — Gate 0 evidence required
 ```
 
+Operational documentation preparation is complete.
+
 ---
+
 
 # 7. Implementation status
 
@@ -205,14 +213,18 @@ DOCUMENTATION FREEZE
         ✅
         ↓
 OPERATIONAL DOCUMENTS
-        ← CURRENT
+        ✅
         ↓
 M01 — Local Bootstrap
+        ← NEXT IMPLEMENTATION MILESTONE
         ↓
 Gate 0 / VPS Safety
 ```
 
+Gate 0 may be executed in parallel with permitted local M01 work when VPS inspection intentionally begins.
+
 ---
+
 
 # 9. M01 status
 
@@ -865,22 +877,19 @@ These belong to Gate 0.
 Allowed immediately:
 
 ```text
-finish operational documentation
+verify Git remote configuration
 
-create README.md
-
-create CHANGELOG.md
-
-create initial ADRs
-
-initialize Git repository
+create the documentation-baseline Git tag
 
 begin M01 locally
+
+prepare Gate 0 read-only inspection
 ```
 
-Gate 0 may also be prepared/executed in parallel when VPS access is intentionally started.
+Gate 0 may be executed in parallel when VPS access is intentionally started.
 
 ---
+
 
 # 40. Current forbidden next actions
 
@@ -902,49 +911,55 @@ give agent unrestricted VPS/Docker access
 
 ---
 
-# 41. Immediate document queue
-
-Current order:
+# 41. Operational document queue
 
 ```text
-1. AGENTS.md
-   ✅ completed
+AGENTS.md
+✅ completed
 
-2. PROJECT_STATE.md
-   ✅ completed
+PROJECT_STATE.md
+✅ completed
 
-3. README.md
-   ⬜ next
+README.md
+✅ completed
 
-4. CHANGELOG.md
-   ⬜ pending
+CHANGELOG.md
+✅ completed
 
-5. initial ADRs
-   ⬜ pending
+ADR-001
+✅ created
+
+ADR-002
+✅ created
+
+ADR-003
+✅ created
 ```
+
+No additional pre-implementation architecture document is required before M01.
 
 ---
 
-# 42. Planned initial ADR topics
 
-Create ADRs only for decisions that benefit from an implementation record.
+# 42. Initial ADR status
 
-Likely initial ADRs:
+Initial ADRs are already created:
 
 ```text
 ADR-001
 Application implementation stack
+Status: OPEN — decision during M01
 
 ADR-002
 UUID implementation choice
-UUIDv7 or approved UUIDv4 fallback
+Status: PROPOSED — validation during M01
 
 ADR-003
 VPS internal connectivity decision
-after Gate 0 inspection
+Status: OPEN — Gate 0 evidence required
 ```
 
-Do not pre-create ADR-003 with an invented answer before Gate 0.
+ADR-003 must remain open until Gate 0 provides real VPS evidence.
 
 ---
 
@@ -1011,12 +1026,40 @@ ADR required
 # 45. Git repository status
 
 ```text
-NOT INITIALIZED AS PART OF IMPLEMENTATION YET
+INITIALIZED
 ```
 
-Repository initialization belongs to M01/pre-M01 preparation.
+Observed baseline in the validated project archive:
+
+```text
+branch: main
+
+baseline commit:
+chore: establish project documentation baseline
+
+local main:
+96eeae64bfab666bab08d8ffd3472727acaa32aa
+
+origin/main:
+96eeae64bfab666bab08d8ffd3472727acaa32aa
+```
+
+This indicates the local `main` and recorded `origin/main` reference are aligned at the documentation-baseline commit.
+
+Before M01 implementation, verify the configured remote with:
+
+```text
+git remote -v
+```
+
+Baseline tag still to create:
+
+```text
+docs-freeze-v0.1
+```
 
 ---
+
 
 # 46. CI status
 
@@ -1343,12 +1386,21 @@ PROJECT_STATE.md
 ✅ ACTIVE
 
 README.md
-⬜ PENDING
+✅ ACTIVE
 
 CHANGELOG.md
-⬜ PENDING
+✅ ACTIVE
 
 Initial ADRs
+✅ CREATED
+
+Git repository
+✅ INITIALIZED
+
+Documentation baseline commit
+✅ PRESENT
+
+Documentation baseline tag
 ⬜ PENDING
 
 Implementation
@@ -1369,20 +1421,17 @@ NONE
 
 ---
 
+
 # 63. Next action
 
-```text
-Create README.md
-```
-
-then:
+Before the first implementation commit:
 
 ```text
-CHANGELOG.md
+verify Git remote
 ↓
-initial ADRs
+create tag docs-freeze-v0.1
 ↓
-Git repository
-↓
-M01
+begin M01-T01
 ```
+
+Gate 0 may be prepared/executed in parallel when VPS operational inspection begins.

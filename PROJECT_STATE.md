@@ -1,6 +1,7 @@
 # PROJECT_STATE.md
 
 # Finance Intelligence Hub
+
 ## Current Project State
 
 **Documento:** `PROJECT_STATE.md`  
@@ -180,7 +181,6 @@ Operational documentation preparation is complete.
 
 ---
 
-
 # 7. Implementation status
 
 ```text
@@ -232,7 +232,6 @@ Gate 0 may be executed in parallel with permitted local M01 work when VPS inspec
 
 ---
 
-
 # 9. M01 status
 
 ```text
@@ -241,6 +240,7 @@ Status: IN PROGRESS
 ```
 
 M01-T01 (stack decision) is DONE.
+M01-T02 (workspace baseline) is DONE.
 M01 may begin locally before Gate 0.
 
 ---
@@ -777,7 +777,7 @@ Gate C — Real Data Ready
 
 ```text
 M01 Local Bootstrap
-🔄 IN PROGRESS (M01-T01 DONE, M01-T02 NEXT)
+🔄 IN PROGRESS (M01-T01 DONE, M01-T02 DONE, M01-T03 NEXT)
 
 M02 Database Foundation
 ⬜ NOT STARTED
@@ -898,7 +898,6 @@ Gate 0 may be executed in parallel when VPS access is intentionally started.
 
 ---
 
-
 # 40. Current forbidden next actions
 
 Do not yet:
@@ -947,7 +946,6 @@ ADR-003
 No additional pre-implementation architecture document is required before M01.
 
 ---
-
 
 # 42. Initial ADR status
 
@@ -1067,7 +1065,6 @@ docs-freeze-v0.1
 ```
 
 ---
-
 
 # 46. CI status
 
@@ -1327,11 +1324,12 @@ INFRA-T01 Provision postgres-products
 # 60. Current next task
 
 ```text
-M01-T02 — Repository Workspace and Engineering Baseline
+M01-T03 — Local PostgreSQL Development Environment
 ```
 
 M01-T01 (stack decision) is complete.
-M01-T02 will establish the TypeScript/pnpm workspace and engineering baseline.
+M01-T02 (workspace baseline) is complete.
+M01-T03 will set up local PostgreSQL for development and testing, pending Docker/container runtime availability.
 
 ---
 
@@ -1425,7 +1423,6 @@ NONE
 ```
 
 ---
-
 
 # 63. Next action
 

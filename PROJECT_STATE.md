@@ -58,12 +58,13 @@ FINAL-FREEZE-DECISIONS.md
 ```text
 PROJECT PHASE
 =
-PRE-IMPLEMENTATION / READY FOR M01
+M01 — Local Bootstrap IN PROGRESS
 ```
 
 Architecture and canonical documentation are frozen.
 
-Implementation has not started yet.
+Implementation has begun with M01-T01 (stack decision) completed.
+ADR-001 and ADR-002 are now ACCEPTED.
 
 ---
 
@@ -166,10 +167,10 @@ CHANGELOG.md
 → CREATED / ACTIVE
 
 docs/adr/ADR-001 — Application Implementation Stack.md
-→ CREATED / OPEN — M01 decision
+→ CREATED / ACCEPTED
 
 docs/adr/ADR-002 — UUID Strategy.md
-→ CREATED / PROPOSED — M01 validation
+→ CREATED / ACCEPTED
 
 docs/adr/ADR-003 — VPS Internal Connectivity.md
 → CREATED / OPEN — Gate 0 evidence required
@@ -183,6 +184,9 @@ Operational documentation preparation is complete.
 # 7. Implementation status
 
 ```text
+M01-T01 (stack decision)
+→ DONE
+
 Application code
 → NOT STARTED
 
@@ -200,6 +204,9 @@ WhatsApp Finance workflow
 
 Backup automation
 → NOT STARTED
+
+Docker/container runtime
+→ PENDING (required before PostgreSQL integration work)
 ```
 
 ---
@@ -230,9 +237,10 @@ Gate 0 may be executed in parallel with permitted local M01 work when VPS inspec
 
 ```text
 M01 — Local Bootstrap
-Status: NOT STARTED
+Status: IN PROGRESS
 ```
 
+M01-T01 (stack decision) is DONE.
 M01 may begin locally before Gate 0.
 
 ---
@@ -769,7 +777,7 @@ Gate C — Real Data Ready
 
 ```text
 M01 Local Bootstrap
-⬜ NOT STARTED
+🔄 IN PROGRESS (M01-T01 DONE, M01-T02 NEXT)
 
 M02 Database Foundation
 ⬜ NOT STARTED
@@ -948,11 +956,11 @@ Initial ADRs are already created:
 ```text
 ADR-001
 Application implementation stack
-Status: OPEN — decision during M01
+Status: ACCEPTED
 
 ADR-002
 UUID implementation choice
-Status: PROPOSED — validation during M01
+Status: ACCEPTED
 
 ADR-003
 VPS internal connectivity decision
@@ -1318,15 +1326,12 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-After completing the remaining operational documentation:
-
 ```text
-M01 — Local Bootstrap
+M01-T02 — Repository Workspace and Engineering Baseline
 ```
 
-is the first implementation milestone.
-
-The first coding task should be small and bounded, not “implement M01” as one request.
+M01-T01 (stack decision) is complete.
+M01-T02 will establish the TypeScript/pnpm workspace and engineering baseline.
 
 ---
 

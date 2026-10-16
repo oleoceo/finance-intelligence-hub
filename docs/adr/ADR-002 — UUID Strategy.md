@@ -1,8 +1,9 @@
 # ADR-002 — UUID Strategy
 
-**Status:** PROPOSED — Validation required during M01  
-**Date:** 2026-09-04  
-**Project:** Finance Intelligence Hub  
+**Status:** ACCEPTED
+**Date:** 2026-09-04
+**Decision Date:** 2026-10-15
+**Project:** Finance Intelligence Hub
 **Decision scope:** Canonical primary identifier generation
 
 ---
@@ -256,21 +257,27 @@ Authorization must remain explicit.
 
 # Decision
 
-Current preferred baseline:
+**Status:** ACCEPTED
+**Decision Date:** 2026-10-15
 
-```text
-UUIDv7
-```
+## Accepted UUID Strategy
 
-subject to M01 implementation validation.
+- **UUID version:** UUIDv7
+- **Generation:** application layer
+- **Package:** `uuid`
+- **Function:** `v7()` from the `uuid` package
+- **API/database identifiers:** remain PostgreSQL UUID values
+- **Human-facing references:** remain separate through `human_ref`
+- **UUIDv4 fallback:** remains only a future fallback if a real implementation blocker is discovered
 
-Fallback:
+## Rationale
 
-```text
-UUIDv4
-```
-
-only if the selected maintained stack lacks reliable UUIDv7 support.
+UUIDv7 was selected because:
+- Time-ordered IDs improve database index locality compared to random UUIDs.
+- The `uuid` package provides a mature, well-maintained `v7()` implementation.
+- Application-layer generation ensures portability across local, test, Lab, and Production environments.
+- No PostgreSQL extension dependency is required.
+- UUIDv4 remains available as a fallback if any unforeseen blocker arises during implementation.
 
 ---
 
@@ -340,14 +347,14 @@ Do not revisit solely to change identifier aesthetics.
 
 ```text
 STATUS
-PROPOSED
+ACCEPTED
 
 PREFERENCE
 UUIDv7
 
 FALLBACK
-UUIDv4
+UUIDv4 (only if real implementation blocker)
 
 VALIDATION
-PENDING M01
+COMPLETE — M01-T01
 ```

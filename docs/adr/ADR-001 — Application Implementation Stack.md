@@ -1,7 +1,8 @@
 # ADR-001 — Application Implementation Stack
 
-**Status:** OPEN — Decision required during M01  
-**Date:** 2026-09-04  
+**Status:** ACCEPTED
+**Date:** 2026-09-04
+**Decision Date:** 2026-10-15
 **Project:** Finance Intelligence Hub  
 **Decision scope:** Application runtime, web framework, database access, migrations, validation and testing baseline
 
@@ -368,11 +369,51 @@ reason for selection
 
 # Decision
 
-```text
-NOT YET DECIDED
-```
+**Status:** ACCEPTED
+**Decision Date:** 2026-10-15
 
-Do not select an implementation stack before M01 evaluation.
+## Selected Stack
+
+- **Runtime:** Node.js 24 LTS
+- **Language:** TypeScript, strict mode
+- **Module system:** ESM
+- **Package/workspace manager:** pnpm
+- **HTTP framework:** Fastify
+- **Runtime/API schema validation:** TypeBox + Fastify/Ajv
+- **Fastify type provider:** @fastify/type-provider-typebox
+- **API/OpenAPI schema strategy:** JSON Schema + @fastify/swagger
+- **PostgreSQL driver:** pg
+- **Database query layer:** Kysely
+- **Migration tooling:** Kysely Migrator
+- **Testing:** Vitest
+- **PostgreSQL integration testing:** Testcontainers for Node.js (when a container runtime is available)
+- **Structured logging:** Pino through Fastify
+- **Architecture:** Modular Monolith
+
+## Important Implementation Rules
+
+1. **Kysely is the selected database layer.** Do not use Prisma or any other ORM as an alternative.
+2. **PostgreSQL NUMERIC(18,2) must never be converted to JavaScript Number for financial calculations.** Floating-point arithmetic is forbidden for monetary values.
+3. **Monetary persistence uses PostgreSQL NUMERIC(18,2).** This is the canonical storage format.
+4. **Monetary API representation uses decimal strings.** All money values in API requests/responses must be serialized as strings (e.g., `"35.00"`).
+5. **PostgreSQL/pg boundaries should preserve monetary values without floating-point conversion.** The `pg` driver must be configured to return NUMERIC columns as strings.
+6. **A dedicated decimal arithmetic strategy/library will be selected when the Money Value Object is implemented;** do not add one yet.
+7. **Runtime validation is not provided by TypeScript alone.** TypeBox + Ajv must enforce schema validation at runtime.
+8. **Unknown request fields must be rejected according to the frozen API contract, not silently stripped.** This behavior must later have explicit tests.
+9. **Node.js support target is Node 24 LTS,** not an unrestricted ">=24".
+10. **The stack must preserve explicit PostgreSQL transactions, row locking and SELECT ... FOR UPDATE capabilities.** Kysely must be used in a way that does not abstract away these critical financial features.
+
+## Rationale
+
+This stack was selected because it satisfies all frozen architectural requirements:
+
+- **PostgreSQL Fidelity:** Kysely provides type-safe SQL access while preserving full control over transactions, row locking (`SELECT ... FOR UPDATE`), and NUMERIC precision.
+- **Strict Validation:** TypeBox + Ajv ensures runtime schema validation, rejecting unknown fields and invalid types before they reach the domain layer.
+- **Financial Correctness:** By keeping NUMERIC values as strings through the pg driver boundary and using decimal-string API representation, floating-point errors are avoided.
+- **Testability:** Vitest provides fast unit testing; Testcontainers enables real PostgreSQL integration tests with proper concurrency and locking semantics.
+- **Maintainability:** TypeScript strict mode + ESM + pnpm workspace provides a clean, modern development experience with strong compile-time safety.
+- **Performance:** Fastify + Pino offers high-throughput HTTP handling with structured, performant logging.
+- **Deployment:** Node.js applications containerize easily within the existing VPS Docker architecture without requiring Kubernetes or service mesh.
 
 ---
 
@@ -480,14 +521,14 @@ Preference alone is not sufficient.
 
 ```text
 STATUS
-OPEN
+ACCEPTED
 
 OWNER MILESTONE
 M01 — Local Bootstrap
 
 BLOCKING M01?
-No, this decision is part of M01.
+No, this decision is part of M01 and is now complete.
 
 BLOCKING M02?
-Yes. Stack/database tooling must be established before database implementation proceeds.
+No. Stack/database tooling is now established.
 ```

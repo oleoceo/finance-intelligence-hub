@@ -244,10 +244,12 @@ M01-T02 (workspace baseline) is DONE.
 M01-T03 (local PostgreSQL/container runtime preflight) is DONE.
 M01-T04 (WSL2 development runtime and local PostgreSQL provisioning) is DONE.
 M01-T05 (logging/request correlation baseline) is DONE.
+M01-T06 (health/readiness baseline) is DONE.
 Selected local container runtime: existing Docker Engine inside Ubuntu 26.04 WSL2.
 Local PostgreSQL baseline: postgres:18.6-bookworm.
 Testcontainers integration: validated.
 Structured Fastify/Pino logging baseline established with UUIDv7 request correlation.
+Health/Readiness endpoints implemented with bounded PostgreSQL readiness check (packages/database).
 Next task: according to roadmap/task process.
 M01 may begin locally before Gate 0.
 

@@ -436,14 +436,15 @@ describe('Logging and Request Correlation', () => {
       expect(JSON.parse(response.body)).toEqual({ status: 'ok' });
     });
 
-    it('ready endpoint returns ok', async () => {
+    it('ready endpoint returns not_ready when DATABASE_URL is missing', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/ready',
       });
 
-      expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.body)).toEqual({ status: 'ok' });
+      // Without DATABASE_URL, readiness should return 503
+      expect(response.statusCode).toBe(503);
+      expect(JSON.parse(response.body)).toEqual({ status: 'not_ready' });
     });
 
     it('test endpoint returns message', async () => {

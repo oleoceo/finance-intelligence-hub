@@ -10,5 +10,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run src/"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
   }
 }

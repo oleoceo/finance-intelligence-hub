@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fastify/type-provider-typebox": "^6.3.0",
+    "@finance-hub/database": "workspace:*",
     "fastify": "^5.12.7",
     "uuid": "^14.0.3"
   },

@@ -1,6 +1,4 @@
-import { defineWorkspace } from 'vitest/config';
-
-export default defineWorkspace([
+export default [
   {
     test: {
       include: ['apps/api/src/**/*.test.ts'],
@@ -19,4 +17,10 @@ export default defineWorkspace([
       exclude: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
     },
   },
-]);
+  {
+    test: {
+      include: ['tests/integration/**/*.test.ts'],
+      exclude: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
+    },
+  },
+];

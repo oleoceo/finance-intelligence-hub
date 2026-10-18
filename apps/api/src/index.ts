@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { v7 as uuidv7 } from 'uuid';
+import { checkPostgreSQLReadiness } from '@finance-hub/database';
 
 const ALLOWED_CORRELATION_CHARS = /^[A-Za-z0-9._:-]+$/;
 const MAX_CORRELATION_LENGTH = 128;
@@ -89,14 +90,37 @@ function buildApp() {
     done();
   });
 
-  // Health endpoint
+  // Health endpoint - independent of external dependencies
   app.get('/health', async () => {
     return { status: 'ok' };
   });
 
-  // Readiness endpoint
-  app.get('/ready', async () => {
-    return { status: 'ok' };
+  // Readiness endpoint - performs bounded PostgreSQL check
+  app.get('/ready', async (request, reply) => {
+    const connectionString = process.env.DATABASE_URL;
+
+    if (!connectionString) {
+      request.log.warn({ msg: 'DATABASE_URL not configured for readiness check' });
+      return reply.code(503).send({ status: 'not_ready' });
+    }
+
+    try {
+      const result = await checkPostgreSQLReadiness({
+        connectionString,
+        timeoutMs: 2000,
+      });
+
+      if (result.ready) {
+        return { status: 'ready' };
+      } else {
+        request.log.warn({ msg: 'PostgreSQL readiness check failed' });
+        return reply.code(503).send({ status: 'not_ready' });
+      }
+    } catch {
+      // Never expose raw errors; log safely and return not_ready
+      request.log.error({ msg: 'PostgreSQL readiness check encountered an error' });
+      return reply.code(503).send({ status: 'not_ready' });
+    }
   });
 
   // Sample route for testing

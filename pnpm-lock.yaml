@@ -183,6 +183,9 @@ importers:
 
   packages/database:
     dependencies:
+      kysely:
+        specifier: 0.28.11
+        version: 0.28.11
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -1708,6 +1711,13 @@ packages:
       {
         integrity: sha512-CYDD3SOtsHtyXeEORYRx2qBtpDJFjRTGXUtmNEMGyzYOKj1TE3tycdlho7kA1Ufx9OYWZzg52QFBGALTirzDSw==,
       }
+
+  kysely@0.28.11:
+    resolution:
+      {
+        integrity: sha512-zpGIFg0HuoC893rIjYX1BETkVWdDnzTzF5e0kWXJFg5lE0k1/LfNWBejrcnOFu8Q2Rfq/hTDTU7XLUM8QOrpzg==,
+      }
+    engines: { node: '>=20.0.0' }
 
   lazystream@1.0.1:
     resolution:
@@ -3703,6 +3713,8 @@ snapshots:
   keyv@5.6.0:
     dependencies:
       '@keyv/serialize': 1.1.1
+
+  kysely@0.28.11: {}
 
   lazystream@1.0.1:
     dependencies:

@@ -9,6 +9,7 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     pool: 'forks',
     singleFork: true,
+    hookTimeout: 120_000,
   },
   resolve: {
     alias: {

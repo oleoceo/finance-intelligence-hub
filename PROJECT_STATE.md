@@ -59,7 +59,8 @@ FINAL-FREEZE-DECISIONS.md
 ```text
 PROJECT PHASE
 =
-M01 — Local Bootstrap ALL TASKS DONE (awaiting milestone closure)
+M01 — Local Bootstrap ✅ DONE
+M02 — Database Foundation ← NEXT ALLOWED MILESTONE (not yet started)
 ```
 
 Architecture and canonical documentation are frozen.
@@ -67,6 +68,7 @@ Architecture and canonical documentation are frozen.
 All M01 implementation tasks T01–T10 are DONE.
 ADR-001 and ADR-002 are ACCEPTED.
 Docker packaging baseline established (M01-T10).
+GitHub Actions CI remotely verified GREEN.
 
 ---
 
@@ -237,28 +239,23 @@ Gate 0 may be executed in parallel with permitted local M01 work when VPS inspec
 
 ```text
 M01 — Local Bootstrap
-Status: IN PROGRESS
+Status: ✅ DONE
 ```
 
-M01-T01 (stack decision) is DONE.
-M01-T02 (workspace baseline) is DONE.
-M01-T03 (local PostgreSQL/container runtime preflight) is DONE.
-M01-T04 (WSL2 development runtime and local PostgreSQL provisioning) is DONE.
-M01-T05 (logging/request correlation baseline) is DONE.
-M01-T06 (health/readiness baseline) is DONE.
-M01-T07 (migration tooling baseline) is DONE.
-M01-T08 (test infrastructure) is DONE.
-M01-T09 (CI Baseline) is DONE.
-Selected local container runtime: existing Docker Engine inside Ubuntu 26.04 WSL2.
-Local PostgreSQL baseline: postgres:18.6-bookworm.
-Testcontainers integration: validated.
-Structured Fastify/Pino logging baseline established with UUIDv7 request correlation.
-Health/Readiness endpoints implemented with bounded PostgreSQL readiness check (packages/database).
-Migration tooling baseline established with Kysely native Migrator, deterministic source/compiled discovery, and verified failure propagation.
-Standardized test infrastructure established with explicit Vitest unit configuration, deterministic discovery excluding dist/integration paths, and Vitest 5-compatible single-fork integration configuration.
-GitHub Actions CI baseline established and remotely verified GREEN: Node 24, pnpm 12.3.4, frozen lockfile, lint/format/typecheck/build/unit/integration all passing; Testcontainers 12.2.0 with PostgreSQL 18.6-bookworm on Ubuntu runner; build-before-typecheck ordering; integration hookTimeout 120_000 for cold-start tolerance; production database guardrail preserved.
-Next task: M01-T10 (Lab-Ready Docker Packaging).
-M01 remains IN PROGRESS.
+All M01 tasks T01–T10 are DONE.
+
+**Established M01 Baseline:**
+- **Stack:** Node.js 24 LTS + TypeScript (ESM, strict) + Fastify + Kysely + TypeBox + pg + Pino + Vitest + pnpm 12.3.4
+- **UUID Strategy:** UUIDv7 via `uuid` package (application-layer generation)
+- **Runtime Environment:** Native Linux Node.js/pnpm inside Ubuntu 26.04 WSL2; Docker Engine v29.8.0 reused from existing installation
+- **PostgreSQL:** postgres:18.6-bookworm via Docker Compose; Testcontainers 12.2.0 for isolated integration tests
+- **Logging:** Structured JSON logs via Fastify/Pino with UUIDv7 `request_id` and validated `correlation_id` (X-Correlation-ID header); sensitive-value redaction configured
+- **Health/Readiness:** `/health` → 200 (process alive, dependency-free); `/ready` → 200 (PostgreSQL ready) or 503 (not ready); bounded 2000ms readiness check; no secret exposure
+- **Migrations:** Kysely native Migrator with deterministic discovery; migration apply/status/rollback verified against empty database
+- **Tests:** Unit suite (4 files / 35 tests PASS); Integration suite (3 files / 11 tests PASS); Migration suite (7/7 PASS); production-database guardrail enforced (`finance_hub_prod` never used)
+- **CI:** GitHub Actions remotely verified GREEN (Node 24, pnpm 12.3.4, frozen lockfile, lint/format/typecheck/build/unit/integration/migration all passing)
+- **Docker Packaging:** Multi-stage build (4 stages: deps, build, prod-deps, runtime); non-root user (appuser UID/GID 999); production-only dependencies; SIGTERM graceful shutdown verified; /health and /ready functional in container
+- **Security:** No secrets committed; no VPS deployment; no production database access; no frozen documentation modified
 
 ---
 

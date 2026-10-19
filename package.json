@@ -10,8 +10,11 @@
     "lint": "pnpm -r lint",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "test": "pnpm -r test",
-    "test:integration:postgres": "vitest run tests/integration/postgres.test.ts"
+    "test": "vitest run --config vitest.unit.config.ts",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:postgres": "vitest run --config vitest.integration.config.ts",
+    "test:all": "vitest run --config vitest.unit.config.ts && vitest run --config vitest.integration.config.ts"
   },
   "engines": {
     "node": "24.x",

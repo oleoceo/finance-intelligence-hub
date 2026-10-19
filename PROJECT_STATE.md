@@ -246,13 +246,15 @@ M01-T04 (WSL2 development runtime and local PostgreSQL provisioning) is DONE.
 M01-T05 (logging/request correlation baseline) is DONE.
 M01-T06 (health/readiness baseline) is DONE.
 M01-T07 (migration tooling baseline) is DONE.
+M01-T08 (test infrastructure) is DONE.
 Selected local container runtime: existing Docker Engine inside Ubuntu 26.04 WSL2.
 Local PostgreSQL baseline: postgres:18.6-bookworm.
 Testcontainers integration: validated.
 Structured Fastify/Pino logging baseline established with UUIDv7 request correlation.
 Health/Readiness endpoints implemented with bounded PostgreSQL readiness check (packages/database).
 Migration tooling baseline established with Kysely native Migrator, deterministic source/compiled discovery, and verified failure propagation.
-Next task: M01-T08 (Test Infrastructure).
+Standardized test infrastructure established with explicit Vitest unit configuration, deterministic discovery excluding dist/integration paths, and Vitest 5-compatible single-fork integration configuration.
+Next task: M01-T09 (CI Baseline).
 M01 may begin locally before Gate 0.
 
 ---

@@ -45,7 +45,8 @@ describe('PostgreSQL Readiness Integration (Testcontainers)', { timeout: 120000 
 
   it('should respect 2000ms total budget on unreachable host', async () => {
     // Use an invalid connection string that will timeout
-    const invalidConnectionString = 'postgresql://user:pass@192.0.2.1:5432/testdb?connect_timeout=2';
+    const invalidConnectionString =
+      'postgresql://user:pass@192.0.2.1:5432/testdb?connect_timeout=2';
 
     const startTime = Date.now();
     const result = await checkPostgreSQLReadiness({

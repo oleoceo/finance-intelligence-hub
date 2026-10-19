@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+.github
+
+# Dependencies (installed in build)
+node_modules
+**/node_modules
+
+# Build output (built in build)
+dist
+**/dist
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Test files and coverage
+coverage
+**/coverage
+*.test.ts
+*.spec.ts
+__tests__
+**/__tests__
+
+# Documentation
+docs
+README.md
+CHANGELOG.md
+LICENSE
+AGENTS.md
+PROJECT_STATE.md
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Docker files (not needed inside container)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# pnpm store
+.pnpm-store
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.log

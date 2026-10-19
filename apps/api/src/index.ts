@@ -134,12 +134,44 @@ function buildApp() {
 
 export { buildApp, isValidCorrelationId };
 
+// Production bootstrap: only runs when this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const port = Number(process.env.PORT ?? 3000);
+  const host = process.env.HOST ?? '0.0.0.0';
+
   const app = buildApp();
-  app.listen({ port: Number(process.env.PORT ?? 3000), host: '0.0.0.0' }, (err) => {
+
+  let server: Awaited<ReturnType<typeof app.listen>> | null = null;
+
+  // Graceful shutdown handler
+  async function gracefulShutdown(signal: string) {
+    app.log.info({ msg: `Received ${signal}, starting graceful shutdown` });
+
+    // Stop accepting new connections
+    if (server) {
+      try {
+        await app.close();
+        app.log.info({ msg: 'Fastify server closed successfully' });
+      } catch (err) {
+        app.log.error({ err, msg: 'Error during Fastify close' });
+        process.exit(1);
+      }
+    }
+
+    process.exit(0);
+  }
+
+  // Register signal handlers
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+  // Start listening
+  app.listen({ port, host }, (err, address) => {
     if (err) {
-      app.log.error(err);
+      app.log.error({ err, msg: 'Failed to start server' });
       process.exit(1);
     }
+    server = address as unknown as typeof server;
+    app.log.info({ msg: `Server listening on ${address}` });
   });
 }

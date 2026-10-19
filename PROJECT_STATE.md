@@ -59,13 +59,14 @@ FINAL-FREEZE-DECISIONS.md
 ```text
 PROJECT PHASE
 =
-M01 — Local Bootstrap IN PROGRESS
+M01 — Local Bootstrap ALL TASKS DONE (awaiting milestone closure)
 ```
 
 Architecture and canonical documentation are frozen.
 
-Implementation has begun with M01-T01 (stack decision) completed.
-ADR-001 and ADR-002 are now ACCEPTED.
+All M01 implementation tasks T01–T10 are DONE.
+ADR-001 and ADR-002 are ACCEPTED.
+Docker packaging baseline established (M01-T10).
 
 ---
 

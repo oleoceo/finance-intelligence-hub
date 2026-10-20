@@ -23,7 +23,10 @@ export {
 } from './domain/master-data/immutability.js';
 
 // Category cycle detection
-export { CategoryCycleDetector, type CategoryNode } from './domain/master-data/category-cycle-detector.js';
+export {
+  CategoryCycleDetector,
+  type CategoryNode,
+} from './domain/master-data/category-cycle-detector.js';
 
 // Domain errors
 export {

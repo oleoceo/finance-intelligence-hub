@@ -194,7 +194,10 @@ export async function updateCategory(
       }
 
       if (parent.bookId !== current.bookId) {
-        throw new ValidationError('Parent Category must belong to the same Book', 'parentCategoryId');
+        throw new ValidationError(
+          'Parent Category must belong to the same Book',
+          'parentCategoryId',
+        );
       }
 
       if (!parent.active) {

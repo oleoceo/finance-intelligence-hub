@@ -59,11 +59,11 @@ FINAL-FREEZE-DECISIONS.md
 M01 - Local Bootstrap: DONE.
 M02 - Database Foundation: DONE; human accepted on 2026-10-20.
 M02-T01, M02-T02, M02-T03, M02-T04 and M02-T05: DONE.
-M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 REVIEW REQUIRED; T04/T05 PLANNED.
+M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 PLANNED (next allowed implementation task); M03-T05 PLANNED.
 
 Functional roadmap: M01 -> M02 -> M03. Gate 0 is a separate infrastructure prerequisite before live VPS/Lab/Production activity; it remains NOT EXECUTED and is not authorized by this closure.
 
-Architecture and canonical documentation remain frozen. ADR-001/002 remain ACCEPTED. Established M01 Docker/CI evidence is preserved below. The current human request authorizes T03 correction commits/pushes only; no merge.
+Architecture and canonical documentation remain frozen. ADR-001/002 remain ACCEPTED. Established M01 Docker/CI evidence is preserved below. The current human request authorizes T03 documentation closure commits/pushes only; no merge or T04 implementation.
 
 ---
 
@@ -190,15 +190,15 @@ Native-WSL evidence: integration 8 files / 74 PASS, no failures/skips/zero-test 
 
 M02-T01 through M02-T05: DONE, moved to docs/tasks/completed/. M03 is IN PROGRESS; M03-T01 is DONE and human accepted. Accepted evidence: 32 new unit tests, 67 total unit tests PASS; PostgreSQL regression: 8 integration files / 74 tests PASS, zero failures. No application behavior or live infrastructure was changed during closure.
 
-M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved to docs/tasks/completed/M03-T02.md. Accepted evidence: unit 9 files / 102 tests PASS; integration 9 files / 100 tests PASS; T02-specific integration 26 tests PASS; critical concurrency/race scenarios PASS; build, typecheck, lint and T02 formatting PASS. Final hygiene: pnpm-lock.yaml restored from HEAD with only three importer dependency changes (11 insertions / 1 deletion); native-WSL Node 24.22.0 / pnpm 12.3.4 frozen install and package dependency consistency PASS. No source/test changes during cleanup, no migration/security change, no remaining T02 blocker. Next: M03-T03 human review; T04 is not authorized.
+M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved to docs/tasks/completed/M03-T02.md. Accepted evidence: unit 9 files / 102 tests PASS; integration 9 files / 100 tests PASS; T02-specific integration 26 tests PASS; critical concurrency/race scenarios PASS; build, typecheck, lint and T02 formatting PASS. Final hygiene: pnpm-lock.yaml restored from HEAD with only three importer dependency changes (11 insertions / 1 deletion); native-WSL Node 24.22.0 / pnpm 12.3.4 frozen install and package dependency consistency PASS. No source/test changes during cleanup, no migration/security change, no remaining T02 blocker. M03-T03 is now human accepted; next allowed implementation task: M03-T04 (PLANNED, not started by this closure).
 
 ---
 
 # 8. Current milestone
 
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
-M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 REVIEW REQUIRED; T04/T05 PLANNED.
-M03-T02 is human accepted and closed; M03-T03 is implemented and remains REVIEW REQUIRED on Draft PR #1; human PR corrections are authorized. Gate 0 remains a separate infrastructure prerequisite, NOT EXECUTED and not authorized by this closure.
+M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 PLANNED (next allowed implementation task); M03-T05 PLANNED.
+M03-T02 is human accepted and closed; M03-T03 is human accepted and DONE; its record is in docs/tasks/completed/M03-T03.md. M03-T04 is PLANNED and the next allowed implementation task; this closure does not start it. Gate 0 remains a separate infrastructure prerequisite, NOT EXECUTED and not authorized by this closure.
 
 ---
 
@@ -764,7 +764,7 @@ M02 Database Foundation
 DONE
 
 M03 Master Data / Configuration
-IN PROGRESS - M03-T01 DONE; M03-T02 DONE; M03-T03 REVIEW REQUIRED; T04/T05 PLANNED
+IN PROGRESS - M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 PLANNED (next allowed implementation task); M03-T05 PLANNED
 
 M04 Transaction Core
 ⬜ NOT STARTED
@@ -848,8 +848,8 @@ These belong to Gate 0.
 # 39. Current allowed next actions
 
 Functional roadmap progression: M01 -> M02 -> M03.
-M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 REVIEW REQUIRED; T04/T05 PLANNED. M03-T03 is implemented and remains REVIEW REQUIRED on Draft PR #1; human PR corrections are authorized.
-Gate 0 is separate from functional roadmap progression and is not authorized by this closure. T03 correction commits/pushes are authorized; no merge.
+M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 PLANNED (next allowed implementation task); M03-T05 PLANNED. M03-T03 is human accepted and DONE; its record is in docs/tasks/completed/M03-T03.md. M03-T04 is PLANNED and the next allowed implementation task; this closure does not start it.
+Gate 0 is separate from functional roadmap progression and is not authorized by this closure. T03 documentation closure commits/pushes are authorized; no merge or T04 implementation.
 
 ---
 
@@ -975,9 +975,9 @@ docs-freeze-v0.1
 
 # 46. CI status
 
-M03-T03 human PR corrections: local unit 11 files / 146 tests PASS (Category 31, Merchant 13); PostgreSQL integration 10 files / 136 tests PASS; T03 36 tests PASS; build, typecheck and lint PASS. GitHub Actions [run 39505937003](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39505937003) is GREEN for implementation head 5f3fd24040ccb6e40edc42f5e922e45a36956b94, with the same exact totals. Baseline suites preserved. Draft PR #1 remains open; T03 REVIEW REQUIRED, not DONE.
+M03-T03 is human accepted and DONE. Accepted head: `119f8d86f9ea307be979f6051d83958e7a563549`; final accepted GitHub Actions [run 39506256233](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39506256233): full CI GREEN. Unit 11 files / 146 tests PASS (Category 31, Merchant 13); PostgreSQL integration 10 files / 136 tests PASS; T03 integration 36 tests PASS. Build, typecheck, lint and formatting PASS. Baseline suites preserved; application suites are not rerun locally solely for documentation closure. Draft PR #1 remains open and unmerged.
 
-Corrections: locked inactive-Book validation, atomic lifecycle/field patches, complete ordered Book/Category lock discovery with bounded restart, canonical fail-safe cycle detection, two-backend barriers and reparent uniqueness rollback. No frozen/migration/T04/T05/security-scope changes. Next allowed action: human review of Draft PR #1; no merge or T04.
+Accepted behavior: locked inactive-Book validation, atomic lifecycle/field patches with archive timestamp preservation, complete ordered Book/Category lock discovery with bounded restart, canonical fail-safe cycle detection, two-backend barriers in both opposite/longer-cycle winning orders, distinct-Book independence, bounded cross-Book rejection and reparent uniqueness rollback. Duplicate Merchants, posted/voided history and Rule references remain preserved. No migration or security impact. Next allowed implementation task: M03-T04 (PLANNED); not started by this closure.
 
 ---
 
@@ -1210,9 +1210,9 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 REVIEW REQUIRED; T04/T05 PLANNED.
+M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 PLANNED (next allowed implementation task); M03-T05 PLANNED.
 M02 and M02-T01 through M02-T05 are DONE and accepted. Completed task records and milestone overview are in docs/tasks/completed/.
-M03-T01 is human accepted and recorded in docs/tasks/completed/M03-T01.md. M03-T02 is human accepted and recorded in docs/tasks/completed/M03-T02.md. T03 is implemented and REVIEW REQUIRED on Draft PR #1; T04/T05 remain PLANNED.
+M03-T01 is human accepted and recorded in docs/tasks/completed/M03-T01.md. M03-T02 is human accepted and recorded in docs/tasks/completed/M03-T02.md. M03-T03 is human accepted, DONE and recorded in docs/tasks/completed/M03-T03.md. M03-T04 is PLANNED and the next allowed implementation task; M03-T05 remains PLANNED.
 Gate 0 remains NOT EXECUTED, a separate prerequisite before live VPS/Lab/Production activity, and is not authorized by this closure.
 
 ---
@@ -1291,7 +1291,7 @@ Documentation baseline tag
 ⬜ PENDING
 
 Implementation
-M01 and M02 DONE; M03 IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 REVIEW REQUIRED; T04/T05 PLANNED
+M01 and M02 DONE; M03 IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 PLANNED (next allowed implementation task); M03-T05 PLANNED
 
 Gate 0
 ⬜ NOT EXECUTED
@@ -1313,6 +1313,6 @@ NONE
 
 # 63. Next action
 
-M02 remains DONE. M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 REVIEW REQUIRED; T04/T05 PLANNED. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED. T03 corrections are authorized on the existing branch/Draft PR #1; no merge, T04 or live infrastructure activity. Native-WSL pnpm 12.3.4 install --frozen-lockfile and dependency consistency PASS; Git closure checks PASS. Accepted application test evidence is preserved, not rerun.
+M02 remains DONE. M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 PLANNED (next allowed implementation task); M03-T05 PLANNED. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED. T03 documentation closure is authorized on the existing branch/Draft PR #1; no merge, T04 implementation or live infrastructure activity. Native-WSL pnpm 12.3.4 install --frozen-lockfile and dependency consistency PASS; Git closure checks PASS. Accepted application test evidence is preserved, not rerun.
 
 ---

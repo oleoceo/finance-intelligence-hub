@@ -1,13 +1,13 @@
 # M03 — Master Data / Configuration: Planning Overview
 
 **Status:** IN PROGRESS
-**Implementation:** T01 DONE; T02 DONE; T03 REVIEW REQUIRED; T04/T05 PLANNED
-**T01–T05:** T01 DONE; T02 DONE; T03/T04/T05 PLANNED
-**Authorization:** T01 and T02 accepted. T03 human PR corrections and commits/pushes are authorized on Draft PR #1; implementation is CI-green and REVIEW REQUIRED. No merge or T04.
+**Implementation:** T01 DONE; T02 DONE; T03 DONE; T04 PLANNED; T05 PLANNED
+**T01–T05:** T01 DONE; T02 DONE; T03 DONE; T04 PLANNED; T05 PLANNED
+**Authorization:** T01, T02 and T03 are human accepted and DONE. T03 documentation closure commits/pushes are authorized on Draft PR #1. Next allowed implementation task: M03-T04 (PLANNED). This closure does not start T04 or merge PR #1.
 
 ## Authority and baseline
 
-Read AGENTS.md, PROJECT_STATE.md, this overview and the selected task. M01/M02 are DONE and accepted; migrations 001–005 are unchanged. Historical baseline: 4 unit files / 35 tests; 8 integration files / 74 tests. This planning pass does not rerun or claim new application test results.
+Read AGENTS.md, PROJECT_STATE.md, this overview and the selected task. M01/M02 are DONE and accepted; migrations 001–005 are unchanged. Historical baseline: 4 unit files / 35 tests; 8 integration files / 74 tests. Accepted T03 evidence is recorded below; documentation closure does not rerun application suites locally.
 
 Frozen routing: FINAL-FREEZE-DECISIONS §§5–6, 78–97; 01-MVP-REQUIREMENTS §§5–22, 63–65; 02-DOMAIN-MODEL §§9–65, 138–146, 250; 03-ARCHITECTURE §§9–14; 04-DATABASE §§14–38 and Transaction reference columns; 05-API-CONTRACTS §§2–10, 14–27; 07-SECURITY §§14–32, 62–64; 09-ROADMAP-TESTS §§83–93. Accepted ADR-001/002 establish the stack/UUID baseline; neither changes.
 
@@ -17,7 +17,7 @@ Frozen routing: FINAL-FREEZE-DECISIONS §§5–6, 78–97; 01-MVP-REQUIREMENTS �
 | --- | --- | --- |
 | [T01](../completed/M03-T01.md) | Primitives, errors and Core ports | Accepted M02 |
 | [T02](../completed/M03-T02.md) | Books/Accounts; usage/default readers | T01 |
-| [T03](M03-T03.md) | Categories/Merchants; hierarchy updates | T01 |
+| [T03](../completed/M03-T03.md) | Categories/Merchants; hierarchy updates | T01 |
 | [T04](M03-T04.md) | Rules/Senders configuration | T02 and T03 |
 | [T05](M03-T05.md) | API and milestone integration | T01–T04 |
 
@@ -115,12 +115,14 @@ Executed for this documentation correction on 2026-10-20:
 - git diff --name-only -- docs/frozen: empty; frozen documentation unchanged.
 - Additional explicit checks cover all seven allowed paths, the untracked documents' whitespace and PLANNING/PLANNED/NOT STARTED state markers.
 
-Application tests were not run for this documentation-only pass. No source, tests, migrations, SQL, packages, lockfiles, configs or ADRs changed; no live infrastructure, commit or push. M03 remains PLANNING; implementation NOT STARTED; T01–T05 PLANNED; M04 NOT STARTED; Gate 0 NOT EXECUTED. Stop for human review.
+That historical documentation verification did not execute application suites or change application behavior. Current milestone and task states are listed above; its original planning authorization does not govern this accepted T03 closure.
 
-## M03-T02 accepted closure ? 2026-10-20
+## Accepted tasks and current closure
 
-M03 remains IN PROGRESS. M03-T01 and M03-T02 are DONE; M03-T03, M03-T04 and M03-T05 remain PLANNED. T02 record: [completed/M03-T02.md](../completed/M03-T02.md).
+M03 remains IN PROGRESS. T01 DONE; T02 DONE; T03 DONE; T04 PLANNED; T05 PLANNED. Next allowed implementation task: M03-T04; this documentation closure does not start it. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
 
-Human-accepted evidence: unit 9 files / 102 tests PASS; integration 9 files / 100 tests PASS; T02-specific integration 26 tests PASS; concurrency/race scenarios PASS; build, typecheck, lint and T02 formatting PASS. These suites were not rerun during closure hygiene.
+Accepted records: [T01](../completed/M03-T01.md), [T02](../completed/M03-T02.md), [T03](../completed/M03-T03.md). T01/T02 records are unchanged by T03 closure.
 
-Final hygiene verification: pnpm-lock.yaml has only three importer changes (11 insertions / 1 deletion), reusing existing package/snapshot entries. Native WSL Node 24.22.0 / pnpm 12.3.4: pnpm install --frozen-lockfile PASS; exact package dependency consistency PASS. Cleanup changes only the lockfile, PROJECT_STATE.md, this overview and the moved/completed T02 record. No source/test files were written during cleanup; their Git status entries match the initial status. Git diff --check PASS; frozen and migration diffs empty. No migration or security impact; no remaining T02 issues. M02 records and T03/T04/T05 contracts untouched. T03 not started; no commit, push or live infrastructure activity.
+T03 human-accepted head: `119f8d86f9ea307be979f6051d83958e7a563549`. Final accepted GitHub Actions [run 39506256233](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39506256233): full CI GREEN; unit 11 files / 146 tests PASS (Category 31, Merchant 13); integration 10 files / 136 tests PASS; T03 integration 36 tests PASS. Build, typecheck, lint and formatting PASS. Accepted hierarchy, lifecycle, lock/retry, two-backend concurrency, uniqueness, duplicate-Merchant and historical-reference behavior is detailed in the completed T03 record.
+
+Closure moves T03 to completed/ and updates PROJECT_STATE.md and this overview. Application suites are not rerun locally solely for documentation. Frozen docs, migrations, source, tests, package manifests, lockfile, ADRs, completed T01/T02 records and T04/T05 contracts remain unchanged. No migration/security impact or remaining T03 issue. PR #1 remains draft and unmerged; no live infrastructure activity.

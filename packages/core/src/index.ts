@@ -112,3 +112,5 @@ export {
   type CreateMerchantInput as CreateMerchantUseCaseInput,
   type UpdateMerchantInput as UpdateMerchantUseCaseInput,
 } from './application/master-data/merchant-use-cases.js';
+
+export { ConfigurationLockSetChangedError } from './application/ports/master-data-ports.js';

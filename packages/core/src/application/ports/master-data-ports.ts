@@ -161,6 +161,8 @@ export interface UpdateCategoryInput {
   parentCategoryId?: string | null; // null means detach to root
   type?: string;
   updatedAt: Date;
+  active?: boolean;
+  archivedAt?: Date | null;
 }
 
 /**
@@ -228,6 +230,8 @@ export interface UpdateMerchantInput {
   type?: string | null;
   taxIdentifier?: string | null;
   updatedAt: Date;
+  active?: boolean;
+  archivedAt?: Date | null;
 }
 
 /**
@@ -345,3 +349,6 @@ export interface MasterDataTransactionContext {
  * Use MasterDataTransactionContext for new code.
  */
 export type TransactionContext = MasterDataTransactionContext;
+
+/** Restart discovery in a fresh transaction; never acquire earlier-ranked locks late. */
+export class ConfigurationLockSetChangedError extends Error {}

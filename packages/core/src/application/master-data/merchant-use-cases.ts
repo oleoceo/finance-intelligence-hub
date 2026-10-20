@@ -108,31 +108,12 @@ export async function updateMerchant(
     newTaxIdentifier = input.taxIdentifier;
   }
 
-  // Handle lifecycle changes through update (active field)
-  if (input.active !== undefined) {
-    if (input.active === false && current.active === true) {
-      const lifecycleState = archiveEntity(
-        { active: current.active, archivedAt: current.archivedAt },
-        now,
-      );
-      const archived = await ctx.merchants.archive({
-        id: input.id,
-        active: lifecycleState.active,
-        archivedAt: lifecycleState.archivedAt,
-        updatedAt: now,
-      });
-      return archived;
-    }
-    if (input.active === true && current.active === false) {
-      const reactivated = await ctx.merchants.archive({
-        id: input.id,
-        active: true,
-        archivedAt: null,
-        updatedAt: now,
-      });
-      return reactivated;
-    }
-  }
+  const lifecycle =
+    input.active === false
+      ? archiveEntity(current, now)
+      : input.active === true
+        ? { active: true, archivedAt: null }
+        : { active: current.active, archivedAt: current.archivedAt };
 
   const updated = await ctx.merchants.update({
     id: input.id,
@@ -140,6 +121,7 @@ export async function updateMerchant(
     normalizedName: newNormalizedName,
     type: newType,
     taxIdentifier: newTaxIdentifier,
+    ...lifecycle,
     updatedAt: now,
   });
 

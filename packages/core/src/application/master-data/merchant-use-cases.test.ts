@@ -465,3 +465,40 @@ describe('Merchant Use Cases - Unit', () => {
     });
   });
 });
+
+describe('Merchant combined lifecycle patches', () => {
+  it('applies archive and reactivation fields, preserving repeated archive timestamp', async () => {
+    const ctx = createMockContext();
+    const now = new Date('2026-01-01');
+    let row = await createMerchant({ name: 'initial' }, ctx, now);
+    vi.mocked(ctx.merchants.findById).mockImplementation(async () => row);
+    vi.mocked(ctx.merchants.update).mockImplementation(async (patch) => {
+      row = { ...row, ...patch };
+      return row;
+    });
+    expect(
+      await updateMerchant({ id: row.id, name: ' NEW  NAME ', active: false }, ctx, now),
+    ).toMatchObject({
+      name: 'NEW  NAME',
+      normalizedName: 'new name',
+      active: false,
+      archivedAt: now,
+    });
+    expect(
+      await updateMerchant(
+        { id: row.id, name: 'again', active: false },
+        ctx,
+        new Date('2026-02-01'),
+      ),
+    ).toMatchObject({ name: 'again', archivedAt: now });
+    expect(
+      await updateMerchant(
+        { id: row.id, type: 'retail', taxIdentifier: '123', active: true },
+        ctx,
+        now,
+      ),
+    ).toMatchObject({ type: 'retail', taxIdentifier: '123', active: true, archivedAt: null });
+    expect(ctx.merchants.archive).not.toHaveBeenCalled();
+    expect(ctx.merchants.update).toHaveBeenCalledTimes(3);
+  });
+});

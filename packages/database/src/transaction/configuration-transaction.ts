@@ -8,6 +8,8 @@
 
 import type { Kysely, Transaction } from 'kysely';
 import {
+  ConfigurationLockSetChangedError,
+  ConcurrencyError,
   type TransactionPort,
   type MasterDataTransactionContext,
   type ConfigurationLockPort,
@@ -72,26 +74,33 @@ export class KyselyTransactionPort implements TransactionPort {
   constructor(private readonly db: Kysely<DB>) {}
 
   async runInTransaction<T>(fn: (ctx: MasterDataTransactionContext) => Promise<T>): Promise<T> {
-    return await this.db.transaction().execute(async (tx) => {
-      const books = new KyselyBookRepository(tx);
-      const accounts = new KyselyAccountRepository(tx);
-      const categories = new KyselyCategoryRepository(tx);
-      const merchants = new KyselyMerchantRepository(tx);
-      const locks = new KyselyConfigurationLockPort(tx);
-      const financialUsage = new KyselyFinancialUsageReader(tx);
-      const senderDefaults = new KyselySenderDefaultReferenceReader(tx);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.db.transaction().execute(async (tx) => {
+          const books = new KyselyBookRepository(tx);
+          const accounts = new KyselyAccountRepository(tx);
+          const categories = new KyselyCategoryRepository(tx);
+          const merchants = new KyselyMerchantRepository(tx);
+          const locks = new KyselyConfigurationLockPort(tx);
+          const financialUsage = new KyselyFinancialUsageReader(tx);
+          const senderDefaults = new KyselySenderDefaultReferenceReader(tx);
 
-      const ctx: MasterDataTransactionContext = {
-        books,
-        accounts,
-        categories,
-        merchants,
-        locks,
-        financialUsage,
-        senderDefaults,
-      };
+          const ctx: MasterDataTransactionContext = {
+            books,
+            accounts,
+            categories,
+            merchants,
+            locks,
+            financialUsage,
+            senderDefaults,
+          };
 
-      return await fn(ctx);
-    });
+          return await fn(ctx);
+        });
+      } catch (error) {
+        if (!(error instanceof ConfigurationLockSetChangedError)) throw error;
+      }
+    }
+    throw new ConcurrencyError('Configuration references changed repeatedly; retry operation');
   }
 }

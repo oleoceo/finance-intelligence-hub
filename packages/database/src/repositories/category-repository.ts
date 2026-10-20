@@ -139,6 +139,8 @@ export class KyselyCategoryRepository implements CategoryRepository {
           normalized_name: input.normalizedName,
           parent_category_id: input.parentCategoryId,
           type: input.type,
+          active: input.active,
+          archived_at: input.archivedAt,
           updated_at: input.updatedAt,
         })
         .where('id', '=', input.id)

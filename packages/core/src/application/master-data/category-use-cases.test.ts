@@ -1,3 +1,4 @@
+import { ConfigurationLockSetChangedError } from '../ports/master-data-ports.js';
 /**
  * Core unit tests for Category configuration (M03-T03).
  *
@@ -857,4 +858,136 @@ describe('Category Use Cases - Unit', () => {
       expect(result).toHaveLength(1);
     });
   });
+});
+
+describe('Category review regressions', () => {
+  function fixture() {
+    const ctx = createMockContext();
+    const now = new Date('2026-01-01');
+    const category = (id: string, parentCategoryId: string | null = null) => ({
+      id,
+      bookId: 'book-1',
+      name: id,
+      normalizedName: id,
+      parentCategoryId,
+      type: 'both',
+      active: true,
+      archivedAt: null as Date | null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const rows = new Map(['a', 'b', 'c'].map((id) => [id, category(id)]));
+    vi.mocked(ctx.categories.findById).mockImplementation(async (id) => rows.get(id) ?? null);
+    vi.mocked(ctx.categories.update).mockImplementation(async (patch) => {
+      const row = { ...rows.get(patch.id)!, ...patch };
+      rows.set(row.id, row);
+      return row;
+    });
+    return { ctx, rows, now };
+  }
+  it('reparents in active Book and applies archive, name and type together', async () => {
+    const { ctx, rows, now } = fixture();
+    const result = await updateCategory(
+      { id: 'a', parentCategoryId: 'b', name: ' NEW  Name ', type: 'expense', active: false },
+      ctx,
+      now,
+    );
+    expect(result).toMatchObject({
+      parentCategoryId: 'b',
+      name: 'NEW  Name',
+      normalizedName: 'new name',
+      type: 'expense',
+      active: false,
+      archivedAt: now,
+    });
+    expect(rows.get('a')).toEqual(result);
+    expect(ctx.categories.update).toHaveBeenCalledTimes(1);
+    expect(ctx.categories.archive).not.toHaveBeenCalled();
+  });
+  it('rejects inactive Book after lock without any mutation', async () => {
+    const { ctx, rows, now } = fixture();
+    const before = { ...rows.get('a')! };
+    const book = (await ctx.books.findById('book-1'))!;
+    vi.mocked(ctx.locks.acquireLocks).mockImplementation(async () => {
+      book.active = false;
+    });
+    await expect(
+      updateCategory({ id: 'a', parentCategoryId: 'b', name: 'changed', active: false }, ctx, now),
+    ).rejects.toMatchObject({ field: 'bookId' });
+    expect(rows.get('a')).toEqual(before);
+    expect(ctx.categories.update).not.toHaveBeenCalled();
+    expect(ctx.categories.archive).not.toHaveBeenCalled();
+  });
+  it('allows ordinary name/type updates in inactive Book', async () => {
+    const { ctx, now } = fixture();
+    (await ctx.books.findById('book-1'))!.active = false;
+    expect(
+      await updateCategory({ id: 'a', name: 'changed', type: 'income' }, ctx, now),
+    ).toMatchObject({ name: 'changed', type: 'income' });
+  });
+  it('preserves repeated archive timestamp and applies reactivation fields', async () => {
+    const { ctx, now } = fixture();
+    await updateCategory({ id: 'a', active: false }, ctx, now);
+    expect(
+      await updateCategory({ id: 'a', active: false, name: 'again' }, ctx, new Date('2026-02-01')),
+    ).toMatchObject({ name: 'again', archivedAt: now });
+    expect(
+      await updateCategory({ id: 'a', active: true, name: 'back', type: 'income' }, ctx, now),
+    ).toMatchObject({ name: 'back', type: 'income', active: true, archivedAt: null });
+  });
+  it('fails safely on pre-existing cyclic ancestry without mutation', async () => {
+    const { ctx, rows, now } = fixture();
+    rows.get('b')!.parentCategoryId = 'c';
+    rows.get('c')!.parentCategoryId = 'b';
+    await expect(
+      updateCategory({ id: 'a', parentCategoryId: 'b' }, ctx, now),
+    ).rejects.toMatchObject({ code: 'CATEGORY_CYCLE' });
+    expect(ctx.categories.update).not.toHaveBeenCalled();
+    expect(rows.get('a')!.parentCategoryId).toBeNull();
+  });
+  it.each(['missing', 'cross-book'])('rejects %s ancestry without mutation', async (reason) => {
+    const { ctx, rows, now } = fixture();
+    rows.get('b')!.parentCategoryId = 'c';
+    if (reason === 'missing') rows.delete('c');
+    else rows.get('c')!.bookId = 'other';
+    await expect(
+      updateCategory({ id: 'a', parentCategoryId: 'b' }, ctx, now),
+    ).rejects.toMatchObject({ field: 'parentCategoryId', code: 'VALIDATION_ERROR' });
+    expect(ctx.categories.update).not.toHaveBeenCalled();
+  });
+  it.each(['create', 'update'])(
+    'locks all discovered Books before Categories for cross-Book %s',
+    async (operation) => {
+      const { ctx, rows, now } = fixture();
+      rows.get('b')!.bookId = 'book-0';
+      await expect(
+        operation === 'create'
+          ? createCategory({ bookId: 'book-1', name: 'new', parentCategoryId: 'b' }, ctx, now)
+          : updateCategory({ id: 'a', parentCategoryId: 'b' }, ctx, now),
+      ).rejects.toMatchObject({ field: 'parentCategoryId' });
+      expect(vi.mocked(ctx.locks.acquireLocks).mock.calls[0][0]).toEqual({
+        books: ['book-0', 'book-1'],
+      });
+      expect(vi.mocked(ctx.locks.acquireLocks).mock.calls[1][0]).toEqual({
+        categories: operation === 'create' ? ['b'] : ['a', 'b'],
+      });
+    },
+  );
+  it.each(['create', 'update'])(
+    'requests transaction restart when %s discovery changes while waiting',
+    async (operation) => {
+      const { ctx, rows, now } = fixture();
+      vi.mocked(ctx.locks.acquireLocks).mockImplementation(async () => {
+        rows.get('b')!.bookId = 'new-book';
+      });
+      await expect(
+        operation === 'create'
+          ? createCategory({ bookId: 'book-1', name: 'new', parentCategoryId: 'b' }, ctx, now)
+          : updateCategory({ id: 'a', parentCategoryId: 'b' }, ctx, now),
+      ).rejects.toBeInstanceOf(ConfigurationLockSetChangedError);
+      expect(ctx.locks.acquireLocks).toHaveBeenCalledTimes(1);
+      expect(ctx.categories.update).not.toHaveBeenCalled();
+      expect(ctx.categories.create).not.toHaveBeenCalled();
+    },
+  );
 });

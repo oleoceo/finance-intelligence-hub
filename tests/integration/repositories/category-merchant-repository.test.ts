@@ -35,8 +35,10 @@ import {
   updateMerchant,
   archiveMerchant,
   ValidationError,
+  ConfigurationLockSetChangedError,
 } from '@finance-hub/core';
-import type { DB } from '../../packages/database/src/db-types.js';
+import type { DB } from '../../../packages/database/src/db-types.js';
+import type { MasterDataTransactionContext, CategoryRecord } from '@finance-hub/core';
 
 const v7 = randomUUID;
 
@@ -597,180 +599,374 @@ describe('Merchant Repository Integration', () => {
 // Category hierarchy concurrency (two independent connections, barrier)
 // ──────────────────────────────────────────────────────────────────────────
 
-describe('Category Hierarchy Concurrency', { timeout: 30000 }, () => {
-  it('Opposite concurrent moves: A-under-B and B-under-A -> exactly one fails CATEGORY_CYCLE', async () => {
-    const bookId = v7();
-    const txPort = new KyselyTransactionPort(db);
-    const now = new Date();
-
-    await pool.query(
-      `INSERT INTO books (id, name, normalized_name, currency, timezone, active, archived_at, created_at, updated_at)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [
-        bookId,
-        `Concurrency Book ${v7().slice(0, 8)}`,
-        `concurrency book ${v7().slice(0, 8)}`,
-        'BRL',
-        'America/Sao_Paulo',
-        true,
-        null,
-        now,
-        now,
-      ],
-    );
-
-    const catA = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId, name: 'Cat Concurr A' }, ctx, now),
-    );
-    const catB = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId, name: 'Cat Concurr B' }, ctx, now),
-    );
-
-    // Two concurrent reparentings that would create a cycle if both succeeded
-    // Need to use direct pool connections with barriers
-    const pool2 = new Pool({ connectionString });
-
-    try {
-      // Execute both moves concurrently through the use case (which acquires Book lock)
-      const results = await Promise.allSettled([
-        txPort.runInTransaction(async (ctx) =>
-          updateCategory({ id: catA.id, parentCategoryId: catB.id }, ctx, new Date()),
-        ),
-        txPort.runInTransaction(async (ctx) =>
-          updateCategory({ id: catB.id, parentCategoryId: catA.id }, ctx, new Date()),
-        ),
-      ]);
-
-      const fulfilled = results.filter((r) => r.status === 'fulfilled');
-      const rejected = results.filter((r) => r.status === 'rejected');
-
-      // Exactly one should succeed, one should fail
-      expect(fulfilled).toHaveLength(1);
-      expect(rejected).toHaveLength(1);
-
-      // Verify no cycle in final state
-      const catRepo = new KyselyCategoryRepository(db);
-      const finalA = await catRepo.findById(catA.id);
-      const finalB = await catRepo.findById(catB.id);
-
-      // Not both pointing to each other
-      const isCycle = finalA?.parentCategoryId === catB.id && finalB?.parentCategoryId === catA.id;
-      expect(isCycle).toBe(false);
-    } finally {
-      await pool2.end();
-    }
+function barrier() {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
   });
-
-  it('Longer disjoint-row moves that together would close a cycle', async () => {
-    const bookId = v7();
-    const txPort = new KyselyTransactionPort(db);
-    const now = new Date();
-
-    await pool.query(
-      `INSERT INTO books (id, name, normalized_name, currency, timezone, active, archived_at, created_at, updated_at)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [
-        bookId,
-        `Long Concurr Book ${v7().slice(0, 8)}`,
-        `long concurr book ${v7().slice(0, 8)}`,
-        'BRL',
-        'America/Sao_Paulo',
-        true,
-        null,
-        now,
-        now,
-      ],
-    );
-
-    // Hierarchy: A (root) <- B (child of A) <- C (child of B) ; D (root)
-    const catA = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId, name: 'Long A' }, ctx, now),
-    );
-    const catB = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId, name: 'Long B', parentCategoryId: catA.id }, ctx, now),
-    );
-    const catC = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId, name: 'Long C', parentCategoryId: catB.id }, ctx, now),
-    );
-    const catD = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId, name: 'Long D' }, ctx, now),
-    );
-
-    // Scenario: Move A under D, and move D under C concurrently
-    // If both succeed, cycle: A -> B -> C -> D -> A
-    const results = await Promise.allSettled([
-      txPort.runInTransaction(async (ctx) =>
-        updateCategory({ id: catA.id, parentCategoryId: catD.id }, ctx, new Date()),
-      ),
-      txPort.runInTransaction(async (ctx) =>
-        updateCategory({ id: catD.id, parentCategoryId: catC.id }, ctx, new Date()),
-      ),
+  return { promise, release };
+}
+async function bounded<T>(promise: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Barrier timed out')), 8000);
+      }),
     ]);
-
-    // At least one should succeed; if both succeed, check for cycle
-    const catRepo = new KyselyCategoryRepository(db);
-    const finalD = await catRepo.findById(catD.id);
-    const finalA = await catRepo.findById(catA.id);
-
-    // If D moved under C and A moved under D, we have cycle
-    const bothMoved = finalA?.parentCategoryId === catD.id && finalD?.parentCategoryId === catC.id;
-    expect(bothMoved).toBe(false);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
+async function testBook() {
+  const id = v7();
+  const now = new Date();
+  await new KyselyBookRepository(db).create({
+    id,
+    name: id,
+    normalizedName: id,
+    currency: 'BRL',
+    timezone: 'UTC',
+    active: true,
+    archivedAt: null,
+    createdAt: now,
+    updatedAt: now,
   });
-
-  it('Distinct Books may proceed independently', async () => {
-    const bookId1 = v7();
-    const bookId2 = v7();
-    const txPort = new KyselyTransactionPort(db);
-    const now = new Date();
-
-    for (const bid of [bookId1, bookId2]) {
-      await pool.query(
-        `INSERT INTO books (id, name, normalized_name, currency, timezone, active, archived_at, created_at, updated_at)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [
-          bid,
-          `Distinct Book ${bid.slice(0, 8)}`,
-          `distinct book ${bid.slice(0, 8)}`,
-          'BRL',
-          'America/Sao_Paulo',
-          true,
-          null,
-          now,
-          now,
-        ],
+  return id;
+}
+async function testCategory(bookId: string, name: string, parentCategoryId: string | null = null) {
+  return new KyselyTransactionPort(db).runInTransaction((ctx) =>
+    createCategory({ bookId, name, parentCategoryId }, ctx, new Date()),
+  );
+}
+async function assertGraph(bookId: string, expected: Record<string, string | null>) {
+  const rows = await new KyselyCategoryRepository(db).findByBookId(bookId);
+  const graph = Object.fromEntries(rows.map((row) => [row.id, row.parentCategoryId]));
+  expect(graph).toEqual(expected);
+  for (const row of rows) {
+    const seen = new Set<string>();
+    let id: string | null = row.id;
+    while (id !== null) {
+      expect(seen.has(id)).toBe(false);
+      seen.add(id);
+      id = graph[id];
+    }
+  }
+}
+type Operation = (ctx: MasterDataTransactionContext) => Promise<CategoryRecord>;
+// Separate max=1 pools guarantee independent backend connections. The observer uses pool.
+async function coordinated(first: Operation, second: Operation, independent = false) {
+  const pool1 = new Pool({
+    connectionString,
+    max: 1,
+    options: '-c statement_timeout=10000 -c lock_timeout=10000',
+  });
+  const pool2 = new Pool({
+    connectionString,
+    max: 1,
+    options: '-c statement_timeout=10000 -c lock_timeout=10000',
+  });
+  const db1 = new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool1 }) });
+  const db2 = new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool2 }) });
+  const held = barrier();
+  const release = barrier();
+  const secondStarted = barrier();
+  let firstFinished = false;
+  let pending: Promise<PromiseSettledResult<CategoryRecord>[]> | undefined;
+  try {
+    const pid1 = (await pool1.query('select pg_backend_pid() as pid')).rows[0].pid;
+    const pid2 = (await pool2.query('select pg_backend_pid() as pid')).rows[0].pid;
+    expect(pid1).not.toBe(pid2);
+    const run1 = new KyselyTransactionPort(db1)
+      .runInTransaction((ctx) =>
+        first({
+          ...ctx,
+          locks: {
+            acquireLocks: async (spec) => {
+              await ctx.locks.acquireLocks(spec);
+              if (spec.books?.length) {
+                held.release();
+                await bounded(release.promise);
+              }
+            },
+          },
+        }),
+      )
+      .finally(() => {
+        firstFinished = true;
+      });
+    // Attach rejection handling immediately, including on barrier failure.
+    const settled1 = Promise.allSettled([run1]);
+    await bounded(held.promise);
+    const run2 = new KyselyTransactionPort(db2).runInTransaction((ctx) =>
+      second({
+        ...ctx,
+        locks: {
+          acquireLocks: async (spec) => {
+            if (spec.books?.length) secondStarted.release();
+            await ctx.locks.acquireLocks(spec);
+          },
+        },
+      }),
+    );
+    pending = Promise.allSettled([run1, run2]);
+    await bounded(secondStarted.promise);
+    if (independent) {
+      await bounded(run2);
+      expect(firstFinished).toBe(false); // Book 2 committed while Book 1 remains locked.
+    } else {
+      await bounded(
+        (async () => {
+          const deadline = Date.now() + 7000;
+          for (;;) {
+            if (Date.now() > deadline) throw new Error('Expected Book lock wait was not observed');
+            const observed = await pool.query(
+              'select pg_blocking_pids($1) as blockers, wait_event_type, query from pg_stat_activity where pid=$1',
+              [pid2],
+            );
+            const row = observed.rows[0];
+            if (row?.blockers.includes(pid1)) {
+              expect(row.wait_event_type).toBe('Lock');
+              expect(row.query).toContain('"books"');
+              expect(row.query).toContain('for update');
+              break;
+            }
+          }
+        })(),
       );
+      expect(firstFinished).toBe(false);
     }
+    release.release();
+    const results = await bounded(pending);
+    await settled1;
+    return results;
+  } finally {
+    release.release();
+    if (pending) await pending;
+    await db1.destroy();
+    await db2.destroy();
+  }
+}
 
-    const catA1 = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId: bookId1, name: 'Dist A1' }, ctx, now),
+describe('Category Hierarchy Concurrency', { timeout: 30000 }, () => {
+  it.each([false, true])(
+    'Opposite moves with explicit Book-lock wait, reverse=%s',
+    async (reverse) => {
+      const book = await testBook();
+      const a = await testCategory(book, 'A');
+      const b = await testCategory(book, 'B');
+      const [winner, loser] = reverse ? [b, a] : [a, b];
+      const results = await coordinated(
+        (ctx) => updateCategory({ id: winner.id, parentCategoryId: loser.id }, ctx, new Date()),
+        (ctx) => updateCategory({ id: loser.id, parentCategoryId: winner.id }, ctx, new Date()),
+      );
+      expect(results[0].status).toBe('fulfilled');
+      expect(results[1]).toMatchObject({ status: 'rejected', reason: { code: 'CATEGORY_CYCLE' } });
+      await assertGraph(book, { [winner.id]: loser.id, [loser.id]: null });
+    },
+  );
+  it.each([false, true])(
+    'Longer disjoint-row cycle re-reads ancestry after commit, reverse=%s',
+    async (reverse) => {
+      const book = await testBook();
+      const a = await testCategory(book, 'A');
+      const b = await testCategory(book, 'B');
+      const c = await testCategory(book, 'C', a.id);
+      const d = await testCategory(book, 'D', b.id);
+      // Disjoint Category lock sets {A,D} and {B,C}. Together: A->D->B->C->A.
+      const one: Operation = (ctx) =>
+        updateCategory({ id: a.id, parentCategoryId: d.id }, ctx, new Date());
+      const two: Operation = (ctx) =>
+        updateCategory({ id: b.id, parentCategoryId: c.id }, ctx, new Date());
+      const results = await coordinated(reverse ? two : one, reverse ? one : two);
+      expect(results[0].status).toBe('fulfilled');
+      expect(results[1]).toMatchObject({ status: 'rejected', reason: { code: 'CATEGORY_CYCLE' } });
+      await assertGraph(book, {
+        [a.id]: reverse ? null : d.id,
+        [b.id]: reverse ? c.id : null,
+        [c.id]: a.id,
+        [d.id]: b.id,
+      });
+    },
+  );
+  it('Distinct Books commit independently while the first hierarchy lock is held', async () => {
+    const book1 = await testBook();
+    const book2 = await testBook();
+    const a = await testCategory(book1, 'A');
+    const b = await testCategory(book1, 'B');
+    const c = await testCategory(book2, 'C');
+    const d = await testCategory(book2, 'D');
+    const results = await coordinated(
+      (ctx) => updateCategory({ id: a.id, parentCategoryId: b.id }, ctx, new Date()),
+      (ctx) => updateCategory({ id: c.id, parentCategoryId: d.id }, ctx, new Date()),
+      true,
     );
-    const catB1 = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId: bookId1, name: 'Dist B1' }, ctx, now),
-    );
-    const catA2 = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId: bookId2, name: 'Dist A2' }, ctx, now),
-    );
-    const catB2 = await txPort.runInTransaction(async (ctx) =>
-      createCategory({ bookId: bookId2, name: 'Dist B2' }, ctx, now),
-    );
-
-    const results = await Promise.allSettled([
-      txPort.runInTransaction(async (ctx) =>
-        updateCategory({ id: catA1.id, parentCategoryId: catB1.id }, ctx, new Date()),
-      ),
-      txPort.runInTransaction(async (ctx) =>
-        updateCategory({ id: catA2.id, parentCategoryId: catB2.id }, ctx, new Date()),
-      ),
-    ]);
-
-    // Both should succeed (different Book locks)
-    expect(results.every((r) => r.status === 'fulfilled')).toBe(true);
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'fulfilled']);
+    await assertGraph(book1, { [a.id]: b.id, [b.id]: null });
+    await assertGraph(book2, { [c.id]: d.id, [d.id]: null });
   });
+  it.each(['create', 'update'])(
+    'Opposing cross-Book %s attempts lock Books first and reject without deadlock',
+    async (operation) => {
+      const book1 = await testBook();
+      const book2 = await testBook();
+      const a = await testCategory(book1, 'A');
+      const b = await testCategory(book2, 'B');
+      const attempt =
+        (own: CategoryRecord, other: CategoryRecord): Operation =>
+        (ctx) =>
+          operation === 'create'
+            ? createCategory(
+                { bookId: own.bookId, name: 'invalid', parentCategoryId: other.id },
+                ctx,
+                new Date(),
+              )
+            : updateCategory({ id: own.id, parentCategoryId: other.id }, ctx, new Date());
+      const results = await coordinated(attempt(a, b), attempt(b, a));
+      for (const result of results)
+        expect(result).toMatchObject({
+          status: 'rejected',
+          reason: {
+            code: 'VALIDATION_ERROR',
+            field: 'parentCategoryId',
+            message: 'Parent Category must belong to the same Book',
+          },
+        });
+      await assertGraph(book1, { [a.id]: null });
+      await assertGraph(book2, { [b.id]: null });
+    },
+  );
 });
 
-// ──────────────────────────────────────────────────────────────────────────
-// Merchant concurrency
-// ──────────────────────────────────────────────────────────────────────────
+describe('T03 review PostgreSQL regressions', () => {
+  it('restarts the entire transaction after changed discovery and rolls back prior writes', async () => {
+    const book = await testBook();
+    let attempts = 0;
+    const result = await new KyselyTransactionPort(db).runInTransaction(async (ctx) => {
+      attempts++;
+      const row = await createCategory({ bookId: book, name: 'retry' }, ctx, new Date());
+      if (attempts === 1) throw new ConfigurationLockSetChangedError();
+      return row;
+    });
+    expect(attempts).toBe(2);
+    expect(await new KyselyCategoryRepository(db).findByBookId(book)).toEqual([result]);
+  });
+  it('bounds changed-discovery retries and rolls back every attempt', async () => {
+    const book = await testBook();
+    let attempts = 0;
+    await expect(
+      new KyselyTransactionPort(db).runInTransaction(async (ctx) => {
+        attempts++;
+        await createCategory({ bookId: book, name: 'retry' }, ctx, new Date());
+        throw new ConfigurationLockSetChangedError();
+      }),
+    ).rejects.toMatchObject({ code: 'CONCURRENCY_ERROR' });
+    expect(attempts).toBe(3);
+    expect(await new KyselyCategoryRepository(db).findByBookId(book)).toEqual([]);
+  });
+
+  it('rejects inactive-Book reparent atomically but permits ordinary field updates', async () => {
+    const book = await testBook();
+    const a = await testCategory(book, 'A');
+    const b = await testCategory(book, 'B');
+    await pool.query('update books set active=false, archived_at=now() where id=$1', [book]);
+    const port = new KyselyTransactionPort(db);
+    await expect(
+      port.runInTransaction((ctx) =>
+        updateCategory(
+          { id: a.id, parentCategoryId: b.id, name: 'changed', active: false },
+          ctx,
+          new Date(),
+        ),
+      ),
+    ).rejects.toMatchObject({ field: 'bookId' });
+    expect(await new KyselyCategoryRepository(db).findById(a.id)).toEqual(a);
+    expect(
+      await port.runInTransaction((ctx) =>
+        updateCategory({ id: a.id, name: 'ordinary', type: 'income' }, ctx, new Date()),
+      ),
+    ).toMatchObject({ name: 'ordinary', type: 'income' });
+  });
+  it.each(['sibling', 'root'])(
+    'rolls back reparent normalized-name %s conflict including lifecycle fields',
+    async (target) => {
+      const book = await testBook();
+      const p = await testCategory(book, 'P');
+      const q = await testCategory(book, 'Q');
+      await testCategory(book, ' SAME  name ', target === 'root' ? null : q.id);
+      const child = await testCategory(book, 'same name', p.id);
+      await expect(
+        new KyselyTransactionPort(db).runInTransaction((ctx) =>
+          updateCategory(
+            { id: child.id, parentCategoryId: target === 'root' ? null : q.id, active: false },
+            ctx,
+            new Date(),
+          ),
+        ),
+      ).rejects.toThrow('uniqueness');
+      expect(await new KyselyCategoryRepository(db).findById(child.id)).toEqual(child);
+    },
+  );
+  it('persists combined Category archive/reparent/name and reactivate/type patches', async () => {
+    const book = await testBook();
+    const a = await testCategory(book, 'A');
+    const b = await testCategory(book, 'B');
+    const port = new KyselyTransactionPort(db);
+    const now = new Date();
+    const archived = await port.runInTransaction((ctx) =>
+      updateCategory(
+        { id: a.id, parentCategoryId: b.id, name: ' NEW  name ', active: false },
+        ctx,
+        now,
+      ),
+    );
+    expect(archived).toMatchObject({
+      name: 'NEW  name',
+      normalizedName: 'new name',
+      parentCategoryId: b.id,
+      active: false,
+      archivedAt: now,
+    });
+    const repeated = await port.runInTransaction((ctx) =>
+      updateCategory(
+        { id: a.id, name: 'again', active: false },
+        ctx,
+        new Date(now.getTime() + 1000),
+      ),
+    );
+    expect(repeated.archivedAt).toEqual(now);
+    const result = await port.runInTransaction((ctx) =>
+      updateCategory({ id: a.id, name: 'back', type: 'income', active: true }, ctx, new Date()),
+    );
+    expect(result).toMatchObject({ name: 'back', type: 'income', active: true, archivedAt: null });
+    expect(await new KyselyCategoryRepository(db).findById(a.id)).toEqual(result);
+  });
+  it('persists combined Merchant archive/name and reactivate/type/tax patches', async () => {
+    const port = new KyselyTransactionPort(db);
+    const now = new Date();
+    const m = await port.runInTransaction((ctx) => createMerchant({ name: 'initial' }, ctx, now));
+    expect(
+      await port.runInTransaction((ctx) =>
+        updateMerchant({ id: m.id, name: ' NEW  merchant ', active: false }, ctx, now),
+      ),
+    ).toMatchObject({ normalizedName: 'new merchant', active: false, archivedAt: now });
+    const result = await port.runInTransaction((ctx) =>
+      updateMerchant(
+        { id: m.id, type: 'retail', taxIdentifier: '123', active: true },
+        ctx,
+        new Date(),
+      ),
+    );
+    expect(result).toMatchObject({
+      type: 'retail',
+      taxIdentifier: '123',
+      active: true,
+      archivedAt: null,
+    });
+    expect(await new KyselyMerchantRepository(db).findById(m.id)).toEqual(result);
+  });
+});
 
 describe('Merchant Concurrency', { timeout: 15000 }, () => {
   it('Concurrent duplicate Merchant creation succeeds with distinct IDs', async () => {

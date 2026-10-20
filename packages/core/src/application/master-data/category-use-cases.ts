@@ -8,6 +8,11 @@
 import { v7 as uuidv7 } from 'uuid';
 import { normalizeName, validateNonBlankName } from '../../domain/master-data/normalization.js';
 import { archiveEntity } from '../../domain/master-data/lifecycle.js';
+import {
+  CategoryCycleDetector,
+  CategoryCycleError,
+} from '../../domain/master-data/category-cycle-detector.js';
+import { ConfigurationLockSetChangedError } from '../ports/master-data-ports.js';
 import { ValidationError } from '../../domain/master-data/errors.js';
 import type { MasterDataTransactionContext, CategoryRecord } from '../ports/master-data-ports.js';
 
@@ -45,12 +50,16 @@ export async function createCategory(
   const bookId = input.bookId;
   const parentCategoryId = input.parentCategoryId ?? null;
 
-  // Lock Book first (per-Book hierarchy mutex) before any validation
-  await ctx.locks.acquireLocks({ books: [bookId] });
-
-  // If parent specified, also lock the parent category after Book lock
-  // Following lock order: Books -> Categories
+  const discoveredParent = parentCategoryId
+    ? await ctx.categories.findById(parentCategoryId)
+    : null;
+  const bookIds = [
+    ...new Set([bookId, ...(discoveredParent ? [discoveredParent.bookId] : [])]),
+  ].sort();
+  await ctx.locks.acquireLocks({ books: bookIds });
   if (parentCategoryId !== null) {
+    const parent = await ctx.categories.findById(parentCategoryId);
+    if (parent && !bookIds.includes(parent.bookId)) throw new ConfigurationLockSetChangedError();
     await ctx.locks.acquireLocks({ categories: [parentCategoryId] });
   }
 
@@ -71,6 +80,7 @@ export async function createCategory(
       throw new ValidationError('Parent Category not found', 'parentCategoryId');
     }
 
+    if (!bookIds.includes(parent.bookId)) throw new ConfigurationLockSetChangedError();
     if (parent.bookId !== bookId) {
       throw new ValidationError('Parent Category must belong to the same Book', 'parentCategoryId');
     }
@@ -147,18 +157,26 @@ export async function updateCategory(
     categoryIds.push(input.parentCategoryId);
   }
 
-  // Lock Book first (per-Book hierarchy mutex), then affected Categories in UUID order
-  await ctx.locks.acquireLocks({ books: [bookId] });
-
-  // Lock affected categories
-  const sortedCategoryIds = [...new Set(categoryIds)].sort();
-  await ctx.locks.acquireLocks({ categories: sortedCategoryIds });
-
-  // Re-read category after lock
+  const discoveredParent = input.parentCategoryId
+    ? await ctx.categories.findById(input.parentCategoryId)
+    : null;
+  const bookIds = [
+    ...new Set([bookId, ...(discoveredParent ? [discoveredParent.bookId] : [])]),
+  ].sort();
+  await ctx.locks.acquireLocks({ books: bookIds });
+  const lockedCurrent = await ctx.categories.findById(input.id);
+  const lockedParent = input.parentCategoryId
+    ? await ctx.categories.findById(input.parentCategoryId)
+    : null;
+  if (
+    (lockedCurrent && lockedCurrent.bookId !== bookId) ||
+    (lockedParent && !bookIds.includes(lockedParent.bookId))
+  )
+    throw new ConfigurationLockSetChangedError();
+  await ctx.locks.acquireLocks({ categories: [...new Set(categoryIds)].sort() });
   const current = await ctx.categories.findById(input.id);
-  if (!current) {
-    throw new Error('Category not found');
-  }
+  if (!current) throw new Error('Category not found');
+  if (current.bookId !== bookId) throw new ConfigurationLockSetChangedError();
 
   let newName = current.name;
   let newNormalizedName = current.normalizedName;
@@ -179,7 +197,10 @@ export async function updateCategory(
   }
 
   // Handle parent change (including explicit null detachment)
-  if (hasParentChange) {
+  if (hasParentChange && input.parentCategoryId !== current.parentCategoryId) {
+    const book = await ctx.books.findById(bookId);
+    if (!book || !book.active)
+      throw new ValidationError('Cannot reparent Category in inactive Book', 'bookId');
     const proposedParentId = input.parentCategoryId!; // explicitly provided, could be null
 
     // Self-parent check
@@ -193,6 +214,7 @@ export async function updateCategory(
         throw new ValidationError('Parent Category not found', 'parentCategoryId');
       }
 
+      if (!bookIds.includes(parent.bookId)) throw new ConfigurationLockSetChangedError();
       if (parent.bookId !== current.bookId) {
         throw new ValidationError(
           'Parent Category must belong to the same Book',
@@ -204,72 +226,36 @@ export async function updateCategory(
         throw new ValidationError('Parent Category must be active', 'parentCategoryId');
       }
 
-      // Ancestor cycle detection: walk parent's ancestor chain
-      const visited = new Set<string>();
-      let ancestorId: string | null = proposedParentId;
-
-      while (ancestorId !== null) {
-        if (ancestorId === input.id) {
-          throw new ValidationError('Category cycle detected', 'parentCategoryId');
-        }
-
-        if (visited.has(ancestorId)) {
-          // Corrupt data - stop traversal
-          break;
-        }
-
-        visited.add(ancestorId);
-
-        const ancestor = await ctx.categories.findById(ancestorId);
-        if (!ancestor) {
-          break;
-        }
-
-        ancestorId = ancestor.parentCategoryId;
+      if (
+        await new CategoryCycleDetector().wouldCreateCycle(
+          input.id,
+          proposedParentId,
+          async (id) => {
+            const ancestor = await ctx.categories.findById(id);
+            if (!ancestor)
+              throw new ValidationError('Parent Category not found', 'parentCategoryId');
+            if (ancestor.bookId !== bookId)
+              throw new ValidationError(
+                'Parent Category must belong to the same Book',
+                'parentCategoryId',
+              );
+            return ancestor;
+          },
+        )
+      ) {
+        throw new CategoryCycleError();
       }
     }
 
     newParentCategoryId = proposedParentId;
   }
 
-  // Handle lifecycle changes through update (active field)
-  // If active is being set, validate against lifecycle
-  if (input.active !== undefined) {
-    if (input.active === false && current.active === true) {
-      // Archive through update - use archive logic
-      const lifecycleState = archiveEntity(
-        { active: current.active, archivedAt: current.archivedAt },
-        now,
-      );
-      // This will be handled as an archive operation
-      const archived = await ctx.categories.archive({
-        id: input.id,
-        active: lifecycleState.active,
-        archivedAt: lifecycleState.archivedAt,
-        updatedAt: now,
-      });
-      return archived;
-    }
-    if (input.active === true && current.active === false) {
-      // Reactivation through update
-      await ctx.categories.update({
-        id: input.id,
-        normalizedName: newNormalizedName,
-        name: newName,
-        type: newType,
-        parentCategoryId: newParentCategoryId,
-        updatedAt: now,
-      });
-      // Now need to reactivate: set active=true, archivedAt=null
-      const reactivatedRecord = await ctx.categories.archive({
-        id: input.id,
-        active: true,
-        archivedAt: null,
-        updatedAt: now,
-      });
-      return reactivatedRecord;
-    }
-  }
+  const lifecycle =
+    input.active === false
+      ? archiveEntity(current, now)
+      : input.active === true
+        ? { active: true, archivedAt: null }
+        : { active: current.active, archivedAt: current.archivedAt };
 
   const updated = await ctx.categories.update({
     id: input.id,
@@ -277,6 +263,7 @@ export async function updateCategory(
     normalizedName: newNormalizedName,
     type: newType,
     parentCategoryId: newParentCategoryId,
+    ...lifecycle,
     updatedAt: now,
   });
 

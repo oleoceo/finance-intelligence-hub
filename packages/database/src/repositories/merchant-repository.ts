@@ -92,6 +92,8 @@ export class KyselyMerchantRepository implements MerchantRepository {
         normalized_name: input.normalizedName,
         type: input.type,
         tax_identifier: input.taxIdentifier,
+        active: input.active,
+        archived_at: input.archivedAt,
         updated_at: input.updatedAt,
       })
       .where('id', '=', input.id)

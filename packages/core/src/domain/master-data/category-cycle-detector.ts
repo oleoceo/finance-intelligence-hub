@@ -5,6 +5,15 @@
  * The detector consumes parent links from a repository port.
  */
 
+import { ValidationError } from './errors.js';
+
+export class CategoryCycleError extends ValidationError {
+  override readonly code = 'CATEGORY_CYCLE';
+  constructor() {
+    super('Category cycle detected', 'parentCategoryId');
+  }
+}
+
 export interface CategoryNode {
   id: string;
   bookId: string;
@@ -54,45 +63,12 @@ export class CategoryCycleDetector {
 
       const node = await getCategory(currentId);
       if (!node) {
-        // Parent doesn't exist - will fail validation elsewhere
-        return false;
+        throw new ValidationError('Parent Category not found', 'parentCategoryId');
       }
 
       currentId = node.parentCategoryId;
     }
 
     return false;
-  }
-
-  /**
-   * Gets all ancestor IDs for a category (excluding the category itself).
-   * Returns empty array for root categories.
-   */
-  async getAncestors(
-    categoryId: string,
-    getCategory: (id: string) => Promise<CategoryNode | null>,
-  ): Promise<string[]> {
-    const ancestors: string[] = [];
-    const visited = new Set<string>();
-    let currentId: string | null = categoryId;
-
-    while (currentId !== null) {
-      if (visited.has(currentId)) {
-        // Corrupt data - stop traversal
-        break;
-      }
-
-      visited.add(currentId);
-
-      const node = await getCategory(currentId);
-      if (!node || !node.parentCategoryId) {
-        break;
-      }
-
-      ancestors.push(node.parentCategoryId);
-      currentId = node.parentCategoryId;
-    }
-
-    return ancestors;
   }
 }

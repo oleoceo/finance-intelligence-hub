@@ -56,19 +56,14 @@ FINAL-FREEZE-DECISIONS.md
 
 # 2. Current overall status
 
-```text
-PROJECT PHASE
-=
-M01 — Local Bootstrap ✅ DONE
-M02 — Database Foundation ← NEXT ALLOWED MILESTONE (not yet started)
-```
+M01 - Local Bootstrap: DONE.
+M02 - Database Foundation: DONE; human accepted on 2026-10-20.
+M02-T01, M02-T02, M02-T03, M02-T04 and M02-T05: DONE.
+M03 - Master Data / Configuration: NEXT ALLOWED MILESTONE; implementation NOT STARTED.
 
-Architecture and canonical documentation are frozen.
+Functional roadmap: M01 -> M02 -> M03. Gate 0 is a separate infrastructure prerequisite before live VPS/Lab/Production activity; it remains NOT EXECUTED and is not authorized by this closure.
 
-All M01 implementation tasks T01–T10 are DONE.
-ADR-001 and ADR-002 are ACCEPTED.
-Docker packaging baseline established (M01-T10).
-GitHub Actions CI remotely verified GREEN.
+Architecture and canonical documentation remain frozen. ADR-001/002 remain ACCEPTED. Established M01 Docker/CI evidence is preserved below. No commit or push is authorized.
 
 ---
 
@@ -186,52 +181,22 @@ Operational documentation preparation is complete.
 
 # 7. Implementation status
 
-```text
-M01-T01 (stack decision)
-→ DONE
+M01 local bootstrap: DONE. M02 database foundation: DONE and accepted.
+All thirteen V0.1 tables, PK/FK/UNIQUE/CHECK constraints, indexes, exact NUMERIC(18,2) decimal-string persistence, ingestion/system structures and least-privilege roles are accepted. Audit is append-only for runtime; Outbox is empty after migrations. Both production guards remain effective.
 
-Application code
-→ NOT STARTED
+Accepted chain: 001_technical_validation -> 002_master_data -> 003_ingestion_structure -> 004_transaction_structure -> 005_audit_idempotency_outbox. Migration 001 is unchanged. Empty bootstrap, exact history, no-pending rerun, isolated failure propagation and migration-role down/reapply are accepted.
 
-Database migrations
-→ NOT STARTED
+Native-WSL evidence: integration 8 files / 74 PASS, no failures/skips/zero-test suites; unit 4 files / 35 PASS; install --frozen-lockfile, lint, format:check, build and typecheck PASS. See docs/tasks/completed/M02-OVERVIEW.md and docs/tasks/active/M02-CORRECTION-REPORT.md.
 
-Finance API
-→ NOT STARTED
-
-Finance Core
-→ NOT STARTED
-
-WhatsApp Finance workflow
-→ NOT STARTED
-
-Backup automation
-→ NOT STARTED
-
-Docker/container runtime
-→ PENDING (required before PostgreSQL integration work)
-```
+M02-T01 through M02-T05: DONE, moved to docs/tasks/completed/. M03 implementation remains NOT STARTED. No application behavior or live infrastructure was changed during closure.
 
 ---
 
 # 8. Current milestone
 
-Current roadmap position:
-
-```text
-DOCUMENTATION FREEZE
-        ✅
-        ↓
-OPERATIONAL DOCUMENTS
-        ✅
-        ↓
-M01 — Local Bootstrap
-        ← NEXT IMPLEMENTATION MILESTONE
-        ↓
-Gate 0 / VPS Safety
-```
-
-Gate 0 may be executed in parallel with permitted local M01 work when VPS inspection intentionally begins.
+M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
+M03 - Master Data / Configuration: NEXT ALLOWED MILESTONE; implementation NOT STARTED.
+This documentation/state closure does not start M03. Gate 0 remains a separate infrastructure prerequisite, NOT EXECUTED and not authorized by this closure.
 
 ---
 
@@ -791,13 +756,13 @@ Gate C — Real Data Ready
 
 ```text
 M01 Local Bootstrap
-🔄 IN PROGRESS (M01-T01 DONE, M01-T02 DONE, M01-T03 NEXT)
+✅ DONE
 
 M02 Database Foundation
-⬜ NOT STARTED
+DONE
 
 M03 Master Data / Configuration
-⬜ NOT STARTED
+NEXT ALLOWED MILESTONE - implementation NOT STARTED
 
 M04 Transaction Core
 ⬜ NOT STARTED
@@ -852,25 +817,9 @@ M20 Alerts / Predictions
 
 # 37. Current blockers
 
-Known architectural blockers:
-
-```text
-NONE
-```
-
-Known implementation blockers:
-
-```text
-NONE
-```
-
-Known VPS operational unknowns:
-
-```text
-Gate 0 has not been executed.
-```
-
-This is not yet a blocker because M01 local work is allowed.
+No demonstrated frozen-architecture blocker or unresolved M02 acceptance failure. Human review accepted M02 on 2026-10-20.
+The prior failed verification and correction rationale remain recorded as history in the accepted evidence report.
+VPS state remains unknown. Gate 0 is required before live infrastructure activity, is NOT EXECUTED and is not authorized by this closure.
 
 ---
 
@@ -896,19 +845,9 @@ These belong to Gate 0.
 
 # 39. Current allowed next actions
 
-Allowed immediately:
-
-```text
-verify Git remote configuration
-
-create the documentation-baseline Git tag
-
-begin M01 locally
-
-prepare Gate 0 read-only inspection
-```
-
-Gate 0 may be executed in parallel when VPS access is intentionally started.
+Functional roadmap progression: M01 -> M02 -> M03.
+M03 - Master Data / Configuration is the NEXT ALLOWED MILESTONE. Its implementation is NOT STARTED; this closure authorizes no implementation work.
+Gate 0 is separate from functional roadmap progression and is not authorized by this closure. No commit or push.
 
 ---
 
@@ -985,61 +924,13 @@ ADR-003 must remain open until Gate 0 provides real VPS evidence.
 
 # 43. Implementation stack status
 
-```text
-NOT YET SELECTED / VALIDATED
-```
-
-The stack should be decided during M01.
-
-Selection should evaluate:
-
-```text
-PostgreSQL support
-
-database transactions
-
-migrations
-
-strict validation
-
-testing
-
-structured logging
-
-Docker deployment
-
-maintainability
-```
+Established M01 stack: Node.js 24.22.0, pnpm 12.3.4, TypeScript ESM/strict, Fastify, Kysely (packages/database ownership), pg, Pino and Vitest. No dependency upgrades in this correction.
 
 ---
 
 # 44. UUID status
 
-Frozen preference:
-
-```text
-UUIDv7
-```
-
-Final implementation decision:
-
-```text
-PENDING M01 VALIDATION
-```
-
-Fallback:
-
-```text
-UUIDv4
-```
-
-only if the selected runtime/library lacks reliable maintained UUIDv7 support.
-
-If fallback is required:
-
-```text
-ADR required
-```
+ADR-002 ACCEPTED: application-generated UUIDv7 using uuid.v7(); PostgreSQL UUID persistence. Synthetic schema fixtures include a UUIDv7 round trip. No UUID strategy change.
 
 ---
 
@@ -1082,36 +973,15 @@ docs-freeze-v0.1
 
 # 46. CI status
 
-```text
-NOT CONFIGURED
-```
-
-M01 target:
-
-```text
-lint
-typecheck where applicable
-unit tests
-integration tests
-```
+Existing M01 CI configuration retained. Historical M01 remote GREEN evidence is preserved in section 9.
+No remote CI run or publication was performed for the uncommitted M02 correction; native-WSL results govern current evidence.
 
 ---
 
 # 47. Environment status
 
-```text
-development
-→ NOT CREATED
-
-test
-→ NOT CREATED
-
-lab
-→ NOT DEPLOYED
-
-production
-→ NOT DEPLOYED
-```
+Local/test: native Ubuntu WSL2, Node 24.22.0, pnpm 12.3.4, Docker Engine 29.8.0, Testcontainers 12.2.0, postgres:18.6-bookworm.
+Lab/Production: not accessed or deployed by this task. Gate 0 not executed.
 
 ---
 
@@ -1337,13 +1207,9 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-```text
-M01-T03 — Local PostgreSQL Development Environment
-```
-
-M01-T01 (stack decision) is complete.
-M01-T02 (workspace baseline) is complete.
-M01-T03 will set up local PostgreSQL for development and testing, pending Docker/container runtime availability.
+M03 - Master Data / Configuration is the NEXT ALLOWED MILESTONE; implementation NOT STARTED.
+M02 and M02-T01 through M02-T05 are DONE and accepted. Completed task records and milestone overview are in docs/tasks/completed/.
+Gate 0 remains NOT EXECUTED, a separate prerequisite before live VPS/Lab/Production activity, and is not authorized by this closure.
 
 ---
 
@@ -1421,13 +1287,16 @@ Documentation baseline tag
 ⬜ PENDING
 
 Implementation
-⬜ NOT STARTED
+M01 and M02 DONE; M03 NEXT ALLOWED MILESTONE, implementation NOT STARTED
 
 Gate 0
 ⬜ NOT EXECUTED
 
 M01
-⬜ NOT STARTED
+✅ DONE
+
+M02 Database Foundation
+DONE
 
 Real Data Ready
 ❌ NO
@@ -1440,14 +1309,6 @@ NONE
 
 # 63. Next action
 
-Before the first implementation commit:
+Documentation/state closure is complete. M02 is DONE. M03 is the NEXT ALLOWED MILESTONE, implementation NOT STARTED. Stop without starting M03, executing Gate 0, committing or pushing.
 
-```text
-verify Git remote
-↓
-create tag docs-freeze-v0.1
-↓
-begin M01-T01
-```
-
-Gate 0 may be prepared/executed in parallel when VPS operational inspection begins.
+---

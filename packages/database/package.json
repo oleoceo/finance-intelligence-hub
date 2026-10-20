@@ -15,6 +15,7 @@
     "migrate:status": "node dist/src/cli/migrate-status.js"
   },
   "dependencies": {
+    "@finance-hub/core": "workspace:*",
     "kysely": "0.28.11",
     "pg": "8.23.1"
   },

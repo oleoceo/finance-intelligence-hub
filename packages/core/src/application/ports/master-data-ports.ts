@@ -6,11 +6,52 @@
  */
 
 /**
- * Minimal Book lookup contract for configuration use cases.
+ * Input for creating a Book record.
+ */
+export interface CreateBookInput {
+  id: string;
+  name: string;
+  normalizedName: string;
+  currency: string;
+  timezone: string;
+  active: boolean;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Input for updating a Book record.
+ */
+export interface UpdateBookInput {
+  id: string;
+  name: string;
+  normalizedName: string;
+  currency: string;
+  timezone: string;
+  updatedAt: Date;
+}
+
+/**
+ * Input for archiving a Book record.
+ */
+export interface ArchiveBookInput {
+  id: string;
+  active: boolean;
+  archivedAt: Date | null;
+  updatedAt: Date;
+}
+
+/**
+ * Minimal Book repository contract for configuration use cases.
  */
 export interface BookRepository {
   findById(id: string): Promise<BookRecord | null>;
   findByName(normalizedName: string): Promise<BookRecord | null>;
+  find(): Promise<BookRecord[]>;
+  create(input: CreateBookInput): Promise<void>;
+  update(input: UpdateBookInput): Promise<BookRecord>;
+  archive(input: ArchiveBookInput): Promise<BookRecord>;
 }
 
 export interface BookRecord {
@@ -26,11 +67,57 @@ export interface BookRecord {
 }
 
 /**
- * Minimal Account lookup contract for configuration use cases.
+ * Input for creating an Account record.
+ */
+export interface CreateAccountInput {
+  id: string;
+  bookId: string;
+  name: string;
+  normalizedName: string;
+  type: string;
+  currency: string;
+  institutionName: string | null;
+  notes: string | null;
+  active: boolean;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Input for updating an Account record.
+ */
+export interface UpdateAccountInput {
+  id: string;
+  name: string;
+  normalizedName: string;
+  type: string;
+  currency: string;
+  institutionName: string | null;
+  notes: string | null;
+  updatedAt: Date;
+}
+
+/**
+ * Input for archiving an Account record.
+ */
+export interface ArchiveAccountInput {
+  id: string;
+  active: boolean;
+  archivedAt: Date | null;
+  updatedAt: Date;
+}
+
+/**
+ * Minimal Account repository contract for configuration use cases.
  */
 export interface AccountRepository {
   findById(id: string): Promise<AccountRecord | null>;
   findByBookId(bookId: string): Promise<AccountRecord[]>;
+  find(): Promise<AccountRecord[]>;
+  create(input: CreateAccountInput): Promise<void>;
+  update(input: UpdateAccountInput): Promise<AccountRecord>;
+  archive(input: ArchiveAccountInput): Promise<AccountRecord>;
 }
 
 export interface AccountRecord {
@@ -145,15 +232,23 @@ export interface TransactionPort {
    * Execute operations within a transaction.
    * The callback receives transaction-scoped repository instances.
    */
-  runInTransaction<T>(fn: (ctx: TransactionContext) => Promise<T>): Promise<T>;
+  runInTransaction<T>(fn: (ctx: MasterDataTransactionContext) => Promise<T>): Promise<T>;
 }
 
-export interface TransactionContext {
+/**
+ * T02 transaction context containing only capabilities T02 actually owns.
+ * Categories/Merchants will be added in M03-T03.
+ */
+export interface MasterDataTransactionContext {
   books: BookRepository;
   accounts: AccountRepository;
-  categories: CategoryRepository;
-  merchants: MerchantRepository;
   locks: ConfigurationLockPort;
   financialUsage: FinancialUsageReader;
   senderDefaults: SenderDefaultReferenceReader;
 }
+
+/**
+ * Legacy alias for backwards compatibility during T02 review.
+ * Use MasterDataTransactionContext for new code.
+ */
+export type TransactionContext = MasterDataTransactionContext;

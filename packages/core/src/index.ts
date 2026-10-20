@@ -36,8 +36,14 @@ export {
 export {
   type BookRepository,
   type BookRecord,
+  type CreateBookInput,
+  type UpdateBookInput,
+  type ArchiveBookInput,
   type AccountRepository,
   type AccountRecord,
+  type CreateAccountInput,
+  type UpdateAccountInput,
+  type ArchiveAccountInput,
   type CategoryRepository,
   type CategoryRecord,
   type MerchantRepository,
@@ -49,3 +55,24 @@ export {
   type TransactionPort,
   type TransactionContext,
 } from './application/ports/master-data-ports.js';
+
+// M03-T02 use cases (public API)
+export {
+  createBook,
+  getBook,
+  listBooks,
+  updateBook,
+  archiveBook,
+  type CreateBookInput as CreateBookUseCaseInput,
+  type UpdateBookInput as UpdateBookUseCaseInput,
+} from './application/master-data/book-use-cases.js';
+
+export {
+  createAccount,
+  getAccount,
+  listAccounts,
+  updateAccount,
+  archiveAccount,
+  type CreateAccountInput as CreateAccountUseCaseInput,
+  type UpdateAccountInput as UpdateAccountUseCaseInput,
+} from './application/master-data/account-use-cases.js';

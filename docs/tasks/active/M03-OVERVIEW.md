@@ -1,9 +1,9 @@
 # M03 — Master Data / Configuration: Planning Overview
 
 **Status:** IN PROGRESS
-**Implementation:** T01 DONE; T02 NEXT (not started)
-**T01–T05:** T01 DONE; T02 NEXT; T03/T04/T05 PLANNED
-**Authorization:** T01 accepted by human review; task closure only. T02 is not started.
+**Implementation:** T01 DONE; T02 DONE; T03/T04/T05 PLANNED
+**T01–T05:** T01 DONE; T02 DONE; T03/T04/T05 PLANNED
+**Authorization:** T01 and T02 accepted by human review; T02 closure prepared. T03 is not started; no commit or push.
 
 ## Authority and baseline
 
@@ -16,7 +16,7 @@ Frozen routing: FINAL-FREEZE-DECISIONS §§5–6, 78–97; 01-MVP-REQUIREMENTS �
 | Task | Ownership | Dependencies after authorization |
 | --- | --- | --- |
 | [T01](../completed/M03-T01.md) | Primitives, errors and Core ports | Accepted M02 |
-| [T02](M03-T02.md) | Books/Accounts; usage/default readers | T01 |
+| [T02](../completed/M03-T02.md) | Books/Accounts; usage/default readers | T01 |
 | [T03](M03-T03.md) | Categories/Merchants; hierarchy updates | T01 |
 | [T04](M03-T04.md) | Rules/Senders configuration | T02 and T03 |
 | [T05](M03-T05.md) | API and milestone integration | T01–T04 |
@@ -96,7 +96,7 @@ Simple uniqueness remains PostgreSQL's responsibility. No global Merchant creati
 
 Future commands: pnpm test; pnpm test:integration:postgres; pnpm lint; pnpm format:check; pnpm build; pnpm typecheck, in the accepted native-WSL local/test environment after authorization.
 
-## Boundaries and remaining review
+## Original planning boundaries and remaining review (historical)
 
 Only PROJECT_STATE.md and these six M03 documents may change now. No source/tests/migrations/SQL/packages/lockfiles/configs/ADRs/frozen changes, M04–M08 behavior, Gate 0, VPS/Lab/Production activity, commit or push. No Transaction creation/calculation/Money/human_ref/Last/idempotency/audit, Inbox/parser/confirmation/AI, WhatsApp, refunds/void, reports/export.
 
@@ -104,7 +104,7 @@ Future file ownership is listed in each task, not authorized now. Workspace mani
 
 Frozen documents do not enumerate every PATCH field/status. T05 records deterministic bounded interpretations, also used for normalization details and reparenting. No demonstrated schema/frozen blocker was found; human review of these interpretations and future wiring scope remains pending.
 
-## Correction verification
+## Original planning correction verification (historical)
 
 Executed for this documentation correction on 2026-10-20:
 
@@ -116,3 +116,11 @@ Executed for this documentation correction on 2026-10-20:
 - Additional explicit checks cover all seven allowed paths, the untracked documents' whitespace and PLANNING/PLANNED/NOT STARTED state markers.
 
 Application tests were not run for this documentation-only pass. No source, tests, migrations, SQL, packages, lockfiles, configs or ADRs changed; no live infrastructure, commit or push. M03 remains PLANNING; implementation NOT STARTED; T01–T05 PLANNED; M04 NOT STARTED; Gate 0 NOT EXECUTED. Stop for human review.
+
+## M03-T02 accepted closure ? 2026-10-20
+
+M03 remains IN PROGRESS. M03-T01 and M03-T02 are DONE; M03-T03, M03-T04 and M03-T05 remain PLANNED. T02 record: [completed/M03-T02.md](../completed/M03-T02.md).
+
+Human-accepted evidence: unit 9 files / 102 tests PASS; integration 9 files / 100 tests PASS; T02-specific integration 26 tests PASS; concurrency/race scenarios PASS; build, typecheck, lint and T02 formatting PASS. These suites were not rerun during closure hygiene.
+
+Final hygiene verification: pnpm-lock.yaml has only three importer changes (11 insertions / 1 deletion), reusing existing package/snapshot entries. Native WSL Node 24.22.0 / pnpm 12.3.4: pnpm install --frozen-lockfile PASS; exact package dependency consistency PASS. Cleanup changes only the lockfile, PROJECT_STATE.md, this overview and the moved/completed T02 record. No source/test files were written during cleanup; their Git status entries match the initial status. Git diff --check PASS; frozen and migration diffs empty. No migration or security impact; no remaining T02 issues. M02 records and T03/T04/T05 contracts untouched. T03 not started; no commit, push or live infrastructure activity.

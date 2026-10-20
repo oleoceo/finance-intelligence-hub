@@ -141,6 +141,9 @@ importers:
       eslint:
         specifier: 10.12.0
         version: 10.12.0
+      kysely:
+        specifier: 0.28.11
+        version: 0.28.11
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -179,10 +182,17 @@ importers:
         specifier: ^11.0.0
         version: 11.0.0
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      uuid:
+        specifier: 14.0.3
+        version: 14.0.3
 
   packages/database:
     dependencies:
+      '@finance-hub/core':
+        specifier: workspace:*
+        version: link:../core
       kysely:
         specifier: 0.28.11
         version: 0.28.11

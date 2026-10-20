@@ -59,7 +59,7 @@ FINAL-FREEZE-DECISIONS.md
 M01 - Local Bootstrap: DONE.
 M02 - Database Foundation: DONE; human accepted on 2026-10-20.
 M02-T01, M02-T02, M02-T03, M02-T04 and M02-T05: DONE.
-M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED.
+M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03/T04/T05 PLANNED.
 
 Functional roadmap: M01 -> M02 -> M03. Gate 0 is a separate infrastructure prerequisite before live VPS/Lab/Production activity; it remains NOT EXECUTED and is not authorized by this closure.
 
@@ -190,13 +190,15 @@ Native-WSL evidence: integration 8 files / 74 PASS, no failures/skips/zero-test 
 
 M02-T01 through M02-T05: DONE, moved to docs/tasks/completed/. M03 is IN PROGRESS; M03-T01 is DONE and human accepted. Accepted evidence: 32 new unit tests, 67 total unit tests PASS; PostgreSQL regression: 8 integration files / 74 tests PASS, zero failures. No application behavior or live infrastructure was changed during closure.
 
+M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved to docs/tasks/completed/M03-T02.md. Accepted evidence: unit 9 files / 102 tests PASS; integration 9 files / 100 tests PASS; T02-specific integration 26 tests PASS; critical concurrency/race scenarios PASS; build, typecheck, lint and T02 formatting PASS. Final hygiene: pnpm-lock.yaml restored from HEAD with only three importer dependency changes (11 insertions / 1 deletion); native-WSL Node 24.22.0 / pnpm 12.3.4 frozen install and package dependency consistency PASS. No source/test changes during cleanup, no migration/security change, no remaining T02 blocker. Next task: M03-T03 PLANNED; not started.
+
 ---
 
 # 8. Current milestone
 
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
-M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED.
-This documentation/state closure does not start M03-T02. Gate 0 remains a separate infrastructure prerequisite, NOT EXECUTED and not authorized by this closure.
+M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03/T04/T05 PLANNED.
+M03-T02 is human accepted and closed; M03-T03 remains PLANNED and is not started by this closure. Gate 0 remains a separate infrastructure prerequisite, NOT EXECUTED and not authorized by this closure.
 
 ---
 
@@ -762,7 +764,7 @@ M02 Database Foundation
 DONE
 
 M03 Master Data / Configuration
-IN PROGRESS - M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED
+IN PROGRESS - M03-T01 DONE; M03-T02 DONE; M03-T03/T04/T05 PLANNED
 
 M04 Transaction Core
 ⬜ NOT STARTED
@@ -846,7 +848,7 @@ These belong to Gate 0.
 # 39. Current allowed next actions
 
 Functional roadmap progression: M01 -> M02 -> M03.
-M03 is IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED. This closure does not start T02.
+M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03/T04/T05 PLANNED. M03-T03 remains PLANNED and is not started by this closure.
 Gate 0 is separate from functional roadmap progression and is not authorized by this closure. No commit or push.
 
 ---
@@ -1207,9 +1209,9 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-M03 is IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED.
+M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03/T04/T05 PLANNED.
 M02 and M02-T01 through M02-T05 are DONE and accepted. Completed task records and milestone overview are in docs/tasks/completed/.
-M03-T01 is human accepted and recorded in docs/tasks/completed/M03-T01.md. Approved T02–T05 contracts remain unchanged; T02 is not started by this closure.
+M03-T01 is human accepted and recorded in docs/tasks/completed/M03-T01.md. M03-T02 is human accepted and recorded in docs/tasks/completed/M03-T02.md. T03/T04/T05 contracts remain unchanged and PLANNED; T03 is not started by this closure.
 Gate 0 remains NOT EXECUTED, a separate prerequisite before live VPS/Lab/Production activity, and is not authorized by this closure.
 
 ---
@@ -1288,7 +1290,7 @@ Documentation baseline tag
 ⬜ PENDING
 
 Implementation
-M01 and M02 DONE; M03 IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED
+M01 and M02 DONE; M03 IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03/T04/T05 PLANNED
 
 Gate 0
 ⬜ NOT EXECUTED
@@ -1310,6 +1312,6 @@ NONE
 
 # 63. Next action
 
-M02 remains DONE. M03 is IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED. This closure does not start T02 or authorize live infrastructure activity, commit or push. Only Git closure checks are run; accepted application test evidence is preserved, not rerun.
+M02 remains DONE. M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03/T04/T05 PLANNED. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED. This closure does not start T03 or authorize live infrastructure activity, commit or push. Native-WSL pnpm 12.3.4 install --frozen-lockfile and dependency consistency PASS; Git closure checks PASS. Accepted application test evidence is preserved, not rerun.
 
 ---

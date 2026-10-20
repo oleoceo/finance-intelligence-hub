@@ -5,6 +5,15 @@
  * Core MUST NOT import Database, Kysely, pg, or Fastify.
  */
 
+import type {
+  ClassificationRuleRecord,
+  UpdateClassificationRuleRepoInput,
+} from '../../domain/master-data/classification-rule.js';
+import type {
+  AuthorizedSenderRecord,
+  UpdateAuthorizedSenderRepoInput,
+} from '../../domain/master-data/authorized-sender.js';
+
 /**
  * Input for creating a Book record.
  */
@@ -349,6 +358,37 @@ export interface MasterDataTransactionContext {
  * Use MasterDataTransactionContext for new code.
  */
 export type TransactionContext = MasterDataTransactionContext;
+
+/**
+ * Classification Rule repository port (forward declaration to avoid circular imports).
+ * Full contract lives in rule-sender-ports.ts.
+ */
+export interface ClassificationRuleRepository {
+  findById(id: string): Promise<ClassificationRuleRecord | null>;
+  find(): Promise<ClassificationRuleRecord[]>;
+  create(input: ClassificationRuleRecord): Promise<void>;
+  update(input: UpdateClassificationRuleRepoInput): Promise<ClassificationRuleRecord>;
+}
+
+/**
+ * Authorized Sender repository port (forward declaration to avoid circular imports).
+ * Full contract lives in rule-sender-ports.ts.
+ */
+export interface AuthorizedSenderRepository {
+  findById(id: string): Promise<AuthorizedSenderRecord | null>;
+  findByChannelAndReference(channel: string, senderReference: string): Promise<AuthorizedSenderRecord | null>;
+  find(): Promise<AuthorizedSenderRecord[]>;
+  create(input: AuthorizedSenderRecord): Promise<void>;
+  update(input: UpdateAuthorizedSenderRepoInput): Promise<AuthorizedSenderRecord>;
+}
+
+/**
+ * T04 transaction context extension with Classification Rules and Authorized Senders.
+ */
+export interface MasterDataTransactionContextT04 extends MasterDataTransactionContext {
+  classificationRules: ClassificationRuleRepository;
+  authorizedSenders: AuthorizedSenderRepository;
+}
 
 /** Restart discovery in a fresh transaction; never acquire earlier-ranked locks late. */
 export class ConfigurationLockSetChangedError extends Error {}

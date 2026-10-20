@@ -60,6 +60,8 @@ export {
   type CreateMerchantInput,
   type UpdateMerchantInput as UpdateMerchantRepoInput,
   type ArchiveMerchantInput,
+  type ClassificationRuleRepository,
+  type AuthorizedSenderRepository,
   type FinancialUsageReader,
   type SenderDefaultReferenceReader,
   type ConfigurationLockPort,
@@ -67,7 +69,18 @@ export {
   type TransactionPort,
   type TransactionContext,
   type MasterDataTransactionContext,
+  ConfigurationLockSetChangedError,
 } from './application/ports/master-data-ports.js';
+
+export type {
+  ClassificationRuleRecord,
+  UpdateClassificationRuleRepoInput,
+} from './domain/master-data/classification-rule.js';
+
+export type {
+  AuthorizedSenderRecord,
+  UpdateAuthorizedSenderRepoInput,
+} from './domain/master-data/authorized-sender.js';
 
 // M03-T02 use cases (public API)
 export {
@@ -113,4 +126,27 @@ export {
   type UpdateMerchantInput as UpdateMerchantUseCaseInput,
 } from './application/master-data/merchant-use-cases.js';
 
-export { ConfigurationLockSetChangedError } from './application/ports/master-data-ports.js';
+// M03-T04 use cases (public API)
+export {
+  createClassificationRule,
+  getClassificationRule,
+  listClassificationRules,
+  updateClassificationRule,
+} from './application/master-data/classification-rule-use-cases.js';
+
+export {
+  createAuthorizedSender,
+  getAuthorizedSender,
+  listAuthorizedSenders,
+  updateAuthorizedSender,
+} from './application/master-data/authorized-sender-use-cases.js';
+
+export type {
+  CreateClassificationRuleInput as CreateClassificationRuleUseCaseInput,
+  UpdateClassificationRuleInput as UpdateClassificationRuleUseCaseInput,
+} from './domain/master-data/classification-rule.js';
+
+export type {
+  CreateAuthorizedSenderInput as CreateAuthorizedSenderUseCaseInput,
+  UpdateAuthorizedSenderInput as UpdateAuthorizedSenderUseCaseInput,
+} from './domain/master-data/authorized-sender.js';

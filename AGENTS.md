@@ -1,5 +1,14 @@
 # AGENTS.md
 
+## Task execution workflow
+
+For authorized implementation tasks, use the project skill:
+
+`.agents/skills/finance-hub-task-runner/SKILL.md`
+
+The skill defines the implementation, self-healing, PR/CI, review and closure procedure.
+Repository authority and task contracts remain authoritative over the skill.
+
 # Finance Intelligence Hub
 ## Vendor-Neutral Agent Contract
 

@@ -9,12 +9,14 @@
 import type { Kysely, Transaction } from 'kysely';
 import {
   type TransactionPort,
-  type TransactionContext,
+  type MasterDataTransactionContext,
   type ConfigurationLockPort,
   type LockSpec,
 } from '@finance-hub/core';
 import { KyselyBookRepository } from '../repositories/book-repository.js';
 import { KyselyAccountRepository } from '../repositories/account-repository.js';
+import { KyselyCategoryRepository } from '../repositories/category-repository.js';
+import { KyselyMerchantRepository } from '../repositories/merchant-repository.js';
 import { KyselyFinancialUsageReader } from '../readers/financial-usage-reader.js';
 import { KyselySenderDefaultReferenceReader } from '../readers/sender-default-reference-reader.js';
 import type { DB } from '../db-types.js';
@@ -23,7 +25,7 @@ export class KyselyConfigurationLockPort implements ConfigurationLockPort {
   constructor(private readonly tx: Transaction<DB>) {}
 
   async acquireLocks(spec: LockSpec): Promise<void> {
-    // Build ordered lock list following deterministic order (T02 entities only)
+    // Build ordered lock list following deterministic order
     const lockOps: Array<{ table: keyof DB; ids: string[] }> = [];
 
     if (spec.books && spec.books.length > 0) {
@@ -33,6 +35,22 @@ export class KyselyConfigurationLockPort implements ConfigurationLockPort {
     if (spec.accounts && spec.accounts.length > 0) {
       const deduped = [...new Set(spec.accounts)].sort();
       lockOps.push({ table: 'accounts', ids: deduped });
+    }
+    if (spec.categories && spec.categories.length > 0) {
+      const deduped = [...new Set(spec.categories)].sort();
+      lockOps.push({ table: 'categories', ids: deduped });
+    }
+    if (spec.merchants && spec.merchants.length > 0) {
+      const deduped = [...new Set(spec.merchants)].sort();
+      lockOps.push({ table: 'merchants', ids: deduped });
+    }
+    if (spec.classificationRules && spec.classificationRules.length > 0) {
+      const deduped = [...new Set(spec.classificationRules)].sort();
+      lockOps.push({ table: 'classification_rules', ids: deduped });
+    }
+    if (spec.authorizedSenders && spec.authorizedSenders.length > 0) {
+      const deduped = [...new Set(spec.authorizedSenders)].sort();
+      lockOps.push({ table: 'authorized_senders', ids: deduped });
     }
 
     // Acquire FOR UPDATE locks in deterministic order with ORDER BY
@@ -53,18 +71,21 @@ export class KyselyConfigurationLockPort implements ConfigurationLockPort {
 export class KyselyTransactionPort implements TransactionPort {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async runInTransaction<T>(fn: (ctx: TransactionContext) => Promise<T>): Promise<T> {
+  async runInTransaction<T>(fn: (ctx: MasterDataTransactionContext) => Promise<T>): Promise<T> {
     return await this.db.transaction().execute(async (tx) => {
-      // Create transaction-scoped repository instances for T02 entities only
       const books = new KyselyBookRepository(tx);
       const accounts = new KyselyAccountRepository(tx);
+      const categories = new KyselyCategoryRepository(tx);
+      const merchants = new KyselyMerchantRepository(tx);
       const locks = new KyselyConfigurationLockPort(tx);
       const financialUsage = new KyselyFinancialUsageReader(tx);
       const senderDefaults = new KyselySenderDefaultReferenceReader(tx);
 
-      const ctx: TransactionContext = {
+      const ctx: MasterDataTransactionContext = {
         books,
         accounts,
+        categories,
+        merchants,
         locks,
         financialUsage,
         senderDefaults,

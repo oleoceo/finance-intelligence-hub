@@ -22,6 +22,9 @@ export {
   type AccountFinancialUsageCheck,
 } from './domain/master-data/immutability.js';
 
+// Category cycle detection
+export { CategoryCycleDetector, type CategoryNode } from './domain/master-data/category-cycle-detector.js';
+
 // Domain errors
 export {
   MasterDataError,
@@ -46,14 +49,21 @@ export {
   type ArchiveAccountInput,
   type CategoryRepository,
   type CategoryRecord,
+  type CreateCategoryInput,
+  type UpdateCategoryInput as UpdateCategoryRepoInput,
+  type ArchiveCategoryInput,
   type MerchantRepository,
   type MerchantRecord,
+  type CreateMerchantInput,
+  type UpdateMerchantInput as UpdateMerchantRepoInput,
+  type ArchiveMerchantInput,
   type FinancialUsageReader,
   type SenderDefaultReferenceReader,
   type ConfigurationLockPort,
   type LockSpec,
   type TransactionPort,
   type TransactionContext,
+  type MasterDataTransactionContext,
 } from './application/ports/master-data-ports.js';
 
 // M03-T02 use cases (public API)
@@ -76,3 +86,26 @@ export {
   type CreateAccountInput as CreateAccountUseCaseInput,
   type UpdateAccountInput as UpdateAccountUseCaseInput,
 } from './application/master-data/account-use-cases.js';
+
+// M03-T03 use cases (public API)
+export {
+  createCategory,
+  getCategory,
+  listCategories,
+  updateCategory,
+  archiveCategory,
+  reactivateCategory,
+  type CreateCategoryInput as CreateCategoryUseCaseInput,
+  type UpdateCategoryInput as UpdateCategoryUseCaseInput,
+} from './application/master-data/category-use-cases.js';
+
+export {
+  createMerchant,
+  getMerchant,
+  listMerchants,
+  updateMerchant,
+  archiveMerchant,
+  reactivateMerchant,
+  type CreateMerchantInput as CreateMerchantUseCaseInput,
+  type UpdateMerchantInput as UpdateMerchantUseCaseInput,
+} from './application/master-data/merchant-use-cases.js';

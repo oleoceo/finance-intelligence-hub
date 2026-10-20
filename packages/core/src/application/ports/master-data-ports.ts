@@ -136,11 +136,58 @@ export interface AccountRecord {
 }
 
 /**
- * Minimal Category lookup contract for configuration use cases.
+ * Input for creating a Category record.
+ */
+export interface CreateCategoryInput {
+  id: string;
+  bookId: string;
+  name: string;
+  normalizedName: string;
+  parentCategoryId: string | null;
+  type: string;
+  active: boolean;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Input for updating a Category record (supports reparenting).
+ */
+export interface UpdateCategoryInput {
+  id: string;
+  name?: string;
+  normalizedName?: string;
+  parentCategoryId?: string | null; // null means detach to root
+  type?: string;
+  updatedAt: Date;
+}
+
+/**
+ * Input for archiving a Category record.
+ */
+export interface ArchiveCategoryInput {
+  id: string;
+  active: boolean;
+  archivedAt: Date | null;
+  updatedAt: Date;
+}
+
+/**
+ * Category repository contract for configuration use cases.
+ * Includes hierarchy-aware operations.
  */
 export interface CategoryRepository {
   findById(id: string): Promise<CategoryRecord | null>;
   findByBookId(bookId: string): Promise<CategoryRecord[]>;
+  find(): Promise<CategoryRecord[]>;
+  create(input: CreateCategoryInput): Promise<void>;
+  update(input: UpdateCategoryInput): Promise<CategoryRecord>;
+  archive(input: ArchiveCategoryInput): Promise<CategoryRecord>;
+  /**
+   * Find categories by IDs in deterministic order (for locking).
+   */
+  findByIds(ids: string[]): Promise<CategoryRecord[]>;
 }
 
 export interface CategoryRecord {
@@ -157,12 +204,57 @@ export interface CategoryRecord {
 }
 
 /**
- * Minimal Merchant lookup contract for configuration use cases.
+ * Input for creating a Merchant record.
+ */
+export interface CreateMerchantInput {
+  id: string;
+  name: string;
+  normalizedName: string;
+  type: string | null;
+  taxIdentifier: string | null;
+  active: boolean;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Input for updating a Merchant record.
+ */
+export interface UpdateMerchantInput {
+  id: string;
+  name?: string;
+  normalizedName?: string;
+  type?: string | null;
+  taxIdentifier?: string | null;
+  updatedAt: Date;
+}
+
+/**
+ * Input for archiving a Merchant record.
+ */
+export interface ArchiveMerchantInput {
+  id: string;
+  active: boolean;
+  archivedAt: Date | null;
+  updatedAt: Date;
+}
+
+/**
+ * Merchant repository contract for configuration use cases.
  * Note: normalized_name is NOT unique; lookups may return multiple rows.
  */
 export interface MerchantRepository {
   findById(id: string): Promise<MerchantRecord | null>;
   findByNormalizedName(normalizedName: string): Promise<MerchantRecord[]>;
+  find(): Promise<MerchantRecord[]>;
+  create(input: CreateMerchantInput): Promise<void>;
+  update(input: UpdateMerchantInput): Promise<MerchantRecord>;
+  archive(input: ArchiveMerchantInput): Promise<MerchantRecord>;
+  /**
+   * Find merchants by IDs in deterministic order (for locking).
+   */
+  findByIds(ids: string[]): Promise<MerchantRecord[]>;
 }
 
 export interface MerchantRecord {
@@ -236,12 +328,13 @@ export interface TransactionPort {
 }
 
 /**
- * T02 transaction context containing only capabilities T02 actually owns.
- * Categories/Merchants will be added in M03-T03.
+ * T03 transaction context containing capabilities for Books, Accounts, Categories, and Merchants.
  */
 export interface MasterDataTransactionContext {
   books: BookRepository;
   accounts: AccountRepository;
+  categories: CategoryRepository;
+  merchants: MerchantRepository;
   locks: ConfigurationLockPort;
   financialUsage: FinancialUsageReader;
   senderDefaults: SenderDefaultReferenceReader;

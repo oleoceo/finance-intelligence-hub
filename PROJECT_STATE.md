@@ -975,9 +975,9 @@ docs-freeze-v0.1
 
 # 46. CI status
 
-M03-T03 human PR corrections: local unit 11 files / 146 tests PASS (Category 31, Merchant 13); PostgreSQL integration 10 files / 136 tests PASS; T03 36 tests PASS; build, typecheck and lint PASS. Final GitHub Actions evidence pending correction push. Baseline suites preserved. Draft PR #1 remains open; T03 REVIEW REQUIRED, not DONE.
+M03-T03 human PR corrections: local unit 11 files / 146 tests PASS (Category 31, Merchant 13); PostgreSQL integration 10 files / 136 tests PASS; T03 36 tests PASS; build, typecheck and lint PASS. GitHub Actions [run 39505937003](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39505937003) is GREEN for implementation head 5f3fd24040ccb6e40edc42f5e922e45a36956b94, with the same exact totals. Baseline suites preserved. Draft PR #1 remains open; T03 REVIEW REQUIRED, not DONE.
 
-Corrections: locked inactive-Book validation, atomic lifecycle/field patches, complete ordered Book/Category lock discovery with bounded restart, canonical fail-safe cycle detection, two-backend barriers and reparent uniqueness rollback. No frozen/migration/T04/T05/security-scope changes. Next allowed action: finish CI verification, then human review.
+Corrections: locked inactive-Book validation, atomic lifecycle/field patches, complete ordered Book/Category lock discovery with bounded restart, canonical fail-safe cycle detection, two-backend barriers and reparent uniqueness rollback. No frozen/migration/T04/T05/security-scope changes. Next allowed action: human review of Draft PR #1; no merge or T04.
 
 ---
 

@@ -31,30 +31,78 @@ export interface DB {
     created_at: Date;
     updated_at: Date;
   };
+  categories: {
+    id: string;
+    book_id: string;
+    name: string;
+    normalized_name: string;
+    parent_category_id: string | null;
+    type: string;
+    active: boolean;
+    archived_at: Date | null;
+    created_at: Date;
+    updated_at: Date;
+  };
+  merchants: {
+    id: string;
+    name: string;
+    normalized_name: string;
+    type: string | null;
+    tax_identifier: string | null;
+    active: boolean;
+    archived_at: Date | null;
+    created_at: Date;
+    updated_at: Date;
+  };
   transactions: {
     id: string;
+    human_ref: string;
     book_id: string;
     account_id: string | null;
     destination_account_id: string | null;
+    category_id: string | null;
+    merchant_id: string | null;
+    type: string;
+    status: string;
+    amount: string;
+    currency: string;
+    description: string;
+    notes: string | null;
+    transaction_date: string;
+    source: string;
+    source_reference: string | null;
+    inbox_message_id: string | null;
+    refund_of_transaction_id: string | null;
+    version: number;
+    voided_at: Date | null;
+    void_reason: string | null;
+    created_at: Date;
+    updated_at: Date;
+  };
+  classification_rules: {
+    id: string;
+    priority: number;
+    active: boolean;
+    match_type: string;
+    pattern: string;
+    normalized_pattern: string;
+    target_book_id: string | null;
+    target_account_id: string | null;
+    target_category_id: string | null;
+    target_merchant_id: string | null;
+    source: string;
+    created_at: Date;
+    updated_at: Date;
   };
   authorized_senders: {
     id: string;
     channel: string;
     sender_reference: string;
-    name: string;
+    name: string | null;
     default_book_id: string | null;
     default_account_id: string | null;
     active: boolean;
     created_at: Date;
     updated_at: Date;
-  };
-  categories: {
-    id: string;
-  };
-  merchants: {
-    id: string;
-  };
-  classification_rules: {
-    id: string;
   };
 }

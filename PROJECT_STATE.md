@@ -59,7 +59,7 @@ FINAL-FREEZE-DECISIONS.md
 M01 - Local Bootstrap: DONE.
 M02 - Database Foundation: DONE; human accepted on 2026-10-20.
 M02-T01, M02-T02, M02-T03, M02-T04 and M02-T05: DONE.
-M03 - Master Data / Configuration: PLANNING; implementation NOT STARTED; T01–T05 PLANNED.
+M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED.
 
 Functional roadmap: M01 -> M02 -> M03. Gate 0 is a separate infrastructure prerequisite before live VPS/Lab/Production activity; it remains NOT EXECUTED and is not authorized by this closure.
 
@@ -188,15 +188,15 @@ Accepted chain: 001_technical_validation -> 002_master_data -> 003_ingestion_str
 
 Native-WSL evidence: integration 8 files / 74 PASS, no failures/skips/zero-test suites; unit 4 files / 35 PASS; install --frozen-lockfile, lint, format:check, build and typecheck PASS. See docs/tasks/completed/M02-OVERVIEW.md and docs/tasks/active/M02-CORRECTION-REPORT.md.
 
-M02-T01 through M02-T05: DONE, moved to docs/tasks/completed/. M03 implementation remains NOT STARTED. No application behavior or live infrastructure was changed during closure.
+M02-T01 through M02-T05: DONE, moved to docs/tasks/completed/. M03 is IN PROGRESS; M03-T01 is DONE and human accepted. Accepted evidence: 32 new unit tests, 67 total unit tests PASS; PostgreSQL regression: 8 integration files / 74 tests PASS, zero failures. No application behavior or live infrastructure was changed during closure.
 
 ---
 
 # 8. Current milestone
 
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
-M03 - Master Data / Configuration: PLANNING; implementation NOT STARTED; T01–T05 PLANNED.
-This documentation/state closure does not start M03. Gate 0 remains a separate infrastructure prerequisite, NOT EXECUTED and not authorized by this closure.
+M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED.
+This documentation/state closure does not start M03-T02. Gate 0 remains a separate infrastructure prerequisite, NOT EXECUTED and not authorized by this closure.
 
 ---
 
@@ -762,7 +762,7 @@ M02 Database Foundation
 DONE
 
 M03 Master Data / Configuration
-PLANNING - implementation NOT STARTED; T01–T05 PLANNED
+IN PROGRESS - M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED
 
 M04 Transaction Core
 ⬜ NOT STARTED
@@ -846,7 +846,7 @@ These belong to Gate 0.
 # 39. Current allowed next actions
 
 Functional roadmap progression: M01 -> M02 -> M03.
-M03 - Master Data / Configuration remains PLANNING. Implementation is NOT STARTED; T01–T05 remain PLANNED. Only the bounded planning correction is authorized; next action is human architecture review.
+M03 is IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED. This closure does not start T02.
 Gate 0 is separate from functional roadmap progression and is not authorized by this closure. No commit or push.
 
 ---
@@ -1207,9 +1207,9 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-M03 - Master Data / Configuration remains PLANNING; implementation NOT STARTED; T01–T05 PLANNED.
+M03 is IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED.
 M02 and M02-T01 through M02-T05 are DONE and accepted. Completed task records and milestone overview are in docs/tasks/completed/.
-M03 planning contracts are corrected for human review: Core-owned ports, shared ordered row locks, PATCH reparenting/cycle prevention, nonunique Merchant names, active Rule targets, M03 financial-usage guards, T02 sender-default reader and deterministic API contracts. No M03 task is DONE. Future package-wiring scope and bounded API interpretations require review before implementation authorization.
+M03-T01 is human accepted and recorded in docs/tasks/completed/M03-T01.md. Approved T02–T05 contracts remain unchanged; T02 is not started by this closure.
 Gate 0 remains NOT EXECUTED, a separate prerequisite before live VPS/Lab/Production activity, and is not authorized by this closure.
 
 ---
@@ -1288,7 +1288,7 @@ Documentation baseline tag
 ⬜ PENDING
 
 Implementation
-M01 and M02 DONE; M03 PLANNING, implementation NOT STARTED; T01–T05 PLANNED
+M01 and M02 DONE; M03 IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED
 
 Gate 0
 ⬜ NOT EXECUTED
@@ -1310,6 +1310,6 @@ NONE
 
 # 63. Next action
 
-M02 remains DONE. M03 remains PLANNING; implementation NOT STARTED; T01–T05 PLANNED. Review the corrected M03 planning contracts before authorizing implementation. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED. No implementation, live infrastructure activity, commit or push is authorized. This documentation pass runs Git scope/whitespace/frozen checks only; the application test results above are preserved historical M01/M02 evidence, not newly executed tests.
+M02 remains DONE. M03 is IN PROGRESS; M03-T01 DONE; M03-T02 NEXT; M03-T03/T04/T05 PLANNED. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED. This closure does not start T02 or authorize live infrastructure activity, commit or push. Only Git closure checks are run; accepted application test evidence is preserved, not rerun.
 
 ---

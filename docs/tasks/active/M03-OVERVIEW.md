@@ -1,9 +1,9 @@
 # M03 — Master Data / Configuration: Planning Overview
 
-**Status:** PLANNING
-**Implementation:** NOT STARTED
-**T01–T05:** PLANNED
-**Authorization:** Documentation correction only; implementation requires subsequent human approval.
+**Status:** IN PROGRESS
+**Implementation:** T01 DONE; T02 NEXT (not started)
+**T01–T05:** T01 DONE; T02 NEXT; T03/T04/T05 PLANNED
+**Authorization:** T01 accepted by human review; task closure only. T02 is not started.
 
 ## Authority and baseline
 
@@ -15,7 +15,7 @@ Frozen routing: FINAL-FREEZE-DECISIONS §§5–6, 78–97; 01-MVP-REQUIREMENTS �
 
 | Task | Ownership | Dependencies after authorization |
 | --- | --- | --- |
-| [T01](M03-T01.md) | Primitives, errors and Core ports | Accepted M02 |
+| [T01](../completed/M03-T01.md) | Primitives, errors and Core ports | Accepted M02 |
 | [T02](M03-T02.md) | Books/Accounts; usage/default readers | T01 |
 | [T03](M03-T03.md) | Categories/Merchants; hierarchy updates | T01 |
 | [T04](M03-T04.md) | Rules/Senders configuration | T02 and T03 |

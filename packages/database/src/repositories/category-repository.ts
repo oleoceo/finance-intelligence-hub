@@ -44,13 +44,13 @@ function isPgCheckViolation(error: unknown): boolean {
 
 function translatePgError(error: unknown, field?: string): never {
   if (isPgUniqueViolation(error)) {
-    throw new ValidationError('Category uniqueness constraint violated', field);
+    throw new ValidationError('Category uniqueness constraint violated', field, error);
   }
   if (isPgForeignKeyViolation(error)) {
-    throw new ValidationError('Category reference constraint violated', field);
+    throw new ValidationError('Category reference constraint violated', field, error);
   }
   if (isPgCheckViolation(error)) {
-    throw new ValidationError('Category check constraint violated', field);
+    throw new ValidationError('Category check constraint violated', field, error);
   }
   throw error instanceof Error ? error : new Error(String(error));
 }

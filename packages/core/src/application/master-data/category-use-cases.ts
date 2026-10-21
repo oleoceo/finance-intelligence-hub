@@ -69,10 +69,6 @@ export async function createCategory(
     throw new Error('Book not found');
   }
 
-  if (!book.active) {
-    throw new ValidationError('Cannot create Category for inactive Book', 'bookId');
-  }
-
   // If parent specified, validate it
   if (parentCategoryId !== null) {
     const parent = await ctx.categories.findById(parentCategoryId);
@@ -85,10 +81,14 @@ export async function createCategory(
       throw new ValidationError('Parent Category must belong to the same Book', 'parentCategoryId');
     }
 
+    if (!book.active)
+      throw new ValidationError('Cannot create Category for inactive Book', 'bookId');
     if (!parent.active) {
       throw new ValidationError('Parent Category must be active', 'parentCategoryId');
     }
   }
+
+  if (!book.active) throw new ValidationError('Cannot create Category for inactive Book', 'bookId');
 
   // Generate UUIDv7
   const id = uuidv7();
@@ -199,8 +199,7 @@ export async function updateCategory(
   // Handle parent change (including explicit null detachment)
   if (hasParentChange && input.parentCategoryId !== current.parentCategoryId) {
     const book = await ctx.books.findById(bookId);
-    if (!book || !book.active)
-      throw new ValidationError('Cannot reparent Category in inactive Book', 'bookId');
+    if (!book) throw new Error('Book not found');
     const proposedParentId = input.parentCategoryId!; // explicitly provided, could be null
 
     // Self-parent check
@@ -222,10 +221,6 @@ export async function updateCategory(
         );
       }
 
-      if (!parent.active) {
-        throw new ValidationError('Parent Category must be active', 'parentCategoryId');
-      }
-
       if (
         await new CategoryCycleDetector().wouldCreateCycle(
           input.id,
@@ -245,7 +240,14 @@ export async function updateCategory(
       ) {
         throw new CategoryCycleError();
       }
+      if (!book.active)
+        throw new ValidationError('Cannot reparent Category in inactive Book', 'bookId');
+      if (!parent.active)
+        throw new ValidationError('Parent Category must be active', 'parentCategoryId');
     }
+
+    if (!book.active)
+      throw new ValidationError('Cannot reparent Category in inactive Book', 'bookId');
 
     newParentCategoryId = proposedParentId;
   }

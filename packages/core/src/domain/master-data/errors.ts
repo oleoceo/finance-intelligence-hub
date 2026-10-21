@@ -17,6 +17,7 @@ export class ValidationError extends MasterDataError {
   constructor(
     message: string,
     public readonly field?: string,
+    public override readonly cause?: unknown,
   ) {
     super(message, 'VALIDATION_ERROR');
     this.name = 'ValidationError';

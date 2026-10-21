@@ -5,6 +5,8 @@
  * and validate whether a field change is permitted.
  */
 
+import { ImmutabilityError } from './errors.js';
+
 export interface BookDependencyCheck {
   hasAccounts: boolean;
   hasTransactions: boolean;
@@ -30,7 +32,10 @@ export function validateBookCurrencyChange(
   }
 
   if (deps.hasAccounts || deps.hasTransactions) {
-    throw new Error('Book currency cannot be changed after Accounts or Transactions exist');
+    throw new ImmutabilityError(
+      'Book currency cannot be changed after Accounts or Transactions exist',
+      'currency',
+    );
   }
 }
 
@@ -40,7 +45,7 @@ export function validateBookCurrencyChange(
  */
 export function validateAccountBookIdChange(currentBookId: string, newBookId: string): void {
   if (currentBookId !== newBookId) {
-    throw new Error('Account book_id is immutable after creation');
+    throw new ImmutabilityError('Account book_id is immutable after creation', 'bookId');
   }
 }
 
@@ -64,10 +69,13 @@ export function validateAccountImmutableFields(
 
   if (usage.hasFinancialUsage) {
     if (currencyChanged) {
-      throw new Error('Account currency cannot be changed after financial use');
+      throw new ImmutabilityError(
+        'Account currency cannot be changed after financial use',
+        'currency',
+      );
     }
     if (typeChanged) {
-      throw new Error('Account type cannot be changed after financial use');
+      throw new ImmutabilityError('Account type cannot be changed after financial use', 'type');
     }
   }
 }

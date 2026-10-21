@@ -80,6 +80,7 @@ export async function listBooks(ctx: TransactionContext): Promise<BookRecord[]> 
 
 export interface UpdateBookInput {
   id: string;
+  active?: boolean;
   name?: string;
   currency?: string;
   timezone?: string;
@@ -134,6 +135,9 @@ export async function updateBook(
     });
   }
 
+  if (input.active === false && (await ctx.senderDefaults.hasBookDefault(input.id))) {
+    throw new DependencyError('Cannot archive Book referenced as Authorized Sender default');
+  }
   const updated = await ctx.books.update({
     id: input.id,
     name: newName,
@@ -143,6 +147,12 @@ export async function updateBook(
     updatedAt: now,
   });
 
+  if (input.active !== undefined) {
+    const lifecycle = input.active
+      ? { active: true, archivedAt: null }
+      : archiveEntity(existing, now);
+    return ctx.books.archive({ id: input.id, ...lifecycle, updatedAt: now });
+  }
   return updated;
 }
 

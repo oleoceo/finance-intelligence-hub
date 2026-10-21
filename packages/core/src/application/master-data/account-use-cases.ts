@@ -8,15 +8,19 @@ import { v7 as uuidv7 } from 'uuid';
 import { normalizeName, validateNonBlankName } from '../../domain/master-data/normalization.js';
 import { archiveEntity } from '../../domain/master-data/lifecycle.js';
 import { validateAccountImmutableFields } from '../../domain/master-data/immutability.js';
-import { ValidationError, DependencyError } from '../../domain/master-data/errors.js';
+import {
+  ValidationError,
+  DependencyError,
+  MasterDataError,
+} from '../../domain/master-data/errors.js';
 import type { TransactionContext, AccountRecord } from '../ports/master-data-ports.js';
 
 export interface CreateAccountInput {
   bookId: string;
   name: string;
   type: string;
-  institutionName?: string;
-  notes?: string;
+  institutionName?: string | null;
+  notes?: string | null;
 }
 
 const VALID_ACCOUNT_TYPES = ['checking', 'savings', 'cash', 'credit_card', 'other'] as const;
@@ -94,10 +98,12 @@ export async function listAccounts(ctx: TransactionContext): Promise<AccountReco
 
 export interface UpdateAccountInput {
   id: string;
+  currency?: string;
+  active?: boolean;
   name?: string;
   type?: string;
-  institutionName?: string;
-  notes?: string;
+  institutionName?: string | null;
+  notes?: string | null;
 }
 
 export async function updateAccount(
@@ -140,14 +146,33 @@ export async function updateAccount(
   }
 
   // Check if type actually changed
-  if (input.type !== undefined && input.type !== current.type) {
+  if (
+    (input.type !== undefined && input.type !== current.type) ||
+    (input.currency !== undefined && input.currency !== current.currency)
+  ) {
     // Check financial usage through FinancialUsageReader
     const hasFinancialUsage = await ctx.financialUsage.hasAccountUsage(input.id);
 
     // Validate immutability (currency doesn't change independently, it's derived from Book)
-    validateAccountImmutableFields(current.currency, current.currency, current.type, newType, {
-      hasFinancialUsage,
-    });
+    validateAccountImmutableFields(
+      current.currency,
+      input.currency ?? current.currency,
+      current.type,
+      newType,
+      {
+        hasFinancialUsage,
+      },
+    );
+  }
+
+  if (input.active === false && (await ctx.senderDefaults.hasAccountDefault(input.id))) {
+    throw new DependencyError('Cannot archive Account referenced as Authorized Sender default');
+  }
+  if (input.currency !== undefined) {
+    const book = await ctx.books.findById(current.bookId);
+    if (!book) throw new MasterDataError('Book not found', 'BOOK_NOT_FOUND');
+    if (input.currency !== book.currency)
+      throw new MasterDataError('Account currency must equal Book currency', 'CURRENCY_MISMATCH');
   }
 
   // Handle optional fields
@@ -163,12 +188,18 @@ export async function updateAccount(
     name: newName,
     normalizedName: newNormalizedName,
     type: newType,
-    currency: current.currency,
+    currency: input.currency ?? current.currency,
     institutionName: newInstitutionName,
     notes: newNotes,
     updatedAt: now,
   });
 
+  if (input.active !== undefined) {
+    const lifecycle = input.active
+      ? { active: true, archivedAt: null }
+      : archiveEntity(current, now);
+    return ctx.accounts.archive({ id: input.id, ...lifecycle, updatedAt: now });
+  }
   return updated;
 }
 

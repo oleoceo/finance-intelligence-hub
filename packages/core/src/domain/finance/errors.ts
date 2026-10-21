@@ -16,7 +16,12 @@ export class FinancialError extends Error {
   constructor(
     message: string,
     public readonly code:
-      'BOOK_INACTIVE' | 'ACCOUNT_INACTIVE' | 'CATEGORY_INACTIVE' | 'MERCHANT_INACTIVE',
+      | 'BOOK_INACTIVE'
+      | 'ACCOUNT_INACTIVE'
+      | 'CATEGORY_INACTIVE'
+      | 'MERCHANT_INACTIVE'
+      | 'TRANSACTION_DATE_IN_FUTURE'
+      | 'TRANSFER_SAME_ACCOUNT',
   ) {
     super(message);
     this.name = 'FinancialError';

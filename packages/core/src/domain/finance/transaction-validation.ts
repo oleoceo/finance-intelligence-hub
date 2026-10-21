@@ -86,6 +86,7 @@ export function validateTransactionDateNotFuture(
   now: Date,
   bookTimezone: string,
 ): void {
+  validateTransactionDate(dateStr);
   // Compute "today" in the Book's timezone using Intl API
   let todayInBookTz: string;
   try {
@@ -104,9 +105,9 @@ export function validateTransactionDateNotFuture(
   }
 
   if (dateStr > todayInBookTz) {
-    throw new FinancialValidationError(
+    throw new FinancialError(
       `Transaction date ${dateStr} is in the future for timezone ${bookTimezone}. Today is ${todayInBookTz}.`,
-      'transaction_date',
+      'TRANSACTION_DATE_IN_FUTURE',
     );
   }
 }
@@ -211,9 +212,9 @@ export function validateTransferAccountsDiffer(
   destinationAccountId: string,
 ): void {
   if (accountId === destinationAccountId) {
-    throw new FinancialValidationError(
+    throw new FinancialError(
       'Transfer source and destination accounts must differ.',
-      'destination_account_id',
+      'TRANSFER_SAME_ACCOUNT',
     );
   }
 }

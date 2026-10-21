@@ -26,7 +26,9 @@ describe('validateTransactionDate', () => {
   });
 
   it('rejects non-leap year Feb 29', () => {
-    expect(() => validateTransactionDate('2026-02-29')).toThrow('Invalid transaction date day');
+    expect(() => validateTransactionDate('2026-02-29')).toThrowError(
+      expect.objectContaining({ code: 'VALIDATION_ERROR' }),
+    );
   });
 
   it('rejects impossible day like Feb 30', () => {
@@ -90,9 +92,18 @@ describe('validateTransactionDateNotFuture', () => {
 
   it('rejects future date', () => {
     const now = new Date('2026-06-15T12:00:00Z');
-    expect(() => validateTransactionDateNotFuture('2026-06-16', now, 'UTC')).toThrow(
-      'is in the future',
+    expect(() => validateTransactionDateNotFuture('2026-06-16', now, 'UTC')).toThrowError(
+      expect.objectContaining({ code: 'TRANSACTION_DATE_IN_FUTURE' }),
     );
+  });
+
+  it('keeps malformed and impossible dates in validation vocabulary', () => {
+    const now = new Date('2026-06-15T12:00:00Z');
+    for (const date of ['2026/06/16', '2026-06-31']) {
+      expect(() => validateTransactionDateNotFuture(date, now, 'UTC')).toThrowError(
+        expect.objectContaining({ code: 'VALIDATION_ERROR' }),
+      );
+    }
   });
 
   it('respects Book timezone boundary', () => {
@@ -117,7 +128,7 @@ describe('validateTransactionDateNotFuture', () => {
         new Date('2026-06-15T12:00:00Z'),
         'Invalid/Zone',
       ),
-    ).toThrow(FinancialValidationError);
+    ).toThrowError(expect.objectContaining({ code: 'VALIDATION_ERROR' }));
   });
 });
 
@@ -207,8 +218,8 @@ describe('validateTransferAccountsDiffer', () => {
   });
 
   it('throws when accounts are the same', () => {
-    expect(() => validateTransferAccountsDiffer('uuid-1', 'uuid-1')).toThrow(
-      'source and destination accounts must differ',
+    expect(() => validateTransferAccountsDiffer('uuid-1', 'uuid-1')).toThrowError(
+      expect.objectContaining({ code: 'TRANSFER_SAME_ACCOUNT' }),
     );
   });
 });

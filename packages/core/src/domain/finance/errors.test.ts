@@ -14,6 +14,13 @@ describe('FinancialError', () => {
     const err = new FinancialError('msg', 'ACCOUNT_INACTIVE');
     expect(err).toBeInstanceOf(Error);
   });
+
+  it.each(['TRANSACTION_DATE_IN_FUTURE', 'TRANSFER_SAME_ACCOUNT'] as const)(
+    'accepts frozen financial code %s',
+    (code) => {
+      expect(new FinancialError('Financial rule violated', code).code).toBe(code);
+    },
+  );
 });
 
 describe('FinancialValidationError', () => {

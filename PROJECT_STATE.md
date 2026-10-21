@@ -767,7 +767,7 @@ M03 Master Data / Configuration
 DONE - M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3
 
 M04 Transaction Core
-⬜ NOT STARTED
+⬜ PLANNING — M04-T01 through M04-T08 PLANNED; implementation NOT AUTHORIZED; Gate A NOT EXECUTED; Gate 0 NOT EXECUTED
 
 M05 Inbox / Parser / Confirmation
 ⬜ NOT STARTED

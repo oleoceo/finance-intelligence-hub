@@ -97,7 +97,13 @@ export function t04Database() {
               'select pg_blocking_pids($1) as blockers, wait_event_type, query from pg_stat_activity where pid=$1',
               [pid2],
             );
-            if (rows[0]?.blockers.includes(pid1)) {
+            // Lock-manager and activity fields are sampled separately. Keep polling
+            // until both report the wait, rather than asserting on a transition.
+            if (
+              rows[0]?.blockers.includes(pid1) &&
+              rows[0].wait_event_type === 'Lock' &&
+              rows[0].query.includes('for update')
+            ) {
               expect(rows[0].wait_event_type).toBe('Lock');
               expect(rows[0].query).toContain('for update');
               break;

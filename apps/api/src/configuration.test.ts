@@ -249,3 +249,29 @@ it.each([
   ).toBe(422);
   expect(runInTransaction).not.toHaveBeenCalled();
 });
+
+// Regression: AuthorizedSender.name is raw VARCHAR(160) with no normalized_name.
+it('accepts AuthorizedSender.name with Unicode expansion without normalizing', async () => {
+ // 'İ' (U+0130) lowercases to 'i̇' (2 chars). 80 'İ' = 80 raw chars.
+ const unicodeName = 'İ'.repeat(80);
+ expect([...unicodeName].length).toBe(80);
+ const result = await app.inject({
+ method: 'POST',
+ url: '/api/v1/admin/authorized-senders',
+ headers: admin,
+ payload: { channel: 'whatsapp', sender_reference: 'ref', name: unicodeName },
+ });
+ expect(result.statusCode).not.toBe(422);
+});
+
+// Regression: Normalized-name entities must reject if normalized length exceeds limit.
+it('rejects Book.name if normalized length exceeds 120 even if raw <= 120', async () => {
+ const unicodeName = 'İ'.repeat(120);
+ const result = await app.inject({
+ method: 'POST',
+ url: '/api/v1/books',
+ headers: admin,
+ payload: { name: unicodeName, currency: 'BRL' },
+ });
+ expect(result.statusCode).toBe(422);
+});

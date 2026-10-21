@@ -975,9 +975,8 @@ docs-freeze-v0.1
 
 # 46. CI status
 
-M03-T03 is human accepted and DONE. Accepted head: `119f8d86f9ea307be979f6051d83958e7a563549`; final accepted GitHub Actions [run 39506256233](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39506256233): full CI GREEN. Unit 11 files / 146 tests PASS (Category 31, Merchant 13); PostgreSQL integration 10 files / 136 tests PASS; T03 integration 36 tests PASS. Build, typecheck, lint and formatting PASS. Baseline suites preserved; application suites are not rerun locally solely for documentation closure. Draft PR #1 remains open and unmerged.
-
-Accepted behavior: locked inactive-Book validation, atomic lifecycle/field patches with archive timestamp preservation, complete ordered Book/Category lock discovery with bounded restart, canonical fail-safe cycle detection, two-backend barriers in both opposite/longer-cycle winning orders, distinct-Book independence, bounded cross-Book rejection and reparent uniqueness rollback. Duplicate Merchants, posted/voided history and Rule references remain preserved. No migration or security impact. T03 acceptance is preserved; M03-T04 is now REVIEW REQUIRED on Draft PR #2.
+M03-T03 is human accepted and DONE. T03 PR #1 was squash-merged to main (main commit: `1b3345b00a46799ae2398f1372ad48d84e159dd1`; post-merge main CI run `39508114443` = SUCCESS). Unit 11 files / 146 tests PASS; PostgreSQL integration 10 files / 136 tests PASS; T03 integration 36 tests PASS. Build, typecheck, lint and formatting PASS.
+Accepted behavior: locked inactive-Book validation, atomic lifecycle/field patches with archive timestamp preservation, complete ordered Book/Category lock discovery with bounded restart, canonical fail-safe cycle detection, two-backend barriers in both opposite/longer-cycle winning orders, distinct-Book independence, bounded cross-Book rejection and reparent uniqueness rollback. Duplicate Merchants, posted/voided history and Rule references remain preserved. No migration or security impact. T03 remains DONE; M03-T04 is currently REVIEW REQUIRED on Draft PR #2.
 
 ---
 

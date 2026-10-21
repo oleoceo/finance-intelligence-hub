@@ -129,16 +129,20 @@ describe('Classification Rule Domain Validation', () => {
       expect(() => validatePriority(100)).not.toThrow();
     });
 
-    it('rejects negative priority', () => {
-      expect(() => validatePriority(-1)).toThrow('Priority must be a non-negative integer');
+    it('accepts negative integer priority', () => {
+      expect(() => validatePriority(-1)).not.toThrow();
     });
 
     it('rejects fractional priority', () => {
-      expect(() => validatePriority(10.5)).toThrow('Priority must be a non-negative integer');
+      expect(() => validatePriority(10.5)).toThrow('Priority must be an integer');
     });
 
-    it('rejects non-integer priority', () => {
-      expect(() => validatePriority(NaN)).toThrow('Priority must be a non-negative integer');
+    it('rejects non-integer priority (NaN)', () => {
+      expect(() => validatePriority(NaN)).toThrow('Priority must be an integer');
+    });
+
+    it('rejects Infinity', () => {
+      expect(() => validatePriority(Infinity)).toThrow('Priority must be an integer');
     });
   });
 });

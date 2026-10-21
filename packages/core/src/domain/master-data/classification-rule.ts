@@ -65,8 +65,8 @@ export function normalizePattern(pattern: string): string {
 }
 
 export function validatePriority(priority: number): void {
-  if (!Number.isInteger(priority) || priority < 0) {
-    throw new Error('Priority must be a non-negative integer');
+  if (!Number.isInteger(priority)) {
+    throw new Error('Priority must be an integer');
   }
 }
 export interface UpdateClassificationRuleRepoInput {

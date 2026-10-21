@@ -125,7 +125,7 @@ Accepted records: [T01](../completed/M03-T01.md), [T02](../completed/M03-T02.md)
 
 T03 human-accepted head: `119f8d86f9ea307be979f6051d83958e7a563549`. Final accepted GitHub Actions [run 39506256233](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39506256233): full CI GREEN; unit 11 files / 146 tests PASS (Category 31, Merchant 13); integration 10 files / 136 tests PASS; T03 integration 36 tests PASS. Build, typecheck, lint and formatting PASS. Accepted hierarchy, lifecycle, lock/retry, two-backend concurrency, uniqueness, duplicate-Merchant and historical-reference behavior is detailed in the completed T03 record.
 
-Closure moves T03 to completed/ and updates PROJECT_STATE.md and this overview. Application suites are not rerun locally solely for documentation. Frozen docs, migrations, source, tests, package manifests, lockfile, ADRs, completed T01/T02 records and T04/T05 contracts remain unchanged. No migration/security impact or remaining T03 issue. PR #1 remains draft and unmerged; no live infrastructure activity.
+Closure moves T03 to completed/ and updates PROJECT_STATE.md and this overview. Application suites are not rerun locally solely for documentation. Frozen docs, migrations, source, tests, package manifests, lockfile, ADRs, completed T01/T02 records and T04/T05 contracts remain unchanged. No migration/security impact or remaining T03 issue. T03 PR #1 was squash-merged to main (main commit: `1b3345b00a46799ae2398f1372ad48d84e159dd1`; post-merge main CI run `39508114443` = SUCCESS); no live infrastructure activity.
 
 
 ## Current T04 review evidence

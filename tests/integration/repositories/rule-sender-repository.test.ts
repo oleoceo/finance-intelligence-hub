@@ -154,6 +154,22 @@ describe('Rule configuration through canonical transaction port', () => {
     const rows = (await repo.find()).filter((r) => ids.includes(r.id));
     expect(rows.map((r) => r.id)).toEqual(ids);
   });
+  it('Core accepts negative priority and PostgreSQL ordering includes negative values correctly', async () => {
+    const t = await env.targets();
+    const time = now();
+    const ruleNeg = await env.run((ctx) =>
+      createClassificationRule({ ...base, targetBookId: t.book.id, priority: -50 }, ctx, time),
+    );
+    const ruleZero = await env.run((ctx) =>
+      createClassificationRule({ ...base, targetBookId: t.book.id, priority: 0 }, ctx, time),
+    );
+    const rulePos = await env.run((ctx) =>
+      createClassificationRule({ ...base, targetBookId: t.book.id, priority: 100 }, ctx, time),
+    );
+    const all = await env.run((ctx) => listClassificationRules(ctx));
+    const relevant = all.filter((r) => [ruleNeg.id, ruleZero.id, rulePos.id].includes(r.id));
+    expect(relevant.map((r) => r.priority)).toEqual([-50, 0, 100]);
+  });
   it('repository retains PostgreSQL target FK and CHECK enforcement', async () => {
     const t = await env.targets();
     const repo = new KyselyClassificationRuleRepository(env.db);

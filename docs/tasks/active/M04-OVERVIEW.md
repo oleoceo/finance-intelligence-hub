@@ -1,10 +1,13 @@
-# M04 — Transaction Core: Milestone Planning Overview
+# M04 — Transaction Core: Active Milestone Overview
 
-**Status:** PLANNING
-**Milestone state:** PLANNING; M04-T01 through M04-T08 PLANNED
+**Status:** ACTIVE
+**Milestone state:** ACTIVE; M04-T01 through M04-T08 ACTIVE / execution-ready
 **Implementation:** NOT AUTHORIZED
 **Gate A:** NOT EXECUTED
 **Gate 0:** NOT EXECUTED
+**Activation review:** [M04-ACTIVATION-REVIEW.md](M04-ACTIVATION-REVIEW.md) — 2026-10-21; reviewed against `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; no material planning delta
+
+ACTIVE makes the contracts execution-ready. Each task still requires explicit human implementation authorization.
 
 ## Authority
 
@@ -107,7 +110,7 @@ M04 exposes only:
 
 All require `finance:admin`. No PATCH, Void, Refund, audit-query or refund-list routes are implemented in M04.
 
-## Planning verification
+## Historical planning verification
 
 Before committing this planning package:
 
@@ -122,7 +125,7 @@ Before committing this planning package:
 - `git diff --check` clean
 - Semantic sweep for contradictory task statuses
 
-## Git
+## Historical planning Git
 
 Branch: `m04-planning`
 One consolidated correction commit on this existing branch after review.

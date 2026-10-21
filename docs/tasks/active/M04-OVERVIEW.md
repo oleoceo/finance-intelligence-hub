@@ -1,7 +1,7 @@
 # M04 — Transaction Core: Milestone Planning Overview
 
 **Status:** PLANNING
-**Milestone state:** PLANNED
+**Milestone state:** PLANNING; M04-T01 through M04-T08 PLANNED
 **Implementation:** NOT AUTHORIZED
 **Gate A:** NOT EXECUTED
 **Gate 0:** NOT EXECUTED
@@ -81,16 +81,20 @@ M02 already provides the complete physical schema for `transactions`, `audit_eve
 
 - Transaction types: exactly `expense | income | transfer`
 - Initial status: always `posted`
-- Money: `NUMERIC(18,2)` canonical; API decimal strings; `amount > 0`
+- Money: positive ASCII decimal strings with zero to two fractional digits and up to 16 integral digits; max `9999999999999999.99`; no leading zeroes (except `0.xx`), sign, whitespace, exponent, NaN or Infinity. Canonical two-decimal string throughout Core/persistence/response; string/BigInt-safe validation; no PostgreSQL rounding
 - Currency: `Book.currency = Account.currency = Transaction.currency`; no FX
 - Book: exactly one active Book per Transaction; inactive Book rejected
-- Expense/Income: active source Account required; Account belongs to Book; currency matches; Category/Merchant optional but must satisfy active/context rules if supplied
+- Expense/Income: active source Account required; Account belongs to Book; currency matches; Category optional (exists, active, same Book); global Merchant optional (exists, active), without a Merchant Book-context rule
 - Transfer: source and destination active; source ≠ destination; same Book; same currency; no cross-Book
-- Generic Income: `refund_of_transaction_id = null` always
+- Generic Income: `refund_of_transaction_id = null` always; client field including null is schema-invalid. Transfer category_id and merchant_id are also server-controlled null
 - Financial date: `transaction_date DATE`; `transaction_date <= today in Book timezone`
 - Last: `status = posted`; `ORDER BY created_at DESC, id DESC`; `book_id` required
-- Idempotency: PostgreSQL canonical; `in_progress | completed`; same key + same fingerprint → same result; same key + different fingerprint → 409; pre-COMMIT failure rolls back everything
-- Audit: `TRANSACTION_CREATED` in same PostgreSQL transaction as Transaction + Idempotency
+- Idempotency: scope exactly `transactions:create`; Core hashes canonical validated command (SHA-256 lowercase hex), including canonical Money and semantic text; PostgreSQL `ON CONFLICT DO NOTHING RETURNING` claim and bounded wait/re-read; replay same resource/201 without duplicate Audit; pre-COMMIT failure rolls back everything
+- Audit: `TRANSACTION_CREATED` in same PostgreSQL transaction as Transaction + Idempotency; direct_api actor_reference=null and no credential material
+
+## Transaction ownership and race proof
+
+T07 GenericCreateTransaction is the production orchestration entry point and owns the only outer `FinancialTransactionPort.runInTransaction(...)`. T02/T03/T04 type-specific executors receive its context and never commit independently. T08 calls GenericCreateTransaction only. Financial writers obey M03 lock rank and independently test both orders against Book/Account/Category/Merchant archives and Book/Account currency/type changes with real PostgreSQL barriers; see task-specific applicability. T02 corrects `transactions.account_id` DB type to non-null; T06/T07 add existing physical idempotency/audit table declarations to DB types. No migrations.
 
 ## API boundary
 
@@ -121,5 +125,5 @@ Before committing this planning package:
 ## Git
 
 Branch: `m04-planning`
-Single planning commit after final review.
+One consolidated correction commit on this existing branch after review.
 Draft PR targeting `main`. Do not merge.

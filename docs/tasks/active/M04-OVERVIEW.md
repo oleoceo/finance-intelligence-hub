@@ -1,13 +1,14 @@
 # M04 — Transaction Core: Active Milestone Overview
 
 **Status:** ACTIVE
-**Milestone state:** ACTIVE; M04-T01 through M04-T08 ACTIVE / execution-ready
-**Implementation:** M04-T01 AUTHORIZED; M04-T02 through M04-T08 NOT AUTHORIZED
+**Milestone state:** ACTIVE; M04-T01 DONE; M04-T02 through M04-T08 ACTIVE / execution-ready
+**Implementation:** M04-T01 DONE / human accepted; M04-T02 through M04-T08 NOT AUTHORIZED
 **Gate A:** NOT EXECUTED
 **Gate 0:** NOT EXECUTED
 **Activation review:** [M04-ACTIVATION-REVIEW.md](M04-ACTIVATION-REVIEW.md) — 2026-10-21; PASS; human accepted and integrated via PR #6 at `1c7e16d45fa03df8cd2b54c28100820af8d08142`; post-merge CI `39675385219` = SUCCESS; no material planning delta
+**M04-T01 acceptance:** Human accepted on 2026-10-21. Accepted implementation head `d80672507b6fd36df9a7035af90e3cccdab44239`; GitHub Actions run `39691263503` attempt 2 = SUCCESS; unit 23 files / 664 tests PASS; PostgreSQL integration 15 files / 236 tests PASS. PR #7 remains open and unmerged pending explicit merge authorization.
 
-ACTIVE makes the contracts execution-ready. M04-T01 now has explicit human implementation authorization; each later task still requires its own explicit authorization.
+M04-T01 is human accepted and DONE. M04-T02 through M04-T08 remain execution-ready, but each later task still requires its own explicit human authorization.
 
 ## Authority
 
@@ -36,7 +37,7 @@ Generic create supports only `expense`, `income` and `transfer`. Initial status 
 
 | Task | Ownership | Dependencies |
 | --- | --- | --- |
-| [M04-T01](M04-T01.md) | Transaction primitives and Core ports | Accepted M02/M03 |
+| [M04-T01](../completed/M04-T01.md) | Transaction primitives and Core ports — DONE | Accepted M02/M03 |
 | [M04-T02](M04-T02.md) | Create Expense | T01 |
 | [M04-T03](M04-T03.md) | Create Income | T01 |
 | [M04-T04](M04-T04.md) | Create Transfer | T01 |
@@ -45,7 +46,7 @@ Generic create supports only `expense`, `income` and `transfer`. Initial status 
 | [M04-T07](M04-T07.md) | Basic Audit and atomic financial create | T01, T02, T03, T04, T06 |
 | [M04-T08](M04-T08.md) | API Integration and Milestone Verification | T01–T07 |
 
-Preferred execution: human authorization → T01 → {T02, T03, T04, T05, T06} → T07 → T08.
+Current execution state: T01 DONE. The next candidate slice is T02 (or another independent T02–T06 slice only if explicitly authorized); T07/T08 retain the dependency order below.
 
 Formal graph: T01 → {T02, T03, T04, T05, T06}; {T02, T03, T04, T06} → T07; {T01, T02, T03, T04, T05, T06, T07} → T08.
 

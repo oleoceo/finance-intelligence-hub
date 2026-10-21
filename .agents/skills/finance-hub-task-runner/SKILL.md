@@ -225,6 +225,19 @@ Own the complete implementation cycle.
 
 After implementation, run focused checks.
 
+Before the first implementation push, mirror the repository CI locally whenever the established environment supports it. Treat the repository workflow as the source of truth for exact commands and ordering. For the current Finance Hub baseline, the expected validation sequence is:
+
+1. frozen dependency install
+2. lint
+3. format check
+4. build
+5. typecheck
+6. unit tests
+7. PostgreSQL integration tests
+8. any stricter task-specific checks
+
+Do not skip formatting merely because lint/typecheck pass. Do not claim CI-equivalent validation if one required stage was not actually executed. If a local stage is genuinely unavailable, record that narrowly and let GitHub Actions remain the independent validator instead of presenting the task as fully locally green.
+
 If any normal failure appears:
 
 1. inspect the failure
@@ -250,6 +263,7 @@ Examples:
 - race-test failures
 - CI failures
 - Git branch/worktree issues that can be resolved safely
+- absence of one particular GitHub client when another authenticated GitHub path is available
 
 Do not return after fixing only the first failure.
 
@@ -278,6 +292,10 @@ When blocked, return:
 
 Do not label an ordinary failing test as a blocker.
 
+Missing `gh` by itself is not a human blocker. Before stopping, inspect whether another authenticated GitHub mechanism is available in the current environment or orchestration layer. Prefer any available provider-neutral GitHub integration/tooling over asking the human to recreate routine PR operations manually.
+
+If no authenticated PR-creation mechanism truly exists after checking available tooling, push the authorized feature branch, report the limitation narrowly, and distinguish "PR creation handoff required" from an implementation blocker. Do not ask the human to repeat diagnostics the agent can already perform.
+
 ---
 
 ## 10. Git workflow for implementation tasks
@@ -305,7 +323,20 @@ After the implementation is locally coherent:
 7. self-heal and push corrections to the same branch
 8. repeat until CI GREEN
 
-Use the authenticated GitHub CLI or available GitHub tooling.
+Use authenticated GitHub tooling available in the environment. The workflow must not depend specifically on GitHub CLI; `gh` is one option, not a requirement.
+
+Project skills are vendor-neutral repository assets. The canonical project skill lives only under:
+
+`.agents/skills/<skill-name>/`
+
+Never create, copy, sync, or commit provider-native duplicates under locations such as:
+
+- `.claude/skills/`
+- `.codex/skills/`
+- `.gemini/skills/`
+- other provider-specific skill directories
+
+If an editor/provider materializes a local compatibility copy, treat it as a local artifact and keep it out of the Git diff. Do not add broad ignore rules unless the repository actually needs them and the current authorization permits that change.
 
 A detached local validation worktree is not by itself a blocker; use explicit repository/head/base arguments where appropriate.
 
@@ -316,6 +347,8 @@ Do not merge without explicit human authorization.
 ## 11. GitHub CI is an authoritative independent validator
 
 When the repository workflow executes the required Linux/PostgreSQL/Testcontainers suite, treat its result as the independent final execution proof for the exact PR head.
+
+Record test totals and final evidence from the exact accepted PR head/run. Do not carry forward stale counts from an earlier local run or earlier CI head after tests changed.
 
 CI GREEN does not automatically mean human acceptance.
 
@@ -362,8 +395,18 @@ Only after explicit human acceptance:
 - update milestone overview
 - set the next allowed task
 - remove stale REVIEW REQUIRED statements
-- record exact accepted evidence
+- record exact accepted evidence from the accepted implementation head/run
 - keep documentation concise and current rather than appending diary-style history
+
+Before returning closure, perform a semantic stale-state sweep across the closure documents:
+
+- search the current task ID and status words such as `REVIEW REQUIRED`, `PLANNED`, `DONE`, `PARTIAL`
+- search old test totals and superseded PR/CI wording
+- verify the completed task record says `DONE`
+- verify milestone overview header, tables, narrative sections and links agree
+- verify moved task links point to `docs/tasks/completed/` where appropriate
+- verify `PROJECT_STATE.md` current-state sections consistently name the next allowed task
+- preserve genuinely historical evidence, but do not leave historical wording presented as current state
 
 Closure must not alter implementation unless explicitly requested.
 
@@ -414,6 +457,8 @@ Inspect:
 - future task contracts
 - unexpected API or future-milestone implementation
 - Core infrastructure imports
+- provider-specific duplicate skill files
+- stale task status, stale test totals and broken active/completed task links when closing work
 
 Run repository hygiene checks appropriate to the task, including `git diff --check`.
 
@@ -434,6 +479,7 @@ When implementation is ready for human review, return one compact report contain
 - exact unit test files/test totals
 - exact integration files/test totals
 - task-specific test totals
+- exact final GitHub Actions run ID/status for the reported PR head
 - critical concurrency/invariant evidence
 - lint/format/build/typecheck status
 - lockfile status

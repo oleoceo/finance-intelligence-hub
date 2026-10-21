@@ -59,11 +59,11 @@ FINAL-FREEZE-DECISIONS.md
 M01 - Local Bootstrap: DONE.
 M02 - Database Foundation: DONE; human accepted on 2026-10-20.
 M02-T01, M02-T02, M02-T03, M02-T04 and M02-T05: DONE.
-M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE (accepted on Draft PR #3).
+M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
 
 Functional roadmap completed through M03. M04 remains NOT STARTED and requires separate authorization. Gate 0 is a separate infrastructure prerequisite before live VPS/Lab/Production activity; it remains NOT EXECUTED and is not authorized by this closure.
 
-Architecture and canonical documentation remain frozen. ADR-001/002 remain ACCEPTED. Established M01 Docker/CI evidence is preserved below. M03-T05 is human accepted and DONE on Draft PR #3. Accepted implementation head `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions run `39640634314` = SUCCESS. T04 remains human accepted and DONE; M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
+Architecture and canonical documentation remain frozen. ADR-001/002 remain ACCEPTED. Established M01 Docker/CI evidence is preserved below. M03-T05 is human accepted, DONE and integrated. Accepted implementation head `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions run `39640634314` = SUCCESS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. T04 remains human accepted and DONE; M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
 
 ---
 
@@ -197,8 +197,8 @@ M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved
 # 8. Current milestone
 
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
-M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE (accepted on Draft PR #3).
-M03-T01 through M03-T05 are accepted; completed records and the [M03 overview](docs/tasks/completed/M03-OVERVIEW.md) are in docs/tasks/completed/. Draft PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. Accepted T05 implementation remains on unmerged Draft PR #3. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
+M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
+M03-T01 through M03-T05 are accepted; completed records and the [M03 overview](docs/tasks/completed/M03-OVERVIEW.md) are in docs/tasks/completed/. Draft PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
 
 ---
 
@@ -764,7 +764,7 @@ M02 Database Foundation
 DONE
 
 M03 Master Data / Configuration
-DONE - M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE (accepted on Draft PR #3)
+DONE - M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3
 
 M04 Transaction Core
 ⬜ NOT STARTED
@@ -847,7 +847,7 @@ These belong to Gate 0.
 
 # 39. Current allowed next actions
 
-M01, M02 and M03 are DONE. M03-T01 through M03-T05 are human accepted and DONE; T05 implementation and correction validation are on unmerged Draft PR #3. M04 is NOT STARTED and requires separate authorization. Gate 0 remains NOT EXECUTED and is not authorized by this closure. Do not merge PR #3 without explicit merge authorization.
+M01, M02 and M03 are DONE. M03-T01 through M03-T05 are human accepted, DONE and integrated. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. M04 is NOT STARTED and requires separate authorization. Gate 0 remains NOT EXECUTED and is not authorized by this closure.
 
 ---
 
@@ -1210,7 +1210,7 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-M03 is DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE (accepted on Draft PR #3).
+M03 is DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
 M02 and M02-T01 through M02-T05 are DONE and accepted. Completed task records and milestone overview are in docs/tasks/completed/.
 M03-T01 through M03-T05 are human accepted and recorded in docs/tasks/completed/ with the completed M03 overview. M04 is NOT STARTED and requires separate authorization.
 Gate 0 remains NOT EXECUTED, a separate prerequisite before live VPS/Lab/Production activity, and is not authorized by this closure.
@@ -1291,7 +1291,7 @@ Documentation baseline tag
 ⬜ PENDING
 
 Implementation
-M01 and M02 DONE; M03 DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE (accepted on Draft PR #3)
+M01 and M02 DONE; M03 DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3
 
 Gate 0
 ⬜ NOT EXECUTED
@@ -1313,6 +1313,6 @@ NONE
 
 # 63. Next action
 
-M01, M02 and M03 are DONE. M03-T01 through M03-T05 are DONE. M04 remains NOT STARTED and requires separate authorization; Gate 0 remains NOT EXECUTED. T05 was human accepted at head `da0a6ced16e8ce5831e144d498e841dc2a6a0ead` with GitHub Actions run `39640634314` = SUCCESS. Final unit suite: 17 files / 504 PASS; PostgreSQL integration: 15 files / 236 PASS. Draft PR #3 remains unmerged. No migration, security or live infrastructure impact from documentation closure. Do not merge without explicit merge authorization. Do not start M04.
+M01, M02 and M03 are DONE. M03-T01 through M03-T05 are DONE. M04 remains NOT STARTED and requires separate authorization; Gate 0 remains NOT EXECUTED. T05 was human accepted at head `da0a6ced16e8ce5831e144d498e841dc2a6a0ead` with GitHub Actions run `39640634314` = SUCCESS. Final unit suite: 17 files / 504 PASS; PostgreSQL integration: 15 files / 236 PASS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. No migration/schema change or external dependency upgrade; T05 added the authorized workspace wiring `apps/api -> @finance-hub/core` and the minimal service-to-service Bearer auth/scope boundary. No live infrastructure impact. Do not start M04.
 
 ---

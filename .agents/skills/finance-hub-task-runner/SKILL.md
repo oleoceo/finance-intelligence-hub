@@ -267,6 +267,25 @@ Examples:
 
 Do not return after fixing only the first failure.
 
+### Push discipline during self-healing
+
+Do not push speculative or partial corrections while a correction batch is still evolving.
+
+For a normal review/CI correction cycle:
+
+1. inspect the exact failure and current working diff
+2. batch all known related corrections locally
+3. finish the last edit
+4. run the required validation sequence after that last edit
+5. inspect `git diff --check`, changed files, test-count/suite deltas, and scope
+6. create one coherent correction commit
+7. push once
+8. evaluate CI for that exact pushed SHA
+
+If the exact-head CI is RED, inspect that exact failing stage/log before editing again. Do not create a chain of speculative pushes that each starts another CI run.
+
+When resuming after an interrupted or long-running agent session, inspect branch, HEAD, status and file diffs before editing. Preserve valid uncommitted work, avoid duplicating already-applied changes, and recover deliberately rather than reapplying the whole correction prompt blindly.
+
 ---
 
 ## 9. Human blocker definition
@@ -350,6 +369,18 @@ When the repository workflow executes the required Linux/PostgreSQL/Testcontaine
 
 Record test totals and final evidence from the exact accepted PR head/run. Do not carry forward stale counts from an earlier local run or earlier CI head after tests changed.
 
+Never report CI GREEN from an older commit when the PR head has moved. Verify the reported run's `head_sha` equals the current PR head SHA.
+
+Treat previously accepted GREEN test coverage as a regression baseline. Before pushing test-file rewrites or cleanup:
+
+- compare against the latest relevant GREEN head
+- inspect deleted/renamed tests, not only the final pass/fail result
+- treat an unexplained drop in discovered test count as a regression signal
+- preserve accepted regression scenarios unless a deliberate replacement proves the same contract
+- do not target test counts mechanically; explain any intentional reduction before accepting it
+
+A GREEN CI with silently reduced accepted coverage is not sufficient evidence.
+
 CI GREEN does not automatically mean human acceptance.
 
 The sequence is:
@@ -382,6 +413,8 @@ When human review identifies concrete defects:
 Do not respond to each normal correction with another human-operated diagnostic cycle.
 
 Use repository and CI evidence directly.
+
+Regression tests added for review findings must prove the intended success/failure condition precisely. Prefer exact status/code/state/round-trip assertions. Avoid weak assertions such as “not 422” when an unrelated 500 would also pass.
 
 ---
 
@@ -437,6 +470,8 @@ After merge:
 
 - verify `main` points to the expected merge/squash commit
 - verify post-merge `main` CI
+- if closure documents were intentionally written before merge and still say the PR is Draft/unmerged, perform a narrow post-merge state correction recording the squash commit and post-merge CI while preserving the accepted implementation head/run
+- distinguish “no external dependency upgrade” from authorized workspace/package wiring, and describe security impact precisely rather than using overly broad “no security change” wording
 - only then consider the task fully integrated
 
 Do not start the next implementation task before the previous merge/state transition is coherent unless explicitly authorized.

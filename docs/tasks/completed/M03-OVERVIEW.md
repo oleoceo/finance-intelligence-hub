@@ -2,7 +2,7 @@
 
 **Status:** DONE
 **Implementation:** T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 DONE
-**Approval:** All five tasks are human accepted. T05 accepted implementation head: `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions [run 39640634314](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39640634314) = SUCCESS. Draft PR #3 remains unmerged.
+**Approval:** All five tasks are human accepted. T05 accepted implementation head: `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions [run 39640634314](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39640634314) = SUCCESS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS.
 
 ## Authority and baseline
 
@@ -135,4 +135,4 @@ T04 is human accepted and DONE; see [completed T04](M03-T04.md). Accepted implem
 
 T05 is human accepted and DONE; see [completed T05](M03-T05.md). Accepted implementation head: `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions [run 39640634314](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39640634314) = SUCCESS. Final M03 suite: unit 17 files / 504 tests PASS; PostgreSQL integration 15 files / 236 tests PASS. T05 contributes 289 unit and 37 integration tests relative to accepted T04. The transport configuration suite passed 217 tests and API/PostgreSQL configuration suite passed 37 tests. Frozen install, lint, format:check, build and typecheck PASS. Remaining T05 and M03 issues: none.
 
-All five M03 tasks are DONE. M04 remains NOT STARTED and is not authorized by this closure. Gate 0 remains NOT EXECUTED. Draft PR #3 remains unmerged; no live infrastructure activity occurred.
+All five M03 tasks are DONE and integrated. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. M04 remains NOT STARTED and is not authorized by this closure. Gate 0 remains NOT EXECUTED; no live infrastructure activity occurred.

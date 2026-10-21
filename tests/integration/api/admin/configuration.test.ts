@@ -871,4 +871,28 @@ describe('API PostgreSQL barriers', () => {
       { status: 'fulfilled', value: { status: ruleFirst ? 200 : 422 } },
     ]);
   });
+
+  // Regression: AuthorizedSender.name is raw VARCHAR(160) with no normalized_name.
+  // Prove that Unicode lowercase expansion (U+0130) <=160 raw chars succeeds and persists unchanged.
+  it('persists AuthorizedSender.name with Unicode expansion without normalizing', async () => {
+    // 'İ' (U+0130) lowercases to 'i̇' (2 code points). 80 'İ' = 80 raw chars.
+    const unicodeName = 'İ'.repeat(80);
+    expect([...unicodeName].length).toBe(80);
+    const s = await create('admin/authorized-senders', {
+      channel: 'whatsapp',
+      sender_reference: randomUUID(),
+      name: unicodeName,
+    });
+    expect(s.name).toBe(unicodeName);
+    const get = await request('GET', `admin/authorized-senders/${s.id}`);
+    expect(get.statusCode).toBe(200);
+    expect(get.json().data.name).toBe(unicodeName);
+  });
+
+  // Regression: Normalized-name entities reject if normalized length exceeds limit.
+  it('rejects Book.name if normalized length exceeds 120 even if raw <= 120', async () => {
+    const unicodeName = 'İ'.repeat(120);
+    const result = await request('POST', 'books', { name: unicodeName, currency: 'BRL' });
+    expect(result.statusCode).toBe(422);
+  });
 });

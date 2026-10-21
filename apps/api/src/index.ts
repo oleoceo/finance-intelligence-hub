@@ -136,15 +136,32 @@ function buildApp(options: AppOptions = {}) {
       const body = request.body as Record<string, unknown> | null;
       const schema = request.routeOptions.schema?.body as
         { properties?: Record<string, { maxLength?: number }> } | undefined;
-      for (const field of ['name', 'pattern']) {
-        const value = body?.[field];
-        const limit = schema?.properties?.[field]?.maxLength;
-        if (
-          typeof value === 'string' &&
-          limit &&
-          [...(field === 'pattern' ? value.trim().toLowerCase() : normalizeName(value))].length >
-            limit
-        )
+      if (!body || typeof body !== 'object') return;
+      const rawRouterPath =
+        (request as unknown as { routerPath?: string }).routerPath ?? request.url ?? '';
+      const isSenderRoute = rawRouterPath.includes('authorized-senders');
+      // AuthorizedSender.name is raw VARCHAR(160) with no normalized_name; constrain only raw length.
+      // Book/Account/Category/Merchant name: prove BOTH raw and normalized values fit storage limits.
+      const nameValue = body['name'];
+      if (typeof nameValue === 'string') {
+        const limit = schema?.properties?.['name']?.maxLength as number | undefined;
+        if (limit) {
+          if (isSenderRoute) {
+            if ([...nameValue].length > limit)
+              throw new ApiError(422, 'VALIDATION_ERROR', 'invalid_request');
+          } else {
+            const rawLen = [...nameValue].length;
+            const normLen = [...normalizeName(nameValue)].length;
+            if (rawLen > limit || normLen > limit)
+              throw new ApiError(422, 'VALIDATION_ERROR', 'invalid_request');
+          }
+        }
+      }
+      // ClassificationRule.pattern: prove raw and normalized pattern fit 500.
+      const patternValue = body['pattern'];
+      if (typeof patternValue === 'string') {
+        const limit = schema?.properties?.['pattern']?.maxLength as number | undefined;
+        if (limit && [...patternValue.trim().toLowerCase()].length > limit)
           throw new ApiError(422, 'VALIDATION_ERROR', 'invalid_request');
       }
     });

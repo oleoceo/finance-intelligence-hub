@@ -14,20 +14,28 @@ describe('Authorized Sender Domain Validation', () => {
       expect(() => validateChannel('whatsapp')).not.toThrow();
     });
 
-    it('accepts channel with max length (32 chars)', () => {
-      expect(() => validateChannel('a'.repeat(32))).not.toThrow();
-    });
-
-    it('trims whitespace', () => {
+    it('accepts valid unchanged channel with surrounding whitespace within 32 raw characters', () => {
+      // '  whatsapp  ' is 12 raw chars; trim is non-empty; raw length <= 32 → must accept, stored unchanged
       expect(() => validateChannel('  whatsapp  ')).not.toThrow();
     });
 
-    it('rejects empty channel', () => {
-      expect(() => validateChannel('')).toThrow('Channel must be a non-empty string');
+    it('rejects raw channel >32 even when trimmed length would be <=32', () => {
+      // raw = 17 spaces + 'x' + 17 spaces = 35 raw chars; trimmed is 'x' (1 char) but raw exceeds 32
+      const raw = `${' '.repeat(17)}x${' '.repeat(17)}`;
+      expect(raw.length).toBe(35);
+      expect(() => validateChannel(raw)).toThrow('Channel must not exceed 32 characters');
     });
 
     it('rejects whitespace-only channel', () => {
       expect(() => validateChannel('   ')).toThrow('Channel must be a non-empty string');
+    });
+
+    it('accepts normal 32-char channel', () => {
+      expect(() => validateChannel('a'.repeat(32))).not.toThrow();
+    });
+
+    it('rejects empty channel', () => {
+      expect(() => validateChannel('')).toThrow('Channel must be a non-empty string');
     });
 
     it('rejects channel exceeding 32 characters', () => {

@@ -1,6 +1,6 @@
 /**
-* Core unit tests for Authorized Sender domain validation (M03-T04).
-*/
+ * Core unit tests for Authorized Sender domain validation (M03-T04).
+ */
 import { describe, it, expect } from 'vitest';
 import {
   validateChannel,
@@ -31,7 +31,9 @@ describe('Authorized Sender Domain Validation', () => {
     });
 
     it('rejects channel exceeding 32 characters', () => {
-      expect(() => validateChannel('a'.repeat(33))).toThrow('Channel must not exceed 32 characters');
+      expect(() => validateChannel('a'.repeat(33))).toThrow(
+        'Channel must not exceed 32 characters',
+      );
     });
   });
 
@@ -49,15 +51,21 @@ describe('Authorized Sender Domain Validation', () => {
     });
 
     it('rejects empty sender reference', () => {
-      expect(() => validateSenderReference('')).toThrow('Sender reference must be a non-empty string');
+      expect(() => validateSenderReference('')).toThrow(
+        'Sender reference must be a non-empty string',
+      );
     });
 
     it('rejects whitespace-only sender reference', () => {
-      expect(() => validateSenderReference('   ')).toThrow('Sender reference must be a non-empty string');
+      expect(() => validateSenderReference('   ')).toThrow(
+        'Sender reference must be a non-empty string',
+      );
     });
 
     it('rejects sender reference exceeding 255 characters', () => {
-      expect(() => validateSenderReference('a'.repeat(256))).toThrow('Sender reference must not exceed 255 characters');
+      expect(() => validateSenderReference('a'.repeat(256))).toThrow(
+        'Sender reference must not exceed 255 characters',
+      );
     });
   });
 

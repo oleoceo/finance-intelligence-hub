@@ -1,7 +1,7 @@
 /**
-* PostgreSQL integration tests for Classification Rules (M03-T04).
-* Tests CRUD, target FKs/CHECKs, active validation, and archive race scenarios.
-*/
+ * PostgreSQL integration tests for Classification Rules (M03-T04).
+ * Tests CRUD, target FKs/CHECKs, active validation, and archive race scenarios.
+ */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';

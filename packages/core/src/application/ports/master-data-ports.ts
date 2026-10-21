@@ -376,7 +376,10 @@ export interface ClassificationRuleRepository {
  */
 export interface AuthorizedSenderRepository {
   findById(id: string): Promise<AuthorizedSenderRecord | null>;
-  findByChannelAndReference(channel: string, senderReference: string): Promise<AuthorizedSenderRecord | null>;
+  findByChannelAndReference(
+    channel: string,
+    senderReference: string,
+  ): Promise<AuthorizedSenderRecord | null>;
   find(): Promise<AuthorizedSenderRecord[]>;
   create(input: AuthorizedSenderRecord): Promise<void>;
   update(input: UpdateAuthorizedSenderRepoInput): Promise<AuthorizedSenderRecord>;

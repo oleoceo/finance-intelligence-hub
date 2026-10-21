@@ -1,9 +1,9 @@
 /**
-* Authorized Sender configuration use cases (M03-T04).
-*
-* Implements CreateAuthorizedSender, GetAuthorizedSender, ListAuthorizedSenders, UpdateAuthorizedSender.
-* Core logic only; no Database/Kysely/pg/Fastify imports.
-*/
+ * Authorized Sender configuration use cases (M03-T04).
+ *
+ * Implements CreateAuthorizedSender, GetAuthorizedSender, ListAuthorizedSenders, UpdateAuthorizedSender.
+ * Core logic only; no Database/Kysely/pg/Fastify imports.
+ */
 
 import { v7 as uuidv7 } from 'uuid';
 import type { MasterDataTransactionContextT04 } from '../ports/master-data-ports.js';
@@ -130,23 +130,31 @@ export async function updateAuthorizedSender(
   }
 
   // Determine proposed defaults
-  const proposedBookId = input.defaultBookId !== undefined ? input.defaultBookId : existing.defaultBookId;
-  const proposedAccountId = input.defaultAccountId !== undefined ? input.defaultAccountId : existing.defaultAccountId;
+  const proposedBookId =
+    input.defaultBookId !== undefined ? input.defaultBookId : existing.defaultBookId;
+  const proposedAccountId =
+    input.defaultAccountId !== undefined ? input.defaultAccountId : existing.defaultAccountId;
 
   // Validate default consistency
-  validateDefaultConsistency({ defaultBookId: proposedBookId, defaultAccountId: proposedAccountId });
+  validateDefaultConsistency({
+    defaultBookId: proposedBookId,
+    defaultAccountId: proposedAccountId,
+  });
 
   // Lock old and new Books/Accounts
   const bookIds: string[] = [];
   const accountIds: string[] = [];
 
   // Old defaults
-  if (existing.defaultBookId && !bookIds.includes(existing.defaultBookId)) bookIds.push(existing.defaultBookId);
-  if (existing.defaultAccountId && !accountIds.includes(existing.defaultAccountId)) accountIds.push(existing.defaultAccountId);
+  if (existing.defaultBookId && !bookIds.includes(existing.defaultBookId))
+    bookIds.push(existing.defaultBookId);
+  if (existing.defaultAccountId && !accountIds.includes(existing.defaultAccountId))
+    accountIds.push(existing.defaultAccountId);
 
   // New defaults
   if (proposedBookId && !bookIds.includes(proposedBookId)) bookIds.push(proposedBookId);
-  if (proposedAccountId && !accountIds.includes(proposedAccountId)) accountIds.push(proposedAccountId);
+  if (proposedAccountId && !accountIds.includes(proposedAccountId))
+    accountIds.push(proposedAccountId);
 
   // Discover Book from Account
   if (proposedAccountId) {

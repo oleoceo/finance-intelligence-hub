@@ -1,9 +1,9 @@
 /**
-* Classification Rule configuration use cases (M03-T04).
-*
-* Implements CreateClassificationRule, GetClassificationRule, ListClassificationRules, UpdateClassificationRule.
-* Core logic only; no Database/Kysely/pg/Fastify imports.
-*/
+ * Classification Rule configuration use cases (M03-T04).
+ *
+ * Implements CreateClassificationRule, GetClassificationRule, ListClassificationRules, UpdateClassificationRule.
+ * Core logic only; no Database/Kysely/pg/Fastify imports.
+ */
 
 import { v7 as uuidv7 } from 'uuid';
 import { validateNonBlankName } from '../../domain/master-data/normalization.js';
@@ -160,16 +160,32 @@ export async function updateClassificationRule(
   if (existing.targetMerchantId) merchantIds.push(existing.targetMerchantId);
 
   // Proposed targets
-  if (input.targetBookId !== undefined && input.targetBookId !== null && !bookIds.includes(input.targetBookId)) {
+  if (
+    input.targetBookId !== undefined &&
+    input.targetBookId !== null &&
+    !bookIds.includes(input.targetBookId)
+  ) {
     bookIds.push(input.targetBookId);
   }
-  if (input.targetAccountId !== undefined && input.targetAccountId !== null && !accountIds.includes(input.targetAccountId)) {
+  if (
+    input.targetAccountId !== undefined &&
+    input.targetAccountId !== null &&
+    !accountIds.includes(input.targetAccountId)
+  ) {
     accountIds.push(input.targetAccountId);
   }
-  if (input.targetCategoryId !== undefined && input.targetCategoryId !== null && !categoryIds.includes(input.targetCategoryId)) {
+  if (
+    input.targetCategoryId !== undefined &&
+    input.targetCategoryId !== null &&
+    !categoryIds.includes(input.targetCategoryId)
+  ) {
     categoryIds.push(input.targetCategoryId);
   }
-  if (input.targetMerchantId !== undefined && input.targetMerchantId !== null && !merchantIds.includes(input.targetMerchantId)) {
+  if (
+    input.targetMerchantId !== undefined &&
+    input.targetMerchantId !== null &&
+    !merchantIds.includes(input.targetMerchantId)
+  ) {
     merchantIds.push(input.targetMerchantId);
   }
 
@@ -218,10 +234,14 @@ export async function updateClassificationRule(
   });
 
   // Re-read all targets after locking to validate active state
-  const proposedBookId = input.targetBookId !== undefined ? input.targetBookId : existing.targetBookId;
-  const proposedAccountId = input.targetAccountId !== undefined ? input.targetAccountId : existing.targetAccountId;
-  const proposedCategoryId = input.targetCategoryId !== undefined ? input.targetCategoryId : existing.targetCategoryId;
-  const proposedMerchantId = input.targetMerchantId !== undefined ? input.targetMerchantId : existing.targetMerchantId;
+  const proposedBookId =
+    input.targetBookId !== undefined ? input.targetBookId : existing.targetBookId;
+  const proposedAccountId =
+    input.targetAccountId !== undefined ? input.targetAccountId : existing.targetAccountId;
+  const proposedCategoryId =
+    input.targetCategoryId !== undefined ? input.targetCategoryId : existing.targetCategoryId;
+  const proposedMerchantId =
+    input.targetMerchantId !== undefined ? input.targetMerchantId : existing.targetMerchantId;
 
   if (proposedBookId) {
     const book = await ctx.books.findById(proposedBookId);

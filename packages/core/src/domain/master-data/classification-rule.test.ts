@@ -1,6 +1,6 @@
 /**
-* Core unit tests for Classification Rule domain validation (M03-T04).
-*/
+ * Core unit tests for Classification Rule domain validation (M03-T04).
+ */
 import { describe, it, expect } from 'vitest';
 import {
   validateMatchType,
@@ -31,25 +31,45 @@ describe('Classification Rule Domain Validation', () => {
   describe('validateAtLeastOneTarget', () => {
     it('accepts rule with targetBookId', () => {
       expect(() =>
-        validateAtLeastOneTarget({ priority: 10, matchType: 'exact', pattern: 'test', targetBookId: 'uuid' }),
+        validateAtLeastOneTarget({
+          priority: 10,
+          matchType: 'exact',
+          pattern: 'test',
+          targetBookId: 'uuid',
+        }),
       ).not.toThrow();
     });
 
     it('accepts rule with targetAccountId', () => {
       expect(() =>
-        validateAtLeastOneTarget({ priority: 10, matchType: 'exact', pattern: 'test', targetAccountId: 'uuid' }),
+        validateAtLeastOneTarget({
+          priority: 10,
+          matchType: 'exact',
+          pattern: 'test',
+          targetAccountId: 'uuid',
+        }),
       ).not.toThrow();
     });
 
     it('accepts rule with targetCategoryId', () => {
       expect(() =>
-        validateAtLeastOneTarget({ priority: 10, matchType: 'exact', pattern: 'test', targetCategoryId: 'uuid' }),
+        validateAtLeastOneTarget({
+          priority: 10,
+          matchType: 'exact',
+          pattern: 'test',
+          targetCategoryId: 'uuid',
+        }),
       ).not.toThrow();
     });
 
     it('accepts rule with targetMerchantId', () => {
       expect(() =>
-        validateAtLeastOneTarget({ priority: 10, matchType: 'exact', pattern: 'test', targetMerchantId: 'uuid' }),
+        validateAtLeastOneTarget({
+          priority: 10,
+          matchType: 'exact',
+          pattern: 'test',
+          targetMerchantId: 'uuid',
+        }),
       ).not.toThrow();
     });
 

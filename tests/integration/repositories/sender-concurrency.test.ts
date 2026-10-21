@@ -1,7 +1,7 @@
 /**
-* PostgreSQL concurrency/race barrier tests for Authorized Senders (M03-T04).
-* Tests two-connection barriers for Sender assignment/removal vs Book/Account archive scenarios.
-*/
+ * PostgreSQL concurrency/race barrier tests for Authorized Senders (M03-T04).
+ * Tests two-connection barriers for Sender assignment/removal vs Book/Account archive scenarios.
+ */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';

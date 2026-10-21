@@ -6,13 +6,9 @@
  */
 
 import type {
-  ClassificationRuleRecord,
-  UpdateClassificationRuleRepoInput,
-} from '../../domain/master-data/classification-rule.js';
-import type {
-  AuthorizedSenderRecord,
-  UpdateAuthorizedSenderRepoInput,
-} from '../../domain/master-data/authorized-sender.js';
+  ClassificationRuleRepository,
+  AuthorizedSenderRepository,
+} from './rule-sender-ports.js';
 
 /**
  * Input for creating a Book record.
@@ -332,12 +328,14 @@ export interface LockSpec {
  * Provides a way to execute operations within a database transaction.
  * Does not expose Kysely, pg, or any database-specific types to Core.
  */
-export interface TransactionPort {
+export interface TransactionPort<
+  Context extends MasterDataTransactionContext = MasterDataTransactionContext,
+> {
   /**
    * Execute operations within a transaction.
    * The callback receives transaction-scoped repository instances.
    */
-  runInTransaction<T>(fn: (ctx: MasterDataTransactionContext) => Promise<T>): Promise<T>;
+  runInTransaction<T>(fn: (ctx: Context) => Promise<T>): Promise<T>;
 }
 
 /**
@@ -359,31 +357,10 @@ export interface MasterDataTransactionContext {
  */
 export type TransactionContext = MasterDataTransactionContext;
 
-/**
- * Classification Rule repository port (forward declaration to avoid circular imports).
- * Full contract lives in rule-sender-ports.ts.
- */
-export interface ClassificationRuleRepository {
-  findById(id: string): Promise<ClassificationRuleRecord | null>;
-  find(): Promise<ClassificationRuleRecord[]>;
-  create(input: ClassificationRuleRecord): Promise<void>;
-  update(input: UpdateClassificationRuleRepoInput): Promise<ClassificationRuleRecord>;
-}
-
-/**
- * Authorized Sender repository port (forward declaration to avoid circular imports).
- * Full contract lives in rule-sender-ports.ts.
- */
-export interface AuthorizedSenderRepository {
-  findById(id: string): Promise<AuthorizedSenderRecord | null>;
-  findByChannelAndReference(
-    channel: string,
-    senderReference: string,
-  ): Promise<AuthorizedSenderRecord | null>;
-  find(): Promise<AuthorizedSenderRecord[]>;
-  create(input: AuthorizedSenderRecord): Promise<void>;
-  update(input: UpdateAuthorizedSenderRepoInput): Promise<AuthorizedSenderRecord>;
-}
+export type {
+  ClassificationRuleRepository,
+  AuthorizedSenderRepository,
+} from './rule-sender-ports.js';
 
 /**
  * T04 transaction context extension with Classification Rules and Authorized Senders.

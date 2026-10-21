@@ -76,6 +76,7 @@ export class KyselyClassificationRuleRepository implements ClassificationRuleRep
       .selectAll()
       .orderBy('priority', 'asc')
       .orderBy('created_at', 'asc')
+      .orderBy('id', 'asc')
       .execute();
 
     return results.map((r) => this.mapToClassificationRuleRecord(r));

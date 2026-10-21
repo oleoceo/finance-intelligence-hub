@@ -45,7 +45,7 @@ export function validateSenderReference(senderReference: string): void {
   if (trimmed.length === 0) {
     throw new Error('Sender reference must be a non-empty string');
   }
-  if (trimmed.length > 255) {
+  if (senderReference.length > 255) {
     throw new Error('Sender reference must not exceed 255 characters');
   }
 }

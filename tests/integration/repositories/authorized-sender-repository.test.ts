@@ -1,229 +1,199 @@
-/**
- * PostgreSQL integration tests for Authorized Senders (M03-T04).
- * Tests CRUD, identity uniqueness, default consistency, and archive race scenarios.
- */
-import { describe, it, expect, beforeEach } from 'vitest';
-import { Kysely, PostgresDialect } from 'kysely';
-import { Pool } from 'pg';
-import {
-  KyselyAuthorizedSenderRepository,
-  KyselyBookRepository,
-  KyselyAccountRepository,
-} from '@finance-hub/database';
-import type { DB } from '../../database/src/db-types.js';
+﻿import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import {
+  createAuthorizedSender,
+  updateAuthorizedSender,
+  getAuthorizedSender,
+  listAuthorizedSenders,
+  archiveBook,
+  archiveAccount,
+} from '@finance-hub/core';
+import { KyselyAuthorizedSenderRepository } from '@finance-hub/database';
+import { t04Database } from './t04-fixtures.js';
+const env = t04Database();
+const now = () => new Date();
+const input = () => ({ channel: 'custom-channel', senderReference: `  ${randomUUID()}  ` });
 
-let db: Kysely<DB>;
-let senderRepo: KyselyAuthorizedSenderRepository;
-let bookRepo: KyselyBookRepository;
-let accountRepo: KyselyAccountRepository;
-
-beforeEach(async () => {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
-  senderRepo = new KyselyAuthorizedSenderRepository(db);
-  bookRepo = new KyselyBookRepository(db);
-  accountRepo = new KyselyAccountRepository(db);
-});
-
-describe('Authorized Sender PostgreSQL Integration', () => {
-  let bookId: string;
-  let accountId: string;
-
-  beforeEach(async () => {
-    // Create test Book
-    const now = new Date();
-    bookId = randomUUID();
-    await bookRepo.create({
-      id: bookId,
-      name: 'Test Book',
-      normalized_name: 'test_book',
-      currency: 'BRL',
-      timezone: 'America/Sao_Paulo',
-      active: true,
-      archived_at: null,
-      created_at: now,
-      updated_at: now,
-    });
-
-    // Create test Account
-    accountId = randomUUID();
-    await accountRepo.create({
-      id: accountId,
-      book_id: bookId,
-      name: 'Test Account',
-      normalized_name: 'test_account',
-      type: 'checking',
-      currency: 'BRL',
-      institution_name: null,
-      notes: null,
-      active: true,
-      archived_at: null,
-      created_at: now,
-      updated_at: now,
-    });
-  });
-
-  it('creates a sender without defaults', async () => {
-    const now = new Date();
-    const senderId = randomUUID();
-    await senderRepo.create({
-      id: senderId,
-      channel: 'whatsapp',
-      sender_reference: '5511999999999',
-      name: 'Test Sender',
-      default_book_id: null,
-      default_account_id: null,
-      active: true,
-      created_at: now,
-      updated_at: now,
-    });
-
-    const found = await senderRepo.findById(senderId);
-    expect(found).not.toBeNull();
-    expect(found!.channel).toBe('whatsapp');
-    expect(found!.senderReference).toBe('5511999999999');
-    expect(found!.defaultBookId).toBeNull();
-    expect(found!.defaultAccountId).toBeNull();
-  });
-
-  it('creates a sender with defaults', async () => {
-    const now = new Date();
-    const senderId = randomUUID();
-    await senderRepo.create({
-      id: senderId,
-      channel: 'whatsapp',
-      sender_reference: '5511999999998',
-      name: 'Test Sender',
-      default_book_id: bookId,
-      default_account_id: accountId,
-      active: true,
-      created_at: now,
-      updated_at: now,
-    });
-
-    const found = await senderRepo.findById(senderId);
-    expect(found).not.toBeNull();
-    expect(found!.defaultBookId).toBe(bookId);
-    expect(found!.defaultAccountId).toBe(accountId);
-  });
-
-  it('enforces unique (channel, sender_reference)', async () => {
-    const now = new Date();
-    const senderId1 = randomUUID();
-    const senderId2 = randomUUID();
-    await senderRepo.create({
-      id: senderId1,
-      channel: 'whatsapp',
-      sender_reference: '5511999999999',
-      name: 'Sender 1',
-      default_book_id: null,
-      default_account_id: null,
-      active: true,
-      created_at: now,
-      updated_at: now,
-    });
-
-    await expect(
-      senderRepo.create({
-        id: senderId2,
-        channel: 'whatsapp',
-        sender_reference: '5511999999999',
-        name: 'Sender 2',
-        default_book_id: null,
-        default_account_id: null,
-        active: true,
-        created_at: now,
-        updated_at: now,
-      }),
-    ).rejects.toThrow();
-  });
-
-  it('finds sender by channel and reference', async () => {
-    const now = new Date();
-    const senderId = randomUUID();
-    await senderRepo.create({
-      id: senderId,
-      channel: 'whatsapp',
-      sender_reference: '5511999999999',
-      name: 'Test Sender',
-      default_book_id: null,
-      default_account_id: null,
-      active: true,
-      created_at: now,
-      updated_at: now,
-    });
-
-    const found = await senderRepo.findByChannelAndReference('whatsapp', '5511999999999');
-    expect(found).not.toBeNull();
-    expect(found!.id).toBe(senderId);
-  });
-
-  it('updates sender name and deactivates', async () => {
-    const now = new Date();
-    const senderId = randomUUID();
-    await senderRepo.create({
-      id: senderId,
-      channel: 'whatsapp',
-      sender_reference: '5511999999999',
-      name: 'Old Name',
-      default_book_id: null,
-      default_account_id: null,
-      active: true,
-      created_at: now,
-      updated_at: now,
-    });
-
-    const updated = await senderRepo.update({
-      id: senderId,
-      name: 'New Name',
+describe('Authorized Sender through canonical transaction port', () => {
+  it('round trips unchanged identity, defaults and active-only lifecycle', async () => {
+    const t = await env.targets();
+    const identity = input();
+    const sender = await env.run((ctx) =>
+      createAuthorizedSender(
+        { ...identity, defaultBookId: t.book.id, defaultAccountId: t.account.id },
+        ctx,
+        now(),
+      ),
+    );
+    expect(sender).toMatchObject({ ...identity, active: true });
+    expect(await env.run((ctx) => getAuthorizedSender(sender.id, ctx))).toEqual(sender);
+    const updated = await env.run((ctx) =>
+      updateAuthorizedSender({ id: sender.id, name: 'Renamed', active: false }, ctx, now()),
+    );
+    expect(updated).toMatchObject({
+      ...identity,
+      name: 'Renamed',
       active: false,
-      updated_at: new Date(),
+      defaultBookId: t.book.id,
+      defaultAccountId: t.account.id,
     });
-    expect(updated.name).toBe('New Name');
-    expect(updated.active).toBe(false);
+    expect(await env.run((ctx) => listAuthorizedSenders(ctx))).toContainEqual(updated);
+    expect(await env.run((ctx) => ctx.senderDefaults.hasBookDefault(t.book.id))).toBe(true);
+    expect(await env.run((ctx) => ctx.senderDefaults.hasAccountDefault(t.account.id))).toBe(true);
+    await expect(env.run((ctx) => archiveBook(t.book.id, ctx, now()))).rejects.toMatchObject({
+      code: 'DEPENDENCY_ERROR',
+    });
+    await expect(env.run((ctx) => archiveAccount(t.account.id, ctx, now()))).rejects.toMatchObject({
+      code: 'DEPENDENCY_ERROR',
+    });
+    expect(
+      await env.run((ctx) => updateAuthorizedSender({ id: sender.id, active: true }, ctx, now())),
+    ).toMatchObject({ active: true });
   });
-
-  it('clears defaults by setting to null', async () => {
-    const now = new Date();
-    const senderId = randomUUID();
-    await senderRepo.create({
-      id: senderId,
-      channel: 'whatsapp',
-      sender_reference: '5511999999999',
-      name: 'Test Sender',
-      default_book_id: bookId,
-      default_account_id: accountId,
-      active: true,
-      created_at: now,
-      updated_at: now,
-    });
-
-    const updated = await senderRepo.update({
-      id: senderId,
-      default_book_id: null,
-      default_account_id: null,
-      updated_at: new Date(),
-    });
-    expect(updated.defaultBookId).toBeNull();
-    expect(updated.defaultAccountId).toBeNull();
+  it('accepts optional defaults and explicit inactive create', async () => {
+    expect(
+      await env.run((ctx) => createAuthorizedSender({ ...input(), active: false }, ctx, now())),
+    ).toMatchObject({ active: false, defaultBookId: null, defaultAccountId: null });
   });
-
-  it('rejects default_account_id without default_book_id (CHECK constraint)', async () => {
-    const now = new Date();
-    const senderId = randomUUID();
+  it('rejects Account without Book, including merged PATCH clearing only Book', async () => {
+    const t = await env.targets();
     await expect(
-      senderRepo.create({
-        id: senderId,
-        channel: 'whatsapp',
-        sender_reference: '5511999999999',
-        name: 'Test Sender',
-        default_book_id: null,
-        default_account_id: accountId,
-        active: true,
-        created_at: now,
-        updated_at: now,
+      env.run((ctx) =>
+        createAuthorizedSender({ ...input(), defaultAccountId: t.account.id }, ctx, now()),
+      ),
+    ).rejects.toThrow('requires');
+    const sender = await env.run((ctx) =>
+      createAuthorizedSender(
+        { ...input(), defaultBookId: t.book.id, defaultAccountId: t.account.id },
+        ctx,
+        now(),
+      ),
+    );
+    await expect(
+      env.run((ctx) => updateAuthorizedSender({ id: sender.id, defaultBookId: null }, ctx, now())),
+    ).rejects.toThrow('requires');
+    expect(await env.run((ctx) => getAuthorizedSender(sender.id, ctx))).toEqual(sender);
+  });
+  it('rejects cross-Book defaults on create and PATCH, including inactive Sender', async () => {
+    const a = await env.targets();
+    const b = await env.targets();
+    await expect(
+      env.run((ctx) =>
+        createAuthorizedSender(
+          { ...input(), active: false, defaultBookId: a.book.id, defaultAccountId: b.account.id },
+          ctx,
+          now(),
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'DEFAULT_ACCOUNT_BOOK_MISMATCH' });
+    const sender = await env.run((ctx) =>
+      createAuthorizedSender(
+        { ...input(), defaultBookId: a.book.id, defaultAccountId: a.account.id },
+        ctx,
+        now(),
+      ),
+    );
+    await expect(
+      env.run((ctx) =>
+        updateAuthorizedSender({ id: sender.id, defaultBookId: b.book.id }, ctx, now()),
+      ),
+    ).rejects.toMatchObject({ code: 'DEFAULT_ACCOUNT_BOOK_MISMATCH' });
+  });
+  for (const kind of ['book', 'account'] as const) {
+    it(`rejects inactive ${kind} for inactive Sender create/update`, async () => {
+      const t = await env.targets();
+      const sender = await env.run((ctx) => createAuthorizedSender(input(), ctx, now()));
+      await env.run((ctx) =>
+        (kind === 'book' ? archiveBook : archiveAccount)(t[kind].id, ctx, now()),
+      );
+      const defaults = {
+        defaultBookId: t.book.id,
+        defaultAccountId: kind === 'account' ? t.account.id : null,
+      };
+      await expect(
+        env.run((ctx) =>
+          createAuthorizedSender({ ...input(), ...defaults, active: false }, ctx, now()),
+        ),
+      ).rejects.toMatchObject({ code: `${kind.toUpperCase()}_INACTIVE` });
+      await expect(
+        env.run((ctx) =>
+          updateAuthorizedSender({ id: sender.id, ...defaults, active: false }, ctx, now()),
+        ),
+      ).rejects.toMatchObject({ code: `${kind.toUpperCase()}_INACTIVE` });
+    });
+    it(`rejects missing ${kind}`, async () => {
+      const t = await env.targets();
+      await expect(
+        env.run((ctx) =>
+          createAuthorizedSender(
+            {
+              ...input(),
+              defaultBookId: kind === 'book' ? randomUUID() : t.book.id,
+              defaultAccountId: kind === 'account' ? randomUUID() : null,
+            },
+            ctx,
+            now(),
+          ),
+        ),
+      ).rejects.toMatchObject({ code: `${kind.toUpperCase()}_NOT_FOUND` });
+    });
+  }
+  it('clears defaults explicitly, allowing both archives without deleting Sender', async () => {
+    const t = await env.targets();
+    const sender = await env.run((ctx) =>
+      createAuthorizedSender(
+        { ...input(), defaultBookId: t.book.id, defaultAccountId: t.account.id },
+        ctx,
+        now(),
+      ),
+    );
+    const updated = await env.run((ctx) =>
+      updateAuthorizedSender(
+        { id: sender.id, defaultBookId: null, defaultAccountId: null, name: null },
+        ctx,
+        now(),
+      ),
+    );
+    expect(updated).toMatchObject({ defaultBookId: null, defaultAccountId: null, name: null });
+    expect(await env.run((ctx) => ctx.senderDefaults.hasBookDefault(t.book.id))).toBe(false);
+    expect(await env.run((ctx) => ctx.senderDefaults.hasAccountDefault(t.account.id))).toBe(false);
+    await env.run((ctx) => archiveAccount(t.account.id, ctx, now()));
+    await env.run((ctx) => archiveBook(t.book.id, ctx, now()));
+    expect(await env.run((ctx) => getAuthorizedSender(sender.id, ctx))).toEqual(updated);
+  });
+  it('PostgreSQL enforces identity uniqueness for concurrent Core creates', async () => {
+    const identity = input();
+    const results = await Promise.allSettled([
+      env.run((ctx) => createAuthorizedSender(identity, ctx, now())),
+      env.run((ctx) => createAuthorizedSender(identity, ctx, now())),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    expect(
+      (await env.run((ctx) => listAuthorizedSenders(ctx))).filter(
+        (s) => s.senderReference === identity.senderReference,
+      ),
+    ).toHaveLength(1);
+  });
+  it('repository preserves FK/CHECK/default Book consistency enforcement', async () => {
+    const t = await env.targets();
+    const b = await env.targets();
+    const template = await env.run((ctx) => createAuthorizedSender(input(), ctx, now()));
+    const repo = new KyselyAuthorizedSenderRepository(env.db);
+    await expect(
+      repo.create({ ...template, id: randomUUID(), ...input(), defaultBookId: randomUUID() }),
+    ).rejects.toThrow('reference constraint');
+    await expect(
+      repo.create({ ...template, id: randomUUID(), ...input(), defaultAccountId: t.account.id }),
+    ).rejects.toThrow('check constraint');
+    await expect(
+      repo.create({
+        ...template,
+        id: randomUUID(),
+        ...input(),
+        defaultBookId: b.book.id,
+        defaultAccountId: t.account.id,
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow('reference constraint');
   });
 });

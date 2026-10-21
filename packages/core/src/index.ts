@@ -69,6 +69,7 @@ export {
   type TransactionPort,
   type TransactionContext,
   type MasterDataTransactionContext,
+  type MasterDataTransactionContextT04,
   ConfigurationLockSetChangedError,
 } from './application/ports/master-data-ports.js';
 

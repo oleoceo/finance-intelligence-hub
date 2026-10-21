@@ -26,7 +26,7 @@ function isPgUniqueViolation(error: unknown): boolean {
 
 function translatePgError(error: unknown): never {
   if (isPgUniqueViolation(error)) {
-    throw new ValidationError('Account uniqueness constraint violated', 'name');
+    throw new ValidationError('Account uniqueness constraint violated', 'name', error);
   }
   throw error instanceof Error ? error : new Error(String(error));
 }

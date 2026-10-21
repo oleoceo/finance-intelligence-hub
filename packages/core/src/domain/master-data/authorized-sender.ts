@@ -31,11 +31,10 @@ export interface UpdateAuthorizedSenderInput {
 }
 
 export function validateChannel(channel: string): void {
-  const trimmed = channel.trim();
-  if (trimmed.length === 0) {
+  if (channel.trim().length === 0) {
     throw new Error('Channel must be a non-empty string');
   }
-  if (trimmed.length > 32) {
+  if (channel.length > 32) {
     throw new Error('Channel must not exceed 32 characters');
   }
 }

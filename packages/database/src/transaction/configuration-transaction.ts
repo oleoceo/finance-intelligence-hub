@@ -104,7 +104,9 @@ export class KyselyTransactionPort implements TransactionPort<MasterDataTransact
           return await fn(ctx);
         });
       } catch (error) {
-        if (!(error instanceof ConfigurationLockSetChangedError)) throw error;
+        const deadlock =
+          typeof error === 'object' && error !== null && 'code' in error && error.code === '40P01';
+        if (!(error instanceof ConfigurationLockSetChangedError) && !deadlock) throw error;
       }
     }
     throw new ConcurrencyError('Configuration references changed repeatedly; retry operation');

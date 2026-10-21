@@ -51,34 +51,37 @@ async function validateTargets(
     if (currentLocks[kind]?.some((id) => !locks[kind]?.includes(id)))
       throw new ConfigurationLockSetChangedError();
   }
-  if ((currentLocks.books?.length ?? 0) > 1)
+  const books = await Promise.all((currentLocks.books ?? []).map((id) => ctx.books.findById(id)));
+  const account = target.targetAccountId
+    ? await ctx.accounts.findById(target.targetAccountId)
+    : null;
+  const category = target.targetCategoryId
+    ? await ctx.categories.findById(target.targetCategoryId)
+    : null;
+  const merchant = target.targetMerchantId
+    ? await ctx.merchants.findById(target.targetMerchantId)
+    : null;
+  if (books.some((book) => !book))
+    throw new MasterDataError('Target Book not found', 'BOOK_NOT_FOUND');
+  if (target.targetAccountId && !account)
+    throw new MasterDataError('Target Account not found', 'ACCOUNT_NOT_FOUND');
+  if (target.targetCategoryId && !category)
+    throw new MasterDataError('Target Category not found', 'CATEGORY_NOT_FOUND');
+  if (target.targetMerchantId && !merchant)
+    throw new MasterDataError('Target Merchant not found', 'MERCHANT_NOT_FOUND');
+  if (books.length > 1)
     throw new MasterDataError(
       'Rule targets must belong to the same Book',
       'RULE_TARGET_CONTEXT_MISMATCH',
     );
-  for (const id of currentLocks.books ?? []) {
-    const book = await ctx.books.findById(id);
-    if (!book) throw new MasterDataError('Target Book not found', 'BOOK_NOT_FOUND');
-    if (!book.active) throw new MasterDataError('Target Book must be active', 'BOOK_INACTIVE');
-  }
-  if (target.targetAccountId) {
-    const account = await ctx.accounts.findById(target.targetAccountId);
-    if (!account) throw new MasterDataError('Target Account not found', 'ACCOUNT_NOT_FOUND');
-    if (!account.active)
-      throw new MasterDataError('Target Account must be active', 'ACCOUNT_INACTIVE');
-  }
-  if (target.targetCategoryId) {
-    const category = await ctx.categories.findById(target.targetCategoryId);
-    if (!category) throw new MasterDataError('Target Category not found', 'CATEGORY_NOT_FOUND');
-    if (!category.active)
-      throw new MasterDataError('Target Category must be active', 'CATEGORY_INACTIVE');
-  }
-  if (target.targetMerchantId) {
-    const merchant = await ctx.merchants.findById(target.targetMerchantId);
-    if (!merchant) throw new MasterDataError('Target Merchant not found', 'MERCHANT_NOT_FOUND');
-    if (!merchant.active)
-      throw new MasterDataError('Target Merchant must be active', 'MERCHANT_INACTIVE');
-  }
+  if (books.some((book) => !book!.active))
+    throw new MasterDataError('Target Book must be active', 'BOOK_INACTIVE');
+  if (account && !account.active)
+    throw new MasterDataError('Target Account must be active', 'ACCOUNT_INACTIVE');
+  if (category && !category.active)
+    throw new MasterDataError('Target Category must be active', 'CATEGORY_INACTIVE');
+  if (merchant && !merchant.active)
+    throw new MasterDataError('Target Merchant must be active', 'MERCHANT_INACTIVE');
 }
 
 export async function createClassificationRule(

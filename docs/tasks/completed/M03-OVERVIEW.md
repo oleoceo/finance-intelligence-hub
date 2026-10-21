@@ -1,13 +1,12 @@
-# M03 — Master Data / Configuration: Planning Overview
+# M03 — Master Data / Configuration: completed milestone record
 
-**Status:** IN PROGRESS
-**Implementation:** T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 PLANNED
-**T01–T05:** T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 PLANNED
-**Authorization:** T01, T02, T03 and T04 are human accepted and DONE. T05 is the next allowed implementation task. No merge or T05 implementation.
+**Status:** DONE
+**Implementation:** T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 DONE
+**Approval:** All five tasks are human accepted. T05 accepted implementation head: `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions [run 39640634314](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39640634314) = SUCCESS. Draft PR #3 remains unmerged.
 
 ## Authority and baseline
 
-Read AGENTS.md, PROJECT_STATE.md, this overview and the selected task. M01/M02 are DONE and accepted; migrations 001–005 are unchanged. Historical baseline: 4 unit files / 35 tests; 8 integration files / 74 tests. Accepted T03 evidence is recorded below; documentation closure does not rerun application suites locally.
+Read AGENTS.md, PROJECT_STATE.md, this overview and the selected task before future work. M01/M02/M03 are DONE and accepted; migrations 001–005 are unchanged. Historical M02 baseline: 4 unit files / 35 tests; 8 integration files / 74 tests. Planning rationale and earlier task evidence below are retained as historical context. Documentation closure does not rerun application suites locally.
 
 Frozen routing: FINAL-FREEZE-DECISIONS §§5–6, 78–97; 01-MVP-REQUIREMENTS §§5–22, 63–65; 02-DOMAIN-MODEL §§9–65, 138–146, 250; 03-ARCHITECTURE §§9–14; 04-DATABASE §§14–38 and Transaction reference columns; 05-API-CONTRACTS §§2–10, 14–27; 07-SECURITY §§14–32, 62–64; 09-ROADMAP-TESTS §§83–93. Accepted ADR-001/002 establish the stack/UUID baseline; neither changes.
 
@@ -15,15 +14,15 @@ Frozen routing: FINAL-FREEZE-DECISIONS §§5–6, 78–97; 01-MVP-REQUIREMENTS �
 
 | Task | Ownership | Dependencies after authorization |
 | --- | --- | --- |
-| [T01](../completed/M03-T01.md) | Primitives, errors and Core ports | Accepted M02 |
-| [T02](../completed/M03-T02.md) | Books/Accounts; usage/default readers | T01 |
-| [T03](../completed/M03-T03.md) | Categories/Merchants; hierarchy updates | T01 |
-| [T04](../completed/M03-T04.md) | Rules/Senders configuration | T02 and T03 |
+| [T01](M03-T01.md) | Primitives, errors and Core ports | Accepted M02 |
+| [T02](M03-T02.md) | Books/Accounts; usage/default readers | T01 |
+| [T03](M03-T03.md) | Categories/Merchants; hierarchy updates | T01 |
+| [T04](M03-T04.md) | Rules/Senders configuration | T02 and T03 |
 | [T05](M03-T05.md) | API and milestone integration | T01–T04 |
 
 Preferred execution: human authorization -> T01 -> T02 -> T03 -> T04 -> T05.
 Formal graph: T01 -> {T02, T03}; {T02, T03} -> T04; {T01, T02, T03, T04} -> T05.
-T02 must pass before T04 exists. T03 may use T01 Book lookup/lock contracts without depending on T02 use cases.
+T02 passed before T04 implementation. T03 may use T01 Book lookup/lock contracts without depending on T02 use cases.
 
 ## Dependency direction
 
@@ -33,7 +32,7 @@ T02 must pass before T04 exists. T03 may use T01 Book lookup/lock contracts with
 
 API -> Core; API composition -> Database; Database -> Core contracts. Core must never import Database, Kysely, pg or Fastify. Transaction ports must not expose Kysely objects to Core. Prefer explicit small use cases; no required abstract base-use-case class. Extract abstractions only for demonstrated duplication.
 
-Core currently has no application convention beyond a stub; the proposed ports directory is a placement decision. Colocate unit tests under `packages/core/src/**/*.test.ts` to match current Vitest discovery; integration tests belong under `tests/integration/`.
+At original planning, Core had no application convention beyond a stub; the proposed ports directory was a placement decision. Unit tests were colocated under `packages/core/src/**/*.test.ts` and integration tests under `tests/integration/`.
 
 ## Lifecycle and authority decisions
 
@@ -84,25 +83,25 @@ Participation:
 
 Simple uniqueness remains PostgreSQL's responsibility. No global Merchant creation lock, Redis authority, migration or isolation-level change. Get/list need no write locks.
 
-## Acceptance and test strategy
+## Accepted test strategy
 
-- [ ] Core unit: normalization/raw preservation; four-entity archive lifecycle versus active-only entities; immutable fields; hierarchy/cycles; rule context/active targets; sender defaults.
-- [ ] PostgreSQL through Core ports/use cases: CRUD and accepted M02 constraints; actual historical usage guards including transfer destination and voided rows; preserved archive history; concurrent duplicate Merchant success.
-- [ ] Two independent connections with barriers: both orders of archive/reference/default operations; Book currency/CreateAccount; Rule/archive; concurrent Category moves. Assert final invariants and bounded completion, not sleep-based luck.
-- [ ] T02 uses synthetic sender rows/minimal reader and passes before T04 implementation.
-- [ ] API: all 24 frozen routes; deterministic T05 statuses/codes; unknown/server-controlled field rejection; exact admin scope behavior; PATCH reparenting.
-- [ ] Existing 35 unit/74 integration baseline remains green with new tests actually discovered. Never use finance_hub_prod.
-- [ ] Synthetic bootstrap through use cases/API demonstrates configurable seed data (roadmap §§91–93); no hardcoded Production migration and no live Lab execution.
+- [x] Core unit: normalization/raw preservation; four-entity archive lifecycle versus active-only entities; immutable fields; hierarchy/cycles; rule context/active targets; sender defaults.
+- [x] PostgreSQL through Core ports/use cases: CRUD and accepted M02 constraints; actual historical usage guards including transfer destination and voided rows; preserved archive history; concurrent duplicate Merchant success.
+- [x] Two independent connections with barriers: both orders of archive/reference/default operations; Book currency/CreateAccount; Rule/archive; concurrent Category moves. Assert final invariants and bounded completion, not sleep-based luck.
+- [x] T02 uses synthetic sender rows/minimal reader and passes before T04 implementation.
+- [x] API: all 24 frozen routes; deterministic T05 statuses/codes; unknown/server-controlled field rejection; exact admin scope behavior; PATCH reparenting.
+- [x] Existing 35 unit/74 integration baseline remains green with new tests actually discovered. Never use finance_hub_prod.
+- [x] Synthetic bootstrap through use cases/API demonstrates configurable seed data (roadmap §§91–93); no hardcoded Production migration and no live Lab execution.
 
-Future commands: pnpm test; pnpm test:integration:postgres; pnpm lint; pnpm format:check; pnpm build; pnpm typecheck, in the accepted native-WSL local/test environment after authorization.
+Accepted implementation validation: pnpm install --frozen-lockfile; pnpm lint; pnpm format:check; pnpm build; pnpm typecheck; pnpm test; pnpm test:integration:postgres, in native WSL and final GitHub Actions CI.
 
-## Original planning boundaries and remaining review (historical)
+## Original planning boundaries (historical)
 
 Only PROJECT_STATE.md and these six M03 documents may change now. No source/tests/migrations/SQL/packages/lockfiles/configs/ADRs/frozen changes, M04–M08 behavior, Gate 0, VPS/Lab/Production activity, commit or push. No Transaction creation/calculation/Money/human_ref/Last/idempotency/audit, Inbox/parser/confirmation/AI, WhatsApp, refunds/void, reports/export.
 
 Future file ownership is listed in each task, not authorized now. Workspace manifests do not yet declare all prospective Core consumer dependencies. Necessary package wiring must be explicitly included in later implementation authorization, without upgrades; do not evade this using cross-package relative imports.
 
-Frozen documents do not enumerate every PATCH field/status. T05 records deterministic bounded interpretations, also used for normalization details and reparenting. No demonstrated schema/frozen blocker was found; human review of these interpretations and future wiring scope remains pending.
+Frozen documents do not enumerate every PATCH field/status. T05 records deterministic bounded interpretations, also used for normalization details and reparenting. No demonstrated schema/frozen blocker was found; these interpretations were accepted with T05.
 
 ## Original planning correction verification (historical)
 
@@ -115,13 +114,13 @@ Executed for this documentation correction on 2026-10-20:
 - git diff --name-only -- docs/frozen: empty; frozen documentation unchanged.
 - Additional explicit checks cover all seven allowed paths, the untracked documents' whitespace and PLANNING/PLANNED/NOT STARTED state markers.
 
-That historical documentation verification did not execute application suites or change application behavior. Current milestone and task states are listed above; its original planning authorization does not govern this accepted T03 closure.
+That historical documentation verification did not execute application suites or change application behavior. Current milestone and task states are listed above; its original planning authorization does not govern this completed M03 record.
 
-## Accepted tasks and current closure
+## Accepted T01–T03 evidence
 
-M03 remains IN PROGRESS. T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 PLANNED and next allowed implementation task. T04 implementation is human accepted; current action: documentation closure correction and final PR #2 CI. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
+M03 is DONE. T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 DONE. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
 
-Accepted records: [T01](../completed/M03-T01.md), [T02](../completed/M03-T02.md), [T03](../completed/M03-T03.md). T01/T02 records are unchanged by T03 closure.
+Accepted records: [T01](M03-T01.md), [T02](M03-T02.md), [T03](M03-T03.md). T01/T02 records are unchanged by T03 closure.
 
 T03 human-accepted head: `119f8d86f9ea307be979f6051d83958e7a563549`. Final accepted GitHub Actions [run 39506256233](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39506256233): full CI GREEN; unit 11 files / 146 tests PASS (Category 31, Merchant 13); integration 10 files / 136 tests PASS; T03 integration 36 tests PASS. Build, typecheck, lint and formatting PASS. Accepted hierarchy, lifecycle, lock/retry, two-backend concurrency, uniqueness, duplicate-Merchant and historical-reference behavior is detailed in the completed T03 record.
 
@@ -130,4 +129,10 @@ The accepted T03 closure moved T03 to completed/ and updated PROJECT_STATE.md an
 
 ## Final accepted T04 evidence
 
-T04 is human accepted and DONE; see [completed T04](../completed/M03-T04.md). Accepted implementation head: 681a51b37d7ea0e917a6f2b401e8e847a4bbcb53; accepted GitHub Actions [run 39527608979](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39527608979) = SUCCESS. Unit 14 files / 215 tests PASS; PostgreSQL integration 14 files / 199 tests PASS. T04 contributes 69 unit and 63 integration tests, including 28 independent-backend races. Frozen install, lint, format:check, build and typecheck PASS. No remaining T04 blocker. M03 remains IN PROGRESS because T05 is PLANNED and the next allowed implementation task. Documentation closure does not rerun local application suites. Draft PR #2 remains unmerged; no T05 implementation or live infrastructure work is authorized by this closure.
+T04 is human accepted and DONE; see [completed T04](M03-T04.md). Accepted implementation head: 681a51b37d7ea0e917a6f2b401e8e847a4bbcb53; accepted GitHub Actions [run 39527608979](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39527608979) = SUCCESS. Unit 14 files / 215 tests PASS; PostgreSQL integration 14 files / 199 tests PASS. T04 contributes 69 unit and 63 integration tests, including 28 independent-backend races. Frozen install, lint, format:check, build and typecheck PASS. No remaining T04 blocker. T04 PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS.
+
+## Final accepted T05 and M03 evidence
+
+T05 is human accepted and DONE; see [completed T05](M03-T05.md). Accepted implementation head: `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions [run 39640634314](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39640634314) = SUCCESS. Final M03 suite: unit 17 files / 504 tests PASS; PostgreSQL integration 15 files / 236 tests PASS. T05 contributes 289 unit and 37 integration tests relative to accepted T04. The transport configuration suite passed 217 tests and API/PostgreSQL configuration suite passed 37 tests. Frozen install, lint, format:check, build and typecheck PASS. Remaining T05 and M03 issues: none.
+
+All five M03 tasks are DONE. M04 remains NOT STARTED and is not authorized by this closure. Gate 0 remains NOT EXECUTED. Draft PR #3 remains unmerged; no live infrastructure activity occurred.

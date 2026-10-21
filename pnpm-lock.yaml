@@ -168,6 +168,9 @@ importers:
       '@fastify/type-provider-typebox':
         specifier: ^6.3.0
         version: 6.3.0(ajv-formats@3.0.1(ajv@8.20.0))(typebox@1.4.1)
+      '@finance-hub/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@finance-hub/database':
         specifier: workspace:*
         version: link:../../packages/database

@@ -26,3 +26,4 @@ export {
   KyselyTransactionPort,
   KyselyConfigurationLockPort,
 } from './transaction/configuration-transaction.js';
+export { createConfigurationStore } from './configuration-store.js';

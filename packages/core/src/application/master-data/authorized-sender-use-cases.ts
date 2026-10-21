@@ -43,21 +43,22 @@ async function validateDefaults(
 ) {
   validateDefaultConsistency(defaults);
   const book = defaults.defaultBookId ? await ctx.books.findById(defaults.defaultBookId) : null;
-  if (defaults.defaultBookId) {
-    if (!book) throw new MasterDataError('Default Book not found', 'BOOK_NOT_FOUND');
-    if (!book.active) throw new MasterDataError('Default Book must be active', 'BOOK_INACTIVE');
-  }
-  if (defaults.defaultAccountId) {
-    const account = await ctx.accounts.findById(defaults.defaultAccountId);
-    if (!account) throw new MasterDataError('Default Account not found', 'ACCOUNT_NOT_FOUND');
-    if (!account.active)
-      throw new MasterDataError('Default Account must be active', 'ACCOUNT_INACTIVE');
-    if (account.bookId !== defaults.defaultBookId || account.currency !== book?.currency)
-      throw new MasterDataError(
-        'Default Account must belong to the specified Default Book and currency',
-        'DEFAULT_ACCOUNT_BOOK_MISMATCH',
-      );
-  }
+  const account = defaults.defaultAccountId
+    ? await ctx.accounts.findById(defaults.defaultAccountId)
+    : null;
+  if (defaults.defaultBookId && !book)
+    throw new MasterDataError('Default Book not found', 'BOOK_NOT_FOUND');
+  if (defaults.defaultAccountId && !account)
+    throw new MasterDataError('Default Account not found', 'ACCOUNT_NOT_FOUND');
+  if (account && (account.bookId !== defaults.defaultBookId || account.currency !== book?.currency))
+    throw new MasterDataError(
+      'Default Account must belong to the specified Default Book and currency',
+      'DEFAULT_ACCOUNT_BOOK_MISMATCH',
+    );
+  if (book && !book.active)
+    throw new MasterDataError('Default Book must be active', 'BOOK_INACTIVE');
+  if (account && !account.active)
+    throw new MasterDataError('Default Account must be active', 'ACCOUNT_INACTIVE');
 }
 export async function createAuthorizedSender(
   input: CreateAuthorizedSenderInput,
@@ -76,7 +77,7 @@ export async function createAuthorizedSender(
   await validateDefaults(defaults, ctx);
   const record: AuthorizedSenderRecord = {
     id: uuidv7(),
-    channel: input.channel.trim(),
+    channel: input.channel,
     senderReference: input.senderReference,
     name: input.name ?? null,
     ...defaults,

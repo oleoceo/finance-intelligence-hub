@@ -26,7 +26,7 @@ function isPgUniqueViolation(error: unknown): boolean {
 
 function translatePgError(error: unknown): never {
   if (isPgUniqueViolation(error)) {
-    throw new ValidationError('Book uniqueness constraint violated', 'name');
+    throw new ValidationError('Book uniqueness constraint violated', 'name', error);
   }
   throw error instanceof Error ? error : new Error(String(error));
 }

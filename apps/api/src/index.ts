@@ -1,6 +1,17 @@
 import Fastify from 'fastify';
 import { v7 as uuidv7 } from 'uuid';
-import { checkPostgreSQLReadiness } from '@finance-hub/database';
+import { checkPostgreSQLReadiness, createConfigurationStore } from '@finance-hub/database';
+import type { ConfigurationOptions } from './routes/admin/shared.js';
+import { adminAuthentication, type Credentials } from './middleware/auth.js';
+import { ApiError, installErrorHandler } from './middleware/errors.js';
+import { registerBooks } from './routes/admin/books.js';
+import { registerAccounts } from './routes/admin/accounts.js';
+import { registerCategories } from './routes/admin/categories.js';
+import { registerMerchants } from './routes/admin/merchants.js';
+import { registerClassificationRules } from './routes/admin/classification-rules.js';
+import { registerAuthorizedSenders } from './routes/admin/authorized-senders.js';
+import { normalizeName } from '@finance-hub/core';
+import { strict } from './schemas/configuration.js';
 
 const ALLOWED_CORRELATION_CHARS = /^[A-Za-z0-9._:-]+$/;
 const MAX_CORRELATION_LENGTH = 128;
@@ -18,8 +29,14 @@ function isValidCorrelationId(value: unknown): value is string {
   return true;
 }
 
-function buildApp() {
+export interface AppOptions extends Credentials {
+  transactions?: ConfigurationOptions['transactions'];
+  now?: () => Date;
+}
+function buildApp(options: AppOptions = {}) {
   const app = Fastify({
+    exposeHeadRoutes: false,
+    ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: false } },
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
       redact: {
@@ -61,6 +78,26 @@ function buildApp() {
     disableRequestLogging: false,
   });
 
+  installErrorHandler(app);
+  const authenticate = adminAuthentication({
+    adminToken: options.adminToken ?? process.env.FINANCE_ADMIN_TOKEN,
+    ingestToken: options.ingestToken ?? process.env.FINANCE_INGEST_TOKEN,
+  });
+  const store =
+    !options.transactions && process.env.DATABASE_URL
+      ? createConfigurationStore(process.env.DATABASE_URL)
+      : undefined;
+  if (store) app.addHook('onClose', async () => store.close());
+  const configuration: ConfigurationOptions = {
+    transactions: options.transactions ??
+      store?.transactions ?? {
+        async runInTransaction() {
+          throw new ApiError(503, 'DATABASE_UNAVAILABLE');
+        },
+      },
+    now: options.now ?? (() => new Date()),
+  };
+
   // Add correlation ID extraction hook
   app.addHook('onRequest', (request, _reply, done) => {
     const rawCorrelationHeader = request.headers['x-correlation-id'];
@@ -88,6 +125,52 @@ function buildApp() {
       correlation_id: correlationId,
     });
     done();
+  });
+
+  app.register(async (admin) => {
+    admin.addHook('onRequest', authenticate);
+    admin.addHook('onRoute', (route) => {
+      route.schema = { ...route.schema, querystring: route.schema?.querystring ?? strict({}) };
+    });
+    admin.addHook('preValidation', async (request) => {
+      const body = request.body as Record<string, unknown> | null;
+      const schema = request.routeOptions.schema?.body as
+        { properties?: Record<string, { maxLength?: number }> } | undefined;
+      if (!body || typeof body !== 'object') return;
+      const rawRouterPath =
+        (request as unknown as { routerPath?: string }).routerPath ?? request.url ?? '';
+      const isSenderRoute = rawRouterPath.includes('authorized-senders');
+      // AuthorizedSender.name is raw VARCHAR(160) with no normalized_name; constrain only raw length.
+      // Book/Account/Category/Merchant name: prove BOTH raw and normalized values fit storage limits.
+      const nameValue = body['name'];
+      if (typeof nameValue === 'string') {
+        const limit = schema?.properties?.['name']?.maxLength as number | undefined;
+        if (limit) {
+          if (isSenderRoute) {
+            if ([...nameValue].length > limit)
+              throw new ApiError(422, 'VALIDATION_ERROR', 'invalid_request');
+          } else {
+            const rawLen = [...nameValue].length;
+            const normLen = [...normalizeName(nameValue)].length;
+            if (rawLen > limit || normLen > limit)
+              throw new ApiError(422, 'VALIDATION_ERROR', 'invalid_request');
+          }
+        }
+      }
+      // ClassificationRule.pattern: prove raw and normalized pattern fit 500.
+      const patternValue = body['pattern'];
+      if (typeof patternValue === 'string') {
+        const limit = schema?.properties?.['pattern']?.maxLength as number | undefined;
+        if (limit && [...patternValue.trim().toLowerCase()].length > limit)
+          throw new ApiError(422, 'VALIDATION_ERROR', 'invalid_request');
+      }
+    });
+    registerBooks(admin, configuration);
+    registerAccounts(admin, configuration);
+    registerCategories(admin, configuration);
+    registerMerchants(admin, configuration);
+    registerClassificationRules(admin, configuration);
+    registerAuthorizedSenders(admin, configuration);
   });
 
   // Health endpoint - independent of external dependencies

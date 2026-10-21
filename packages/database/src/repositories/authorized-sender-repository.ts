@@ -42,13 +42,13 @@ function isPgCheckViolation(error: unknown): boolean {
 
 function translatePgError(error: unknown, field?: string): never {
   if (isPgUniqueViolation(error)) {
-    throw new ValidationError('Authorized Sender uniqueness constraint violated', field);
+    throw new ValidationError('Authorized Sender uniqueness constraint violated', field, error);
   }
   if (isPgForeignKeyViolation(error)) {
-    throw new ValidationError('Authorized Sender reference constraint violated', field);
+    throw new ValidationError('Authorized Sender reference constraint violated', field, error);
   }
   if (isPgCheckViolation(error)) {
-    throw new ValidationError('Authorized Sender check constraint violated', field);
+    throw new ValidationError('Authorized Sender check constraint violated', field, error);
   }
   throw error instanceof Error ? error : new Error(String(error));
 }

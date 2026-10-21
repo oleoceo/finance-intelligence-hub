@@ -5,6 +5,11 @@
  * Core MUST NOT import Database, Kysely, pg, or Fastify.
  */
 
+import type {
+  ClassificationRuleRepository,
+  AuthorizedSenderRepository,
+} from './rule-sender-ports.js';
+
 /**
  * Input for creating a Book record.
  */
@@ -323,12 +328,14 @@ export interface LockSpec {
  * Provides a way to execute operations within a database transaction.
  * Does not expose Kysely, pg, or any database-specific types to Core.
  */
-export interface TransactionPort {
+export interface TransactionPort<
+  Context extends MasterDataTransactionContext = MasterDataTransactionContext,
+> {
   /**
    * Execute operations within a transaction.
    * The callback receives transaction-scoped repository instances.
    */
-  runInTransaction<T>(fn: (ctx: MasterDataTransactionContext) => Promise<T>): Promise<T>;
+  runInTransaction<T>(fn: (ctx: Context) => Promise<T>): Promise<T>;
 }
 
 /**
@@ -349,6 +356,19 @@ export interface MasterDataTransactionContext {
  * Use MasterDataTransactionContext for new code.
  */
 export type TransactionContext = MasterDataTransactionContext;
+
+export type {
+  ClassificationRuleRepository,
+  AuthorizedSenderRepository,
+} from './rule-sender-ports.js';
+
+/**
+ * T04 transaction context extension with Classification Rules and Authorized Senders.
+ */
+export interface MasterDataTransactionContextT04 extends MasterDataTransactionContext {
+  classificationRules: ClassificationRuleRepository;
+  authorizedSenders: AuthorizedSenderRepository;
+}
 
 /** Restart discovery in a fresh transaction; never acquire earlier-ranked locks late. */
 export class ConfigurationLockSetChangedError extends Error {}

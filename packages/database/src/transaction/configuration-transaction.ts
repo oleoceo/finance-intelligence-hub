@@ -11,7 +11,7 @@ import {
   ConfigurationLockSetChangedError,
   ConcurrencyError,
   type TransactionPort,
-  type MasterDataTransactionContext,
+  type MasterDataTransactionContextT04,
   type ConfigurationLockPort,
   type LockSpec,
 } from '@finance-hub/core';
@@ -19,6 +19,8 @@ import { KyselyBookRepository } from '../repositories/book-repository.js';
 import { KyselyAccountRepository } from '../repositories/account-repository.js';
 import { KyselyCategoryRepository } from '../repositories/category-repository.js';
 import { KyselyMerchantRepository } from '../repositories/merchant-repository.js';
+import { KyselyClassificationRuleRepository } from '../repositories/classification-rule-repository.js';
+import { KyselyAuthorizedSenderRepository } from '../repositories/authorized-sender-repository.js';
 import { KyselyFinancialUsageReader } from '../readers/financial-usage-reader.js';
 import { KyselySenderDefaultReferenceReader } from '../readers/sender-default-reference-reader.js';
 import type { DB } from '../db-types.js';
@@ -70,10 +72,10 @@ export class KyselyConfigurationLockPort implements ConfigurationLockPort {
   }
 }
 
-export class KyselyTransactionPort implements TransactionPort {
+export class KyselyTransactionPort implements TransactionPort<MasterDataTransactionContextT04> {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async runInTransaction<T>(fn: (ctx: MasterDataTransactionContext) => Promise<T>): Promise<T> {
+  async runInTransaction<T>(fn: (ctx: MasterDataTransactionContextT04) => Promise<T>): Promise<T> {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         return await this.db.transaction().execute(async (tx) => {
@@ -81,15 +83,19 @@ export class KyselyTransactionPort implements TransactionPort {
           const accounts = new KyselyAccountRepository(tx);
           const categories = new KyselyCategoryRepository(tx);
           const merchants = new KyselyMerchantRepository(tx);
+          const classificationRules = new KyselyClassificationRuleRepository(tx);
+          const authorizedSenders = new KyselyAuthorizedSenderRepository(tx);
           const locks = new KyselyConfigurationLockPort(tx);
           const financialUsage = new KyselyFinancialUsageReader(tx);
           const senderDefaults = new KyselySenderDefaultReferenceReader(tx);
 
-          const ctx: MasterDataTransactionContext = {
+          const ctx: MasterDataTransactionContextT04 = {
             books,
             accounts,
             categories,
             merchants,
+            classificationRules,
+            authorizedSenders,
             locks,
             financialUsage,
             senderDefaults,

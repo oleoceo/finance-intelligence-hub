@@ -33,6 +33,39 @@ Before any work:
 
 Do not infer the current milestone only from source-code presence.
 
+## 2a. Document lifecycle and forward planning
+
+Task and milestone documents follow this lifecycle:
+
+```text
+PLANNED → ACTIVATION REVIEW → ACTIVE → REVIEW REQUIRED → DONE
+```
+
+### Directory convention
+
+- `docs/tasks/planned/` — accepted forward plans not yet activated
+- `docs/tasks/active/` — currently executable milestone/task contracts
+- `docs/tasks/completed/` — accepted completed work
+
+### PLANNED documents
+
+Approved forward plans defining stable objective, scope, exclusions, dependencies, invariants, provisional task decomposition, acceptance criteria, test categories, gate dependencies and known risks.
+
+PLANNED documents MUST NOT be treated as implementation authorization.
+PLANNED documents SHOULD NOT over-specify exact future class names, function signatures, repository filenames, concrete adapters not yet created, or implementation mechanics depending on unfinished milestones.
+
+### Activation Review
+
+Immediately before implementing a milestone, compare its approved forward plan against the actual current `main`. Update only assumptions made stale by earlier implementation. Promote from PLANNED to ACTIVE at that time. Create/finalize execution-ready task contracts during Activation Review.
+
+See `docs/tasks/planned/ACTIVATION-REVIEW.md` for the reusable template.
+
+Activation Review must NOT reopen frozen architecture absent a true blocker.
+
+### Implementation authorization
+
+Only ACTIVE tasks may authorize implementation. No implementation may proceed from PLANNED documents alone.
+
 ## 3. Authority order
 
 If instructions appear to conflict, follow this order:

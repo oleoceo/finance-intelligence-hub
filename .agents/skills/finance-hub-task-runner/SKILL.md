@@ -51,6 +51,11 @@ Before implementation, identify:
 - expected tests
 - state after successful implementation
 
+Only ACTIVE tasks (under `docs/tasks/active/`) may authorize implementation.
+PLANNED documents (under `docs/tasks/planned/`) define stable scope but do NOT authorize implementation.
+If a task exists only in PLANNED status, it must pass Activation Review before work begins.
+See `docs/tasks/planned/ACTIVATION-REVIEW.md` for the reusable activation contract.
+
 Implement only the selected authorized task.
 
 Do not opportunistically implement later tasks.

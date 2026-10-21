@@ -1,0 +1,204 @@
+# M06 — WhatsApp Integration (Evolution + n8n Transport)
+
+**Status:** PLANNED
+**Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance
+**Blocks:** M07 activation
+
+> **This document does NOT authorize implementation.**
+> Provisional task decomposition and scope are defined here. Execution-ready
+> contracts are finalized during Activation Review.
+
+---
+
+## 1. Objective
+
+Connect Evolution API + n8n to Finance API as a thin transport layer:
+
+```text
+Evolution webhook
+→ n8n technical filter + minimal normalization
+→ Finance API ingest endpoint
+→ structured result
+→ reply.should_send → Evolution send message
+```
+
+Without moving financial business logic into n8n.
+
+M06 is transport only. Financial interpretation, confirmation, classification and defaults belong to M05. Correction/Void/Refund belong to M07.
+
+---
+
+## 2. Stable Rules
+
+### Credential Boundary
+- n8n credential uses ONLY `finance:ingest` scope
+- n8n CANNOT:
+  - Use admin routes
+  - POST direct transactions via generic create
+  - PATCH transactions
+  - Void transactions
+  - Create refunds
+- All financial decisions happen inside Finance API/Core
+
+### Workflow Shape
+```text
+Evolution webhook
+↓
+technical event filter (ignore non-message events)
+↓
+minimal envelope normalization
+↓
+POST /api/v1/inbox/messages (finance:ingest)
+↓
+structured response { reply?, should_send? }
+↓
+if should_send: Evolution send message API
+```
+
+### No Financial Logic in n8n
+- No financial SQL
+- No classification rules
+- No default resolution
+- No refund/void/correction business rules
+- No amount parsing or validation beyond envelope normalization
+- No Book/Account/Category/Merchant lookups
+
+### Retry Behavior
+- 500/503: controlled retry with backoff
+- 429: honor Retry-After header
+- 4xx domain/validation: NO blind retry (return error to sender if appropriate)
+- Network timeout: bounded retry
+- Always preserve: `source`, `source_instance`, `source_message_id`
+
+### Duplicate and Reply Resilience
+- Duplicate webhook = one logical financial effect (Inbox uniqueness handles this)
+- Reply failure CANNOT duplicate financial effect
+- Reply exactly-once delivery NOT promised (at-least-once / best controlled)
+- Financial effect is canonical; reply is best-effort notification
+
+---
+
+## 3. Acceptance Commands
+
+The following commands must work end-to-end through the Evolution/n8n/Finance pipeline:
+
+| Command | Expected Effect |
+|---------|----------------|
+| `35 almoço nubank` | Expense created, confirmation or direct post depending on parser confidence |
+| `empresa 327,40 google ads inter` | Expense in Empresa book, Inter account |
+| `recebi 2500 cliente empresa inter` | Income created in Empresa book |
+| `transferi 500 nubank para inter` | Transfer between accounts |
+| `último` | Last transaction returned |
+
+**Explicitly NOT M06 acceptance:**
+- `resumo` — belongs to M08
+
+---
+
+## 4. Exclusions
+
+- Financial business logic in n8n
+- Summary or reporting (M08)
+- Correction/Void/Refund operations (M07)
+- Backup/restore (M09)
+- Dashboard/Metabase (post-V0.1)
+- AI provider integration (optional fallback in M05, not M06 transport concern)
+
+---
+
+## 5. Operational Conditionality
+
+### Local/Static Planning
+- Workflow JSON/template design may proceed before Gate 0
+- Envelope contract definition may proceed before Gate 0
+- Unit tests for normalization logic may proceed before Gate 0
+
+### Live VPS Integration
+- REQUIRES Gate 0 PASS
+- REQUIRES separate explicit authorization for VPS/Lab access
+- Actual Evolution/n8n instance URLs, credentials, network membership and secrets are determined during Activation Review using Gate 0 evidence
+- Do NOT hardcode or assume these values in forward planning
+
+---
+
+## 6. M05 Contracts Consumed
+
+M06 expects to consume from accepted M05:
+
+- Frozen `POST /api/v1/inbox/messages` endpoint with `finance:ingest`, accepting normalized envelope
+- Inbox persistence triggered by ingest call
+- Interpretation and confirmation orchestration triggered by ingest
+- Structured response contract including reply text and should_send flag
+- Sender normalization compatible with Evolution phone format
+
+**ACTIVATION REVIEW REQUIRED**: Verify the concrete handler implementation, request/response types, authentication mechanism, Evolution payload adaptation, and instance/network/secrets against actual M05 implementation and Gate 0 evidence. The frozen endpoint path is fixed.
+
+---
+
+## 7. Provisional Task Decomposition
+
+| Task ID | Goal | Key Deliverables |
+|---------|------|-----------------|
+| **M06-P01** | Evolution/n8n transport contract and normalized envelope | Envelope schema, ingest endpoint specification, auth contract, error response contract |
+| **M06-P02** | Thin n8n workflow implementation | Webhook receiver, event filter, envelope normalizer, Finance API caller, reply dispatcher |
+| **M06-P03** | Reply mapping/delivery and retry behavior | Response-to-reply transformation, Evolution send integration, retry policy for 500/503/429, no-retry for 4xx domain errors |
+| **M06-P04** | Duplicate/reply-failure resilience | Verification that duplicate webhooks produce one financial effect, reply failure does not duplicate finance, idempotency preserved through transport |
+| **M06-P05** | Live integration E2E and milestone verification | End-to-end test with real or simulated Evolution/n8n, all five acceptance commands verified, frozen scenario coverage |
+
+Task boundaries may be refined during Activation Review based on actual M05 implementation and Gate 0 infrastructure evidence.
+
+---
+
+## 8. Required Test Categories
+
+### Unit Tests
+- Envelope normalization edge cases
+- Event filter correctness (ignore non-message, ignore status updates)
+- Retry policy logic (backoff, Retry-After, no blind 4xx retry)
+- Reply mapping transformations
+
+### Integration Tests
+- Ingest endpoint called correctly with normalized envelope
+- Duplicate webhook produces single InboxMessage
+- Finance API error responses handled correctly
+- Reply dispatch succeeds/fails gracefully without duplicating finance
+
+### E2E / Acceptance Tests
+- All five acceptance commands succeed through full pipeline
+- Unauthorized sender rejected at ingest boundary
+- Group messages filtered before ingest
+- Reply delivered when should_send is true
+- Reply failure does not cause financial duplication
+
+---
+
+## 9. Gate Dependencies
+
+| Gate | Required? | Notes |
+|------|-----------|-------|
+| Gate A | YES | Must PASS before M06 activation |
+| Gate 0 | YES for live acceptance | Local/static planning may proceed without it; live VPS integration requires it |
+| Gate B | NO | After M07 |
+| Gate C | NO | After M09 |
+
+---
+
+## 10. Known Risks Deferred to Activation Review
+
+- Actual Evolution webhook payload structure and version
+- n8n credential provisioning mechanism for `finance:ingest` scope
+- Whether n8n is on `apps-backend` network (Gate 0 finding)
+- Evolution send-message API format and authentication
+- Concrete M05 ingest handler and request/response types for the frozen `POST /api/v1/inbox/messages` route
+- Whether existing n8n instance supports the required workflow patterns
+
+---
+
+## 11. Frozen Document Routing
+
+Per AGENTS.md §6:
+- `03-ARCHITECTURE.md`
+- `05-API-CONTRACTS.md`
+- `06-WHATSAPP-FLOWS.md`
+- `07-SECURITY.md`
+- `09-ROADMAP-TESTS.md`

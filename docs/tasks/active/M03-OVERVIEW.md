@@ -1,9 +1,9 @@
 # M03 — Master Data / Configuration: Planning Overview
 
 **Status:** IN PROGRESS
-**Implementation:** T01 DONE; T02 DONE; T03 DONE; T04 REVIEW REQUIRED; T05 PLANNED
-**T01–T05:** T01 DONE; T02 DONE; T03 DONE; T04 REVIEW REQUIRED; T05 PLANNED
-**Authorization:** T01, T02 and T03 are human accepted and DONE. T04 implementation/correction commits and pushes are authorized on existing Draft PR #2; T04 is REVIEW REQUIRED. No merge, DONE closure or T05 implementation.
+**Implementation:** T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 PLANNED
+**T01–T05:** T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 PLANNED
+**Authorization:** T01, T02, T03 and T04 are human accepted and DONE. T05 is the next allowed implementation task. No merge or T05 implementation.
 
 ## Authority and baseline
 

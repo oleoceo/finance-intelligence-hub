@@ -3,7 +3,7 @@
 **Status:** IN PROGRESS
 **Implementation:** T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 REVIEW REQUIRED
 **T01–T05:** T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 REVIEW REQUIRED
-**Authorization:** T01, T02, T03 and T04 are human accepted and DONE. T05 is implemented on Draft PR #3 and awaiting final CI validation after corrections.
+**Authorization:** T01, T02, T03 and T04 are human accepted and DONE. T05 is implemented on Draft PR #3 and awaiting human acceptance.
 
 ## Authority and baseline
 
@@ -119,7 +119,7 @@ That historical documentation verification did not execute application suites or
 
 ## Accepted tasks and current closure
 
-M03 remains IN PROGRESS. T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 REVIEW REQUIRED on Draft PR #3, awaiting final CI validation after corrections. M03 is IN PROGRESS; M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
+M03 remains IN PROGRESS. T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 REVIEW REQUIRED on Draft PR #3, awaiting human acceptance. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
 
 Accepted records: [T01](../completed/M03-T01.md), [T02](../completed/M03-T02.md), [T03](../completed/M03-T03.md). T01/T02 records are unchanged by T03 closure.
 
@@ -130,4 +130,4 @@ The accepted T03 closure moved T03 to completed/ and updated PROJECT_STATE.md an
 
 ## Final accepted T04 evidence
 
-T04 is human accepted and DONE; see [completed T04](../completed/M03-T04.md). Accepted implementation head: 681a51b37d7ea0e917a6f2b401e8e847a4bbcb53; accepted GitHub Actions [run 39527608979](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39527608979) = SUCCESS. Unit 14 files / 215 tests PASS; PostgreSQL integration 14 files / 199 tests PASS. T04 contributes 69 unit and 63 integration tests, including 28 independent-backend races. Frozen install, lint, format:check, build and typecheck PASS. No remaining T04 blocker. T04 PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. M03 remains IN PROGRESS because T05 is REVIEW REQUIRED on Draft PR #3 awaiting final CI validation after corrections; no live infrastructure work is authorized before human acceptance. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
+T04 is human accepted and DONE; see [completed T04](../completed/M03-T04.md). Accepted implementation head: 681a51b37d7ea0e917a6f2b401e8e847a4bbcb53; accepted GitHub Actions [run 39527608979](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39527608979) = SUCCESS. Unit 14 files / 215 tests PASS; PostgreSQL integration 14 files / 199 tests PASS. T04 contributes 69 unit and 63 integration tests, including 28 independent-backend races. Frozen install, lint, format:check, build and typecheck PASS. No remaining T04 blocker. T04 PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. M03 remains IN PROGRESS because T05 is REVIEW REQUIRED on Draft PR #3 awaiting human acceptance; no live infrastructure work is authorized before human acceptance. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.

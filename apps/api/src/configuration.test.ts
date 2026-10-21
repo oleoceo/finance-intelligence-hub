@@ -98,6 +98,9 @@ describe.each(entities)('%s transport', (entity, valid) => {
     for (const suffix of [
       '/not-a-uuid',
       '?active=1',
+      '?active=TRUE',
+      '?active=false&active=true',
+      '?page=1',
       '?active=true&extra=1',
       '?name=',
       '?priority=not-a-number',
@@ -127,6 +130,74 @@ describe.each(entities)('%s transport', (entity, valid) => {
     expect(result.statusCode).toBe(422);
     expect(runInTransaction).not.toHaveBeenCalled();
   });
+  it('distinguishes malformed JSON and schema errors, after authorization', async () => {
+    for (const [headers, status] of [
+      [admin, 400],
+      [{}, 401],
+      [{ authorization: 'Bearer synthetic-ingest' }, 403],
+    ] as const) {
+      const result = await app.inject({
+        method: 'POST',
+        url: base,
+        headers: { ...headers, 'content-type': 'application/json' },
+        payload: '{',
+      });
+      expect(result.statusCode).toBe(status);
+      if (status === 400) expect(result.json().error.details.reason).toBe('malformed_json');
+    }
+    expect(
+      (await app.inject({ method: 'POST', url: base, headers: admin, payload: [] })).statusCode,
+    ).toBe(422);
+    expect(runInTransaction).not.toHaveBeenCalled();
+  });
+});
+
+it.each(entities.slice(0, 5))('%s rejects initial active even when true', async (entity, valid) => {
+  expect(
+    (
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/${entity}`,
+        headers: admin,
+        payload: { ...valid, active: true },
+      })
+    ).statusCode,
+  ).toBe(422);
+  expect(runInTransaction).not.toHaveBeenCalled();
+});
+it.each([
+  ['accounts', 'POST', { book_id: id, name: 'A', type: 'cash', currency: 'BRL' }],
+  ['accounts', 'PATCH', { book_id: id }],
+  ['categories', 'PATCH', { book_id: id }],
+  ['admin/authorized-senders', 'PATCH', { channel: 'custom' }],
+  ['admin/authorized-senders', 'PATCH', { sender_reference: 'x' }],
+  [
+    'admin/classification-rules',
+    'POST',
+    { match_type: 'exact', pattern: 'x', target_book_id: id, priority: '100' },
+  ],
+  [
+    'admin/classification-rules',
+    'POST',
+    { match_type: 'exact', pattern: 'x', target_book_id: id, priority: 2147483648 },
+  ],
+  [
+    'admin/classification-rules',
+    'POST',
+    { match_type: 'exact', pattern: 'x', target_book_id: id, priority: -2147483649 },
+  ],
+  ['books', 'POST', { name: 'İ'.repeat(120), currency: 'BRL' }],
+  ['books', 'POST', { name: ' ', currency: 'BRL' }],
+  ['books', 'POST', { name: true, currency: 'BRL' }],
+] as const)('%s %s rejects invalid contract %j', async (entity, method, payload) => {
+  const result = await app.inject({
+    method,
+    url: `/api/v1/${entity}${method === 'PATCH' ? `/${id}` : ''}`,
+    headers: admin,
+    payload,
+  });
+  expect(result.statusCode).toBe(422);
+  expect(runInTransaction).not.toHaveBeenCalled();
 });
 
 it('rejects identical role credentials without disclosing the value', () => {
@@ -238,16 +309,4 @@ it('accepts AuthorizedSender.name with Unicode expansion without normalizing', a
   } finally {
     await isolated.close();
   }
-});
-
-// Regression: Normalized-name entities must reject if normalized length exceeds limit.
-it('rejects Book.name if normalized length exceeds 120 even if raw <= 120', async () => {
-  const unicodeName = 'İ'.repeat(120);
-  const result = await app.inject({
-    method: 'POST',
-    url: '/api/v1/books',
-    headers: admin,
-    payload: { name: unicodeName, currency: 'BRL' },
-  });
-  expect(result.statusCode).toBe(422);
 });

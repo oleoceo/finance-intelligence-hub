@@ -61,9 +61,9 @@ M02 - Database Foundation: DONE; human accepted on 2026-10-20.
 M02-T01, M02-T02, M02-T03, M02-T04 and M02-T05: DONE.
 M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
 
-Functional roadmap completed through M03. M04 planning is ACCEPTED and INTEGRATED at `d369261aceb8c91a2ee3449c64be7d7b24af11ab` (post-merge CI `39661571275` = SUCCESS). M04-T01 through M04-T08 remain planned execution contracts; M04 implementation is NOT AUTHORIZED. Gate A and Gate 0 are NOT EXECUTED. Gate 0 remains a separate infrastructure prerequisite before live VPS/Lab/Production activity.
+Functional roadmap completed through M03. M04 planning was accepted and integrated at `d369261aceb8c91a2ee3449c64be7d7b24af11ab` (post-merge CI `39661571275` = SUCCESS). M04 Activation Review PASS against current main `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; M04 and T01–T08 are ACTIVE / execution-ready, but implementation is NOT AUTHORIZED. Gate A and Gate 0 are NOT EXECUTED.
 
-Architecture and canonical documentation remain frozen. ADR-001/002 remain ACCEPTED. Established M01 Docker/CI evidence is preserved below. M03-T05 is human accepted, DONE and integrated. Accepted implementation head `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions run `39640634314` = SUCCESS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. T04 remains human accepted and DONE. M04 planning is accepted and integrated; implementation remains NOT AUTHORIZED.
+Architecture and canonical documentation remain frozen. ADR-001/002 remain ACCEPTED. Established M01 Docker/CI evidence is preserved below. M03-T05 is human accepted, DONE and integrated. Accepted implementation head `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions run `39640634314` = SUCCESS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. T04 remains human accepted and DONE. V0.1 Forward Planning was accepted and integrated at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` = SUCCESS.
 
 ---
 
@@ -198,7 +198,7 @@ M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved
 
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
 M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
-M03-T01 through M03-T05 are accepted; completed records and the [M03 overview](docs/tasks/completed/M03-OVERVIEW.md) are in docs/tasks/completed/. Draft PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. M04 planning was accepted and squash-merged to `main` as `d369261aceb8c91a2ee3449c64be7d7b24af11ab`; post-merge CI `39661571275` = SUCCESS. M04-T01 through M04-T08 remain planned; implementation NOT AUTHORIZED; Gate A and Gate 0 NOT EXECUTED.
+M03-T01 through M03-T05 are accepted; completed records and the [M03 overview](docs/tasks/completed/M03-OVERVIEW.md) are in docs/tasks/completed/. Draft PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. M04 planning was accepted and squash-merged to `main` as `d369261aceb8c91a2ee3449c64be7d7b24af11ab`; post-merge CI `39661571275` = SUCCESS. V0.1 Forward Planning was accepted and integrated at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` = SUCCESS. M04 is now ACTIVE / execution-ready after Activation Review; implementation NOT AUTHORIZED; Gate A and Gate 0 NOT EXECUTED.
 
 ---
 
@@ -767,25 +767,25 @@ M03 Master Data / Configuration
 DONE - M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3
 
 M04 Transaction Core
-⬜ PLANNING ACCEPTED AND INTEGRATED — M04-T01 through M04-T08 remain planned execution contracts; implementation NOT AUTHORIZED; Gate A NOT EXECUTED; Gate 0 NOT EXECUTED
+ACTIVE — M04-T01 through M04-T08 ACTIVE / execution-ready; implementation NOT AUTHORIZED; Gate A NOT EXECUTED; Gate 0 NOT EXECUTED
 
 V0.1 Forward Planning
-📋 PLANNED / REVIEW REQUIRED — Forward plans created for Gate 0, Gate A, M05, M06, M07, Gate B, M08, M09, Gate C under docs/tasks/planned/. These are NOT ACTIVE and implementation is NOT AUTHORIZED. Activation Review required before any milestone promotion.
+ACCEPTED / INTEGRATED — merge `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` = SUCCESS. M05–M09 forward plans remain PLANNED, NOT ACTIVE and implementation NOT AUTHORIZED; each requires its own Activation Review.
 
 M05 Inbox / Parser / Confirmation
-⬜ PLANNED (forward plan exists; NOT ACTIVE; implementation NOT AUTHORIZED)
+⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
 
 M06 WhatsApp Integration
-⬜ PLANNED (forward plan exists; NOT ACTIVE; implementation NOT AUTHORIZED)
+⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
 
 M07 Correction / Void / Refund
-⬜ PLANNED (forward plan exists; NOT ACTIVE; implementation NOT AUTHORIZED)
+⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
 
 M08 Reports / Export / Operations
-⬜ PLANNED (forward plan exists; NOT ACTIVE; implementation NOT AUTHORIZED)
+⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
 
 M09 Backup / Restore
-⬜ PLANNED (forward plan exists; NOT ACTIVE; implementation NOT AUTHORIZED)
+⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
 ```
 
 ---
@@ -850,7 +850,7 @@ These belong to Gate 0.
 
 # 39. Current allowed next actions
 
-M01, M02 and M03 are DONE. M04 planning is ACCEPTED and INTEGRATED at `d369261aceb8c91a2ee3449c64be7d7b24af11ab`; post-merge CI `39661571275` = SUCCESS. M04-T01 through M04-T08 remain planned execution contracts; M04 implementation is NOT AUTHORIZED. Gate A, Gate 0, Gate B and Gate C are NOT EXECUTED. The V0.1 Forward Planning package is PLANNED / REVIEW REQUIRED; M05–M09 are NOT STARTED, NOT ACTIVE and NOT AUTHORIZED. Current next action: human review of the V0.1 Forward Planning package.
+M01, M02 and M03 are DONE. M04 and T01–T08 are ACTIVE / execution-ready after Activation Review PASS; implementation is NOT AUTHORIZED. V0.1 Forward Planning is ACCEPTED / INTEGRATED at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9` (CI `39672168104` SUCCESS). M05–M09 forward plans are accepted but remain PLANNED, NOT ACTIVE and implementation NOT AUTHORIZED. Gate 0, Gate A, Gate B and Gate C are NOT EXECUTED. Current next action: human review of the M04 Activation Review package; M04-T01 is the next candidate task, subject to separate human authorization.
 
 ---
 
@@ -943,7 +943,7 @@ ADR-002 ACCEPTED: application-generated UUIDv7 using uuid.v7(); PostgreSQL UUID 
 INITIALIZED
 ```
 
-Current authoritative `origin/main`: `d369261aceb8c91a2ee3449c64be7d7b24af11ab` (accepted M04 planning; post-merge CI `39661571275` = SUCCESS).
+Current authoritative `origin/main`: `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9` (accepted V0.1 Forward Planning; post-merge CI `39672168104` = SUCCESS).
 
 Documentation baseline tag `docs-freeze-v0.1`: PRESENT; do not modify it.
 
@@ -1190,8 +1190,8 @@ INFRA-T01 Provision postgres-products
 
 M03 is DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
 M02 and M02-T01 through M02-T05 are DONE and accepted. Completed task records and milestone overview are in docs/tasks/completed/.
-M03-T01 through M03-T05 are human accepted and recorded in docs/tasks/completed/ with the completed M03 overview. M04 planning is ACCEPTED and INTEGRATED at `d369261aceb8c91a2ee3449c64be7d7b24af11ab`; post-merge CI `39661571275` = SUCCESS. M04-T01 through M04-T08 remain planned execution contracts; M04 implementation is NOT AUTHORIZED.
-Gate A, Gate 0, Gate B and Gate C remain NOT EXECUTED. M05–M09 implementation is NOT STARTED, NOT ACTIVE and NOT AUTHORIZED. V0.1 Forward Planning is PLANNED / REVIEW REQUIRED. Next: human review of the V0.1 Forward Planning package.
+M03-T01 through M03-T05 are human accepted and recorded in docs/tasks/completed/ with the completed M03 overview. M04 planning was ACCEPTED and INTEGRATED at `d369261aceb8c91a2ee3449c64be7d7b24af11ab`; post-merge CI `39661571275` = SUCCESS. M04 and T01–T08 are ACTIVE / execution-ready following Activation Review PASS, with implementation NOT AUTHORIZED.
+Gate A, Gate 0, Gate B and Gate C remain NOT EXECUTED. V0.1 Forward Planning is ACCEPTED / INTEGRATED at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9` (CI `39672168104` SUCCESS). M05–M09 forward plans are accepted; implementation is NOT STARTED, NOT ACTIVE and NOT AUTHORIZED. Next: human review of the M04 Activation Review package; M04-T01 is the next candidate task, not yet authorized.
 
 ---
 
@@ -1269,7 +1269,7 @@ Documentation baseline tag
 ✅ PRESENT
 
 Implementation
-M01, M02 and M03 DONE; M04 planning ACCEPTED and INTEGRATED; M04 implementation NOT AUTHORIZED; M05–M09 NOT STARTED / NOT ACTIVE / NOT AUTHORIZED
+M01, M02 and M03 DONE; M04 ACTIVE / execution-ready, implementation NOT AUTHORIZED; M05–M09 NOT STARTED / NOT ACTIVE / NOT AUTHORIZED
 
 Gate 0
 ⬜ NOT EXECUTED
@@ -1281,10 +1281,10 @@ M02 Database Foundation
 DONE
 
 M04 Transaction Core
-planning ACCEPTED and INTEGRATED; M04-T01 through M04-T08 planned execution contracts; implementation NOT AUTHORIZED
+ACTIVE; M04-T01 through M04-T08 ACTIVE / execution-ready; implementation NOT AUTHORIZED
 
 V0.1 Forward Planning
-PLANNED / REVIEW REQUIRED
+ACCEPTED / INTEGRATED at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` = SUCCESS
 
 Gate A / Gate B / Gate C
 NOT EXECUTED
@@ -1300,6 +1300,6 @@ NONE
 
 # 63. Next action
 
-M01, M02 and M03 are DONE. M04 planning is ACCEPTED and INTEGRATED at `d369261aceb8c91a2ee3449c64be7d7b24af11ab`; post-merge CI `39661571275` = SUCCESS. M04-T01 through M04-T08 remain planned execution contracts; implementation is NOT AUTHORIZED. Gate A, Gate 0, Gate B and Gate C are NOT EXECUTED. V0.1 Forward Planning is PLANNED / REVIEW REQUIRED; M05–M09 are NOT STARTED, NOT ACTIVE and NOT AUTHORIZED. Next: human review of the V0.1 Forward Planning package. Do not implement M04 or execute any Gate.
+M01, M02 and M03 are DONE. M04 and T01–T08 are ACTIVE / execution-ready after Activation Review PASS; implementation is NOT AUTHORIZED. V0.1 Forward Planning is ACCEPTED / INTEGRATED at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9` (CI `39672168104` SUCCESS). M05–M09 forward plans are accepted but remain PLANNED, NOT ACTIVE and implementation NOT AUTHORIZED. Gate 0, Gate A, Gate B and Gate C are NOT EXECUTED. Next: human review of the M04 Activation Review package. M04-T01 is the next candidate task only after separate explicit human authorization; do not implement it or execute any Gate yet.
 
 ---

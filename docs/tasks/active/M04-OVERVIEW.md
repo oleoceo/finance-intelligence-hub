@@ -2,12 +2,12 @@
 
 **Status:** ACTIVE
 **Milestone state:** ACTIVE; M04-T01 through M04-T08 ACTIVE / execution-ready
-**Implementation:** NOT AUTHORIZED
+**Implementation:** M04-T01 AUTHORIZED; M04-T02 through M04-T08 NOT AUTHORIZED
 **Gate A:** NOT EXECUTED
 **Gate 0:** NOT EXECUTED
-**Activation review:** [M04-ACTIVATION-REVIEW.md](M04-ACTIVATION-REVIEW.md) — 2026-10-21; reviewed against `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; no material planning delta
+**Activation review:** [M04-ACTIVATION-REVIEW.md](M04-ACTIVATION-REVIEW.md) — 2026-10-21; PASS; human accepted and integrated via PR #6 at `1c7e16d45fa03df8cd2b54c28100820af8d08142`; post-merge CI `39675385219` = SUCCESS; no material planning delta
 
-ACTIVE makes the contracts execution-ready. Each task still requires explicit human implementation authorization.
+ACTIVE makes the contracts execution-ready. M04-T01 now has explicit human implementation authorization; each later task still requires its own explicit authorization.
 
 ## Authority
 

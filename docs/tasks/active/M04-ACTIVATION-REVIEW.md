@@ -6,7 +6,9 @@
 
 **Result:** `M04 ACTIVATION REVIEW: PASS`
 
-**Implementation:** NOT AUTHORIZED; each task requires explicit human authorization
+**Integration:** Human accepted; PR #6 squash-merged to `main` as `1c7e16d45fa03df8cd2b54c28100820af8d08142`; post-merge CI `39675385219` = SUCCESS.
+
+**Implementation:** M04-T01 separately human-authorized on 2026-10-21; M04-T02 through M04-T08 require later explicit human authorization
 
 ## Prerequisites and authority
 
@@ -73,7 +75,7 @@ The accepted graph remains `T01 → {T02, T03, T04, T05, T06} → T07 → T08`; 
 
 ## Promotion and human boundary
 
-M04 overview and T01–T08 are marked ACTIVE / execution-ready in this review package because the accepted contracts already live under `active/`. This is a documentation promotion only. The next candidate task is M04-T01, but **implementation remains NOT AUTHORIZED** pending explicit human authorization for that task. The activation package itself remains REVIEW REQUIRED for human review; no task is IN PROGRESS or DONE.
+M04 overview and T01–T08 are ACTIVE / execution-ready because the accepted contracts already live under `active/`. The Activation Review was human accepted and integrated via PR #6 at `1c7e16d45fa03df8cd2b54c28100820af8d08142`; post-merge CI `39675385219` = SUCCESS. M04-T01 is separately human-authorized for implementation but is not yet IN PROGRESS or DONE. M04-T02 through M04-T08 remain NOT AUTHORIZED until later explicit human approval.
 
 `M04 ACTIVATION REVIEW: PASS`
 

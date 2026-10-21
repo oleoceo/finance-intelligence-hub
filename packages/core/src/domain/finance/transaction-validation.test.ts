@@ -3,6 +3,11 @@ import {
   validateTransactionDate,
   validateTransactionDateNotFuture,
   validateMoneyAmount,
+  validateTransactionCurrency,
+  rejectInactiveBook,
+  rejectInactiveAccount,
+  rejectInactiveCategory,
+  rejectInactiveMerchant,
   validateTransactionType,
   validateTransactionStatus,
   validateTransactionCreateSource,
@@ -103,6 +108,35 @@ describe('validateTransactionDateNotFuture', () => {
     expect(() => validateTransactionDateNotFuture('2026-06-16', now, 'America/Sao_Paulo')).toThrow(
       'is in the future',
     );
+  });
+
+  it('maps invalid IANA timezone to financial validation vocabulary', () => {
+    expect(() =>
+      validateTransactionDateNotFuture(
+        '2026-06-15',
+        new Date('2026-06-15T12:00:00Z'),
+        'Invalid/Zone',
+      ),
+    ).toThrow(FinancialValidationError);
+  });
+});
+
+describe('currency and inactive entity validation', () => {
+  it('accepts only uppercase ASCII three-letter currency', () => {
+    expect(validateTransactionCurrency('BRL')).toBe('BRL');
+    for (const value of ['brl', 'BR', 'BRLL', ' BRL', 'B1L']) {
+      expect(() => validateTransactionCurrency(value)).toThrow(FinancialValidationError);
+    }
+  });
+
+  it.each([
+    [rejectInactiveBook, 'BOOK_INACTIVE'],
+    [rejectInactiveAccount, 'ACCOUNT_INACTIVE'],
+    [rejectInactiveCategory, 'CATEGORY_INACTIVE'],
+    [rejectInactiveMerchant, 'MERCHANT_INACTIVE'],
+  ])('rejects inactive entity with %s', (reject, code) => {
+    expect(() => reject({ active: true })).not.toThrow();
+    expect(() => reject({ active: false })).toThrowError(expect.objectContaining({ code }));
   });
 });
 

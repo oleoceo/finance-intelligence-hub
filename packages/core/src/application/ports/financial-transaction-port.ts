@@ -24,11 +24,6 @@ import type { CategoryRepository } from './master-data-ports.js';
 import type { MerchantRepository } from './master-data-ports.js';
 import type { ConfigurationLockPort } from './master-data-ports.js';
 import type { FinancialUsageReader } from './master-data-ports.js';
-import type { SenderDefaultReferenceReader } from './master-data-ports.js';
-import type {
-  ClassificationRuleRepository,
-  AuthorizedSenderRepository,
-} from './rule-sender-ports.js';
 import type { TransactionRepository } from './transaction-ports.js';
 import type { IdempotencyKeyRepository } from './idempotency-ports.js';
 import type { AuditWriter } from './audit-ports.js';
@@ -37,8 +32,7 @@ import type { AuditWriter } from './audit-ports.js';
  * Extended transaction context for M04 financial writes.
  * Composes master-data context with new financial ports.
  *
- * This extends MasterDataTransactionContextT04 to preserve backward
- * compatibility while adding Transaction, Idempotency and Audit capabilities.
+ * Composes only the M03 capabilities needed for M04 financial writes.
  */
 export interface FinancialTransactionContext {
   // Master-data repositories (from M03)
@@ -46,15 +40,12 @@ export interface FinancialTransactionContext {
   accounts: AccountRepository;
   categories: CategoryRepository;
   merchants: MerchantRepository;
-  classificationRules: ClassificationRuleRepository;
-  authorizedSenders: AuthorizedSenderRepository;
 
   // Configuration locking (from M03)
   locks: ConfigurationLockPort;
 
   // Read-only helpers (from M03)
   financialUsage: FinancialUsageReader;
-  senderDefaults: SenderDefaultReferenceReader;
 
   // M04 financial ports
   transactions: TransactionRepository;

@@ -23,9 +23,8 @@ describe('Money', () => {
       expect(m.amount).toBe('99.99');
     });
 
-    it('uppercases currency code', () => {
-      const m = Money.create('10.00', 'brl');
-      expect(m.currency).toBe('BRL');
+    it('preserves a valid uppercase currency code', () => {
+      expect(Money.create('10.00', 'BRL').currency).toBe('BRL');
     });
   });
 
@@ -182,14 +181,21 @@ describe('Money', () => {
     });
 
     it('rejects empty currency', () => {
-      expect(() => Money.create('10.00', '')).toThrow('non-empty string');
+      expect(() => Money.create('10.00', '')).toThrow('[A-Z]{3}');
     });
+
+    it.each(['brl', 'BrL', 'BR', 'BRLL', ' BRL', 'BRL ', 'B1L', 'ÉUR'])(
+      'rejects noncanonical currency %s',
+      (currency) => {
+        expect(() => Money.create('10.00', currency)).toThrow('[A-Z]{3}');
+      },
+    );
   });
 
   describe('toString', () => {
-    it('formats as CURRENCY AMOUNT', () => {
+    it('serializes to canonical decimal amount', () => {
       const m = Money.create('35.50', 'BRL');
-      expect(m.toString()).toBe('BRL 35.50');
+      expect(m.toString()).toBe('35.50');
     });
   });
 });

@@ -10,39 +10,48 @@
 
 export const IDEMPOTENCY_STATES = ['in_progress', 'completed'] as const;
 export type IdempotencyState = (typeof IDEMPOTENCY_STATES)[number];
+export type IdempotencyScope = 'transactions:create';
+export type IdempotencyFingerprint = string;
 
 /**
  * Persistent idempotency key record.
  * Database adapter maps this to the idempotency_keys table.
  */
 export interface IdempotencyKeyRecord {
+  id: string;
   idempotencyKey: string;
-  scope: string;
-  state: IdempotencyState;
-  /** Deterministic fingerprint of the request payload. Opaque to Core. */
-  fingerprint: string;
-  /** Result payload for completed keys (serialized). Null while in_progress. */
-  resultPayload: string | null;
+  scope: IdempotencyScope;
+  status: IdempotencyState;
+  requestHash: IdempotencyFingerprint;
+  resourceType: string | null;
+  resourceId: string | null;
+  responseStatus: number | null;
+  responseBody: Record<string, unknown> | null;
   createdAt: Date;
-  updatedAt: Date;
+  completedAt: Date | null;
 }
 
 /**
  * Input for claiming an idempotency key at the start of a financial write.
  */
-export interface ClaimIdempotencyKeyInput {
+export interface CreateIdempotencyKeyInput {
+  id: string;
   idempotencyKey: string;
-  scope: string;
-  fingerprint: string;
+  scope: IdempotencyScope;
+  requestHash: IdempotencyFingerprint;
+  createdAt: Date;
 }
 
 /**
  * Input for completing an idempotency key after successful commit.
  */
 export interface CompleteIdempotencyKeyInput {
-  idempotencyKey: string;
-  scope: string;
-  resultPayload: string;
+  id: string;
+  resourceType: string;
+  resourceId: string;
+  responseStatus: number;
+  responseBody: Record<string, unknown>;
+  completedAt: Date;
 }
 
 /**
@@ -51,14 +60,12 @@ export interface CompleteIdempotencyKeyInput {
  */
 export interface IdempotencyKeyRepository {
   /**
-   * Attempt to claim a key. Returns the existing record if already present,
-   * or creates a new in_progress record. Caller inspects state + fingerprint
-   * to decide whether to proceed, replay or reject.
+   * Create an in_progress record. T06 defines conflict and replay handling.
    */
-  claim(input: ClaimIdempotencyKeyInput): Promise<IdempotencyKeyRecord>;
+  create(input: CreateIdempotencyKeyInput): Promise<IdempotencyKeyRecord>;
 
   /**
-   * Mark a previously claimed key as completed with its result payload.
+   * Mark a previously created key as completed with replayable response data.
    * Called inside the same outer transaction as the financial write.
    */
   complete(input: CompleteIdempotencyKeyInput): Promise<IdempotencyKeyRecord>;
@@ -66,5 +73,8 @@ export interface IdempotencyKeyRepository {
   /**
    * Look up an existing key without mutating state.
    */
-  findByKeyAndScope(idempotencyKey: string, scope: string): Promise<IdempotencyKeyRecord | null>;
+  findByKeyAndScope(
+    idempotencyKey: string,
+    scope: IdempotencyScope,
+  ): Promise<IdempotencyKeyRecord | null>;
 }

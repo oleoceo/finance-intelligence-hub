@@ -6,7 +6,7 @@
  */
 
 import { Money } from './money.js';
-import { FinancialValidationError } from './errors.js';
+import { FinancialError, FinancialValidationError } from './errors.js';
 import type {
   TransactionType,
   TransactionStatus,
@@ -87,12 +87,21 @@ export function validateTransactionDateNotFuture(
   bookTimezone: string,
 ): void {
   // Compute "today" in the Book's timezone using Intl API
-  const todayInBookTz = new Intl.DateTimeFormat('en-CA', {
-    timeZone: bookTimezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now); // en-CA gives YYYY-MM-DD
+  let todayInBookTz: string;
+  try {
+    todayInBookTz = new Intl.DateTimeFormat('en-CA', {
+      timeZone: bookTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now);
+  } catch (cause) {
+    throw new FinancialValidationError(
+      'Invalid Book timezone or current instant',
+      'timezone',
+      cause,
+    );
+  }
 
   if (dateStr > todayInBookTz) {
     throw new FinancialValidationError(
@@ -120,6 +129,26 @@ export function validateMoneyAmount(amount: unknown, currency: string): Money {
       err,
     );
   }
+}
+
+export function validateTransactionCurrency(value: unknown): string {
+  if (typeof value !== 'string' || !/^[A-Z]{3}$/.test(value)) {
+    throw new FinancialValidationError('Currency must match [A-Z]{3}', 'currency');
+  }
+  return value;
+}
+
+export function rejectInactiveBook(entity: { active: boolean }): void {
+  if (!entity.active) throw new FinancialError('Book is inactive', 'BOOK_INACTIVE');
+}
+export function rejectInactiveAccount(entity: { active: boolean }): void {
+  if (!entity.active) throw new FinancialError('Account is inactive', 'ACCOUNT_INACTIVE');
+}
+export function rejectInactiveCategory(entity: { active: boolean }): void {
+  if (!entity.active) throw new FinancialError('Category is inactive', 'CATEGORY_INACTIVE');
+}
+export function rejectInactiveMerchant(entity: { active: boolean }): void {
+  if (!entity.active) throw new FinancialError('Merchant is inactive', 'MERCHANT_INACTIVE');
 }
 
 /**

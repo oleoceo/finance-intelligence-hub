@@ -15,7 +15,8 @@ import { ValidationError } from '../master-data/errors.js';
 export class FinancialError extends Error {
   constructor(
     message: string,
-    public readonly code: string,
+    public readonly code:
+      'BOOK_INACTIVE' | 'ACCOUNT_INACTIVE' | 'CATEGORY_INACTIVE' | 'MERCHANT_INACTIVE',
   ) {
     super(message);
     this.name = 'FinancialError';
@@ -30,16 +31,5 @@ export class FinancialValidationError extends ValidationError {
   constructor(message: string, field?: string, cause?: unknown) {
     super(message, field, cause);
     this.name = 'FinancialValidationError';
-  }
-}
-
-/**
- * Thrown when a financial operation violates a domain invariant
- * that is not purely a validation issue (e.g., voiding an already-voided transaction).
- */
-export class FinancialInvariantError extends FinancialError {
-  constructor(message: string) {
-    super(message, 'FINANCIAL_INVARIANT_ERROR');
-    this.name = 'FinancialInvariantError';
   }
 }

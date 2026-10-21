@@ -9,6 +9,8 @@
  * actor_reference: null for direct API orchestration
  */
 
+import type { TransactionRecord } from './transaction-ports.js';
+
 export const AUDIT_ACTIONS = ['TRANSACTION_CREATED'] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -22,17 +24,17 @@ export type AuditSource = (typeof AUDIT_SOURCES)[number];
  * Input for writing an audit event.
  * Compatible with the accepted physical audit_events schema.
  */
-export interface CreateAuditEventInput {
+export interface WriteAuditEventInput {
   entityType: AuditEntityType;
   entityId: string;
   action: AuditAction;
   source: AuditSource;
   /** Actor reference. Null for server-controlled direct API operations. Never raw credentials. */
-  actorReference: string | null;
+  actorReference: null;
   /** Previous state snapshot (serialized JSON). Null for creation events. */
-  oldData: Record<string, unknown> | null;
+  oldData: null;
   /** New state snapshot (serialized JSON). */
-  newData: Record<string, unknown>;
+  newData: TransactionRecord;
   /** Correlation ID linking this audit event to the originating request. */
   correlationId: string;
 }
@@ -46,5 +48,5 @@ export interface AuditWriter {
    * Write an audit event. Must be called inside the same outer PostgreSQL
    * transaction as the financial write it documents.
    */
-  write(input: CreateAuditEventInput): Promise<void>;
+  write(input: WriteAuditEventInput): Promise<void>;
 }

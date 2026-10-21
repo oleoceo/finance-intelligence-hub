@@ -29,15 +29,18 @@ export interface TransactionRecord {
   destinationAccountId: string | null; // non-null only for transfers
   categoryId: string | null;
   merchantId: string | null;
-  description: string | null;
+  description: string;
   notes: string | null;
   transactionDate: string; // YYYY-MM-DD
   source: TransactionCreateSource;
+  sourceReference: string | null;
+  inboxMessageId: string | null;
   refundOfTransactionId: string | null;
   version: number;
   createdAt: Date;
   updatedAt: Date;
   voidedAt: Date | null;
+  voidReason: string | null;
 }
 
 /**
@@ -51,38 +54,38 @@ export interface CreateExpenseInput {
   type: 'expense';
   bookId: string;
   amount: string;
-  currency: string;
   accountId: string;
-  categoryId: string | null;
-  merchantId: string | null;
-  description: string | null;
-  notes: string | null;
+  categoryId?: string | null;
+  merchantId?: string | null;
+  description: string;
+  notes?: string | null;
   transactionDate: string;
+  sourceReference?: string | null;
 }
 
 export interface CreateIncomeInput {
   type: 'income';
   bookId: string;
   amount: string;
-  currency: string;
   accountId: string;
-  categoryId: string | null;
-  merchantId: string | null;
-  description: string | null;
-  notes: string | null;
+  categoryId?: string | null;
+  merchantId?: string | null;
+  description: string;
+  notes?: string | null;
   transactionDate: string;
+  sourceReference?: string | null;
 }
 
 export interface CreateTransferInput {
   type: 'transfer';
   bookId: string;
   amount: string;
-  currency: string;
   accountId: string;
   destinationAccountId: string;
-  description: string | null;
-  notes: string | null;
+  description: string;
+  notes?: string | null;
   transactionDate: string;
+  sourceReference?: string | null;
   // Transfer does NOT accept categoryId or merchantId
 }
 
@@ -90,14 +93,17 @@ export interface CreateTransferInput {
  * Input for listing transactions with pagination and filtering.
  */
 export interface ListTransactionsInput {
-  bookId: string;
-  pageSize: number;
-  cursor?: string | null;
+  bookId?: string;
+  page?: number; // default 1
+  pageSize?: number; // default 50; maximum 100
   type?: TransactionType | null;
   status?: TransactionStatus | null;
   accountId?: string | null;
-  fromDate?: string | null; // YYYY-MM-DD inclusive
-  toDate?: string | null; // YYYY-MM-DD inclusive
+  categoryId?: string | null;
+  merchantId?: string | null;
+  dateFrom?: string | null; // YYYY-MM-DD inclusive
+  dateTo?: string | null; // YYYY-MM-DD inclusive
+  search?: string | null;
 }
 
 /**
@@ -105,7 +111,9 @@ export interface ListTransactionsInput {
  */
 export interface ListTransactionsResult {
   items: TransactionRecord[];
-  nextCursor: string | null;
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 /**
@@ -125,6 +133,7 @@ export interface TransactionRepository {
       id: string;
       humanRef: string;
       source: TransactionCreateSource;
+      currency: string; // derived from the locked Book, not client input
     },
   ): Promise<TransactionRecord>;
   findById(id: string): Promise<TransactionRecord | null>;

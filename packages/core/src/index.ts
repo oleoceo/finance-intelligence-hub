@@ -173,6 +173,11 @@ export {
   validateTransactionDate,
   validateTransactionDateNotFuture,
   validateMoneyAmount,
+  validateTransactionCurrency,
+  rejectInactiveBook,
+  rejectInactiveAccount,
+  rejectInactiveCategory,
+  rejectInactiveMerchant,
   validateTransactionType,
   validateTransactionStatus,
   validateTransactionCreateSource,
@@ -187,11 +192,7 @@ export {
   type HumanRefGenerator,
 } from './domain/finance/human-ref.js';
 
-export {
-  FinancialError,
-  FinancialValidationError,
-  FinancialInvariantError,
-} from './domain/finance/errors.js';
+export { FinancialError, FinancialValidationError } from './domain/finance/errors.js';
 
 // M04-T01: Application ports
 export {
@@ -211,7 +212,9 @@ export {
   IDEMPOTENCY_STATES,
   type IdempotencyState,
   type IdempotencyKeyRecord,
-  type ClaimIdempotencyKeyInput,
+  type IdempotencyScope,
+  type IdempotencyFingerprint,
+  type CreateIdempotencyKeyInput,
   type CompleteIdempotencyKeyInput,
   type IdempotencyKeyRepository,
 } from './application/ports/idempotency-ports.js';
@@ -223,7 +226,7 @@ export {
   type AuditAction,
   type AuditEntityType,
   type AuditSource,
-  type CreateAuditEventInput,
+  type WriteAuditEventInput,
   type AuditWriter,
 } from './application/ports/audit-ports.js';
 

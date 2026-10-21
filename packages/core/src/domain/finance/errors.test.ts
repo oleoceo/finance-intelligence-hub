@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { FinancialError, FinancialValidationError, FinancialInvariantError } from './errors.js';
+import { FinancialError, FinancialValidationError } from './errors.js';
 import { ValidationError } from '../master-data/errors.js';
 
 describe('FinancialError', () => {
   it('carries stable machine-readable code', () => {
-    const err = new FinancialError('test message', 'TEST_CODE');
-    expect(err.code).toBe('TEST_CODE');
-    expect(err.message).toBe('test message');
+    const err = new FinancialError('Book is inactive', 'BOOK_INACTIVE');
+    expect(err.code).toBe('BOOK_INACTIVE');
+    expect(err.message).toBe('Book is inactive');
     expect(err.name).toBe('FinancialError');
   });
 
   it('is an instance of Error', () => {
-    const err = new FinancialError('msg', 'CODE');
+    const err = new FinancialError('msg', 'ACCOUNT_INACTIVE');
     expect(err).toBeInstanceOf(Error);
   });
 });
@@ -35,20 +35,6 @@ describe('FinancialValidationError', () => {
     const err = new FinancialValidationError('generic validation failure');
     expect(err.field).toBeUndefined();
     expect(err.code).toBe('VALIDATION_ERROR');
-  });
-});
-
-describe('FinancialInvariantError', () => {
-  it('carries FINANCIAL_INVARIANT_ERROR code', () => {
-    const err = new FinancialInvariantError('invariant violated');
-    expect(err.code).toBe('FINANCIAL_INVARIANT_ERROR');
-    expect(err.name).toBe('FinancialInvariantError');
-  });
-
-  it('is an instance of FinancialError', () => {
-    const err = new FinancialInvariantError('msg');
-    expect(err).toBeInstanceOf(FinancialError);
-    expect(err).toBeInstanceOf(Error);
   });
 });
 

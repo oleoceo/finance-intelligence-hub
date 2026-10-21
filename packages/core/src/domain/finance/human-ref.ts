@@ -47,6 +47,9 @@ export class DeterministicHumanRefGenerator implements HumanRefGenerator {
   private readonly prefix: string;
 
   constructor(prefix = 'REF') {
+    if (!isValidHumanRef(prefix) || prefix.length >= 16) {
+      throw new Error('Human reference prefix must use [A-Z0-9] and leave room for a suffix');
+    }
     this.counter = 0;
     this.prefix = prefix;
   }
@@ -55,7 +58,7 @@ export class DeterministicHumanRefGenerator implements HumanRefGenerator {
     this.counter += 1;
     const suffix = String(this.counter).padStart(16 - this.prefix.length, '0');
     const ref = `${this.prefix}${suffix}`;
-    if (ref.length > 16) {
+    if (!isValidHumanRef(ref)) {
       throw new Error(`DeterministicHumanRefGenerator exhausted: "${ref}" exceeds 16 characters`);
     }
     return ref;

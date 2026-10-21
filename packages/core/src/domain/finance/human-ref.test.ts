@@ -88,6 +88,10 @@ describe('DeterministicHumanRefGenerator', () => {
     expect(gen.generate()).toBe('TX00000000000002');
   });
 
+  it.each(['lower', 'A-B', 'ABCDEFGHIJKLMNOP', ''])('rejects invalid prefix %s', (prefix) => {
+    expect(() => new DeterministicHumanRefGenerator(prefix)).toThrow();
+  });
+
   it('reset restarts counter', () => {
     const gen = new DeterministicHumanRefGenerator();
     gen.generate();

@@ -34,8 +34,8 @@ export class Money {
       throw new Error('Money amount must be a string');
     }
 
-    if (typeof currency !== 'string' || currency.length === 0) {
-      throw new Error('Money currency must be a non-empty string');
+    if (typeof currency !== 'string' || !/^[A-Z]{3}$/.test(currency)) {
+      throw new Error('Money currency must match [A-Z]{3}');
     }
 
     if (!MONEY_REGEX.test(amount)) {
@@ -65,14 +65,14 @@ export class Money {
     // Reject zero value: both integral and fractional must not be all zeros
     const integralBigInt = BigInt(integralStr);
     const fractionalPadded = fractionalStr.padEnd(2, '0');
-    const fractionalValue = parseInt(fractionalPadded, 10);
+    const fractionalValue = fractionalPadded === '' ? 0n : BigInt(fractionalPadded);
 
-    if (integralBigInt === 0n && fractionalValue === 0) {
+    if (integralBigInt === 0n && fractionalValue === 0n) {
       throw new Error('Money amount must be strictly greater than zero');
     }
 
     // Check overflow: convert to cents and compare against max
-    const cents = integralBigInt * 100n + BigInt(fractionalValue);
+    const cents = integralBigInt * 100n + fractionalValue;
     if (cents > MAX_CENTS) {
       throw new Error(
         `Money amount exceeds maximum NUMERIC(18,2): ${amount}. Max is 9999999999999999.99`,
@@ -82,7 +82,7 @@ export class Money {
     // Canonicalize to exactly two decimal places
     const canonicalAmount = `${integralStr}.${fractionalPadded}`;
 
-    return new Money(canonicalAmount, currency.toUpperCase());
+    return new Money(canonicalAmount, currency);
   }
 
   /**
@@ -93,7 +93,7 @@ export class Money {
   }
 
   /**
-   * Returns the uppercase currency code.
+   * Returns the validated uppercase currency code.
    */
   get currency(): string {
     return this._currency;
@@ -107,9 +107,9 @@ export class Money {
   }
 
   /**
-   * String representation for debugging/logging.
+   * Canonical decimal serialization.
    */
   toString(): string {
-    return `${this._currency} ${this._amount}`;
+    return this._amount;
   }
 }

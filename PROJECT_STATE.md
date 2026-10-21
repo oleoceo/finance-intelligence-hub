@@ -198,7 +198,7 @@ M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved
 
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
 M03 - Master Data / Configuration: IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 REVIEW REQUIRED (Draft PR #3; awaiting final CI validation after corrections).
-M03-T02 is human accepted and closed; M03-T03 is human accepted and DONE; its record is in docs/tasks/completed/M03-T03.md. M03-T04 is human accepted and DONE; M03-T05 is PLANNED and the next allowed implementation task. Draft PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. T05 is on Draft PR #3. Gate 0 remains a separate infrastructure prerequisite, NOT EXECUTED and not authorized by this closure.
+M03-T02 is human accepted and closed; M03-T03 is human accepted and DONE; its record is in docs/tasks/completed/M03-T03.md. M03-T04 is human accepted and DONE; M03-T05 is REVIEW REQUIRED (Draft PR #3). Draft PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. T05 is on Draft PR #3. Gate 0 remains a separate infrastructure prerequisite, NOT EXECUTED and not authorized by this closure.
 
 ---
 
@@ -764,7 +764,7 @@ M02 Database Foundation
 DONE
 
 M03 Master Data / Configuration
-IN PROGRESS - M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 PLANNED
+IN PROGRESS - M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 REVIEW REQUIRED (Draft PR #3; awaiting final CI validation after corrections)
 
 M04 Transaction Core
 ⬜ NOT STARTED
@@ -848,7 +848,7 @@ These belong to Gate 0.
 # 39. Current allowed next actions
 
 Functional roadmap progression: M01 -> M02 -> M03.
-M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 REVIEW REQUIRED (Draft PR #3; awaiting final CI validation after corrections). M03-T03 is human accepted and DONE; its record is in docs/tasks/completed/M03-T03.md. M03-T04 is human accepted and DONE; M03-T05 is PLANNED and the next allowed implementation task. Draft PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. T05 is on Draft PR #3.
+M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 REVIEW REQUIRED (Draft PR #3; awaiting final CI validation after corrections). M03-T03 is human accepted and DONE; its record is in docs/tasks/completed/M03-T03.md. M03-T04 is human accepted and DONE; M03-T05 is REVIEW REQUIRED (Draft PR #3). Draft PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. T05 is on Draft PR #3.
 Gate 0 is separate from functional roadmap progression and is not authorized by this closure. T05 implementation and correction validation are on Draft PR #3. Do not merge before human acceptance.
 
 ---
@@ -977,7 +977,7 @@ docs-freeze-v0.1
 
 M03-T04 is human accepted and DONE. Accepted head: `681a51b37d7ea0e917a6f2b401e8e847a4bbcb53`; final accepted GitHub Actions [run 39527608979](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39527608979): full CI GREEN. Unit 14 files / 215 tests PASS (T04-specific: 69 — ClassificationRule domain 20, AuthorizedSender domain 16, Rule/Sender application use cases 33); PostgreSQL integration 14 files / 199 tests PASS (T04-specific: 63 — Rule configuration 24, Sender configuration 11, Rule concurrency 17, Sender concurrency 11). Build, typecheck, lint and formatting PASS.
 
-Accepted behavior: ClassificationRule create/get/list/update configuration, manual source and active lifecycle, integer priority including negative values, raw + normalized pattern handling, at-least-one-target invariant, active/existence validation for Book/Account/Category/Merchant, Account/Category derived Book validation, full Book-context compatibility, stable priority ASC / created_at ASC / id ASC ordering, locked PATCH merge, deterministic total lock ordering, bounded whole-transaction rediscovery, canonical KyselyTransactionPort T04 wiring, AuthorizedSender create/get/list/update configuration, sender_reference stored unchanged, default Book/Account compatibility and active validation, inactive Sender retaining defaults/archive protection, explicit default clearing, SenderDefaultReferenceReader reuse, independent PostgreSQL backend barrier coverage, Rule configuration/archive races for Book/Account/Category/Merchant, Sender assignment/archive/removal races for Book/Account, preserved Rule references after target archive, no runtime matching/application. No migration or security impact. T04 acceptance is preserved; M03-T05 is PLANNED and next allowed implementation task.
+Accepted behavior: ClassificationRule create/get/list/update configuration, manual source and active lifecycle, integer priority including negative values, raw + normalized pattern handling, at-least-one-target invariant, active/existence validation for Book/Account/Category/Merchant, Account/Category derived Book validation, full Book-context compatibility, stable priority ASC / created_at ASC / id ASC ordering, locked PATCH merge, deterministic total lock ordering, bounded whole-transaction rediscovery, canonical KyselyTransactionPort T04 wiring, AuthorizedSender create/get/list/update configuration, sender_reference stored unchanged, default Book/Account compatibility and active validation, inactive Sender retaining defaults/archive protection, explicit default clearing, SenderDefaultReferenceReader reuse, independent PostgreSQL backend barrier coverage, Rule configuration/archive races for Book/Account/Category/Merchant, Sender assignment/archive/removal races for Book/Account, preserved Rule references after target archive, no runtime matching/application. No migration or security impact. T04 acceptance is preserved; M03-T05 is REVIEW REQUIRED (Draft PR #3).
 
 ---
 
@@ -1212,7 +1212,7 @@ INFRA-T01 Provision postgres-products
 
 M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 REVIEW REQUIRED (Draft PR #3; awaiting final CI validation after corrections).
 M02 and M02-T01 through M02-T05 are DONE and accepted. Completed task records and milestone overview are in docs/tasks/completed/.
-M03-T01 is human accepted and recorded in docs/tasks/completed/M03-T01.md. M03-T02 is human accepted and recorded in docs/tasks/completed/M03-T02.md. M03-T03 is human accepted, DONE and recorded in docs/tasks/completed/M03-T03.md. M03-T04 is human accepted, DONE and recorded in docs/tasks/completed/M03-T04.md; M03-T05 is PLANNED and the next allowed implementation task.
+M03-T01 is human accepted and recorded in docs/tasks/completed/M03-T01.md. M03-T02 is human accepted and recorded in docs/tasks/completed/M03-T02.md. M03-T03 is human accepted, DONE and recorded in docs/tasks/completed/M03-T03.md. M03-T04 is human accepted, DONE and recorded in docs/tasks/completed/M03-T04.md; M03-T05 is REVIEW REQUIRED (Draft PR #3).
 Gate 0 remains NOT EXECUTED, a separate prerequisite before live VPS/Lab/Production activity, and is not authorized by this closure.
 
 ---
@@ -1291,7 +1291,7 @@ Documentation baseline tag
 ⬜ PENDING
 
 Implementation
-M01 and M02 DONE; M03 IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 PLANNED
+M01 and M02 DONE; M03 IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 REVIEW REQUIRED (Draft PR #3; awaiting final CI validation after corrections)
 
 Gate 0
 ⬜ NOT EXECUTED
@@ -1313,6 +1313,6 @@ NONE
 
 # 63. Next action
 
-M02 remains DONE. M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 PLANNED and next allowed implementation task. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED. T04 PR #2 squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS (prior accepted head 681a51b37d7ea0e917a6f2b401e8e847a4bbcb53, run 39527608979 = SUCCESS). The later task-runner main commit is 27e3a2de7c9fcb884e2242e6345884b25eed4eff. T05 is on Draft PR #3 and is REVIEW REQUIRED. Final accepted evidence: unit 14 files / 215 tests PASS; PostgreSQL integration 14 files / 199 tests PASS (T04: 69 unit, 63 integration). Remaining T04 issues: none. Complete documentation closure correction and final-head CI validation on m03-t04-rules-senders / Draft PR #2. No local application suite rerun solely for documentation; no migration, security or live infrastructure impact. PR #2 remains unmerged. Do not merge before human acceptance. Do not start M04.
+M02 remains DONE. M03 is IN PROGRESS; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 REVIEW REQUIRED (Draft PR #3; awaiting final CI validation after corrections) and implementation task: M03-T05 REVIEW REQUIRED. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED. T04 PR #2 squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS (prior accepted head 681a51b37d7ea0e917a6f2b401e8e847a4bbcb53, run 39527608979 = SUCCESS). The later task-runner main commit is 27e3a2de7c9fcb884e2242e6345884b25eed4eff. T05 is on Draft PR #3 and is REVIEW REQUIRED. Final accepted evidence: unit 14 files / 215 tests PASS; PostgreSQL integration 14 files / 199 tests PASS (T04: 69 unit, 63 integration). Remaining T04 issues: none. Complete documentation closure correction and final-head CI validation on m03-t04-rules-senders / Draft PR #2. No local application suite rerun solely for documentation; no migration, security or live infrastructure impact. PR #2 remains unmerged. Do not merge before human acceptance. Do not start M04.
 
 ---

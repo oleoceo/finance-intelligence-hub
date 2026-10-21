@@ -18,7 +18,7 @@ Frozen routing: FINAL-FREEZE-DECISIONS §§5–6, 78–97; 01-MVP-REQUIREMENTS �
 | [T01](../completed/M03-T01.md) | Primitives, errors and Core ports | Accepted M02 |
 | [T02](../completed/M03-T02.md) | Books/Accounts; usage/default readers | T01 |
 | [T03](../completed/M03-T03.md) | Categories/Merchants; hierarchy updates | T01 |
-| [T04](M03-T04.md) | Rules/Senders configuration | T02 and T03 |
+| [T04](../completed/M03-T04.md) | Rules/Senders configuration | T02 and T03 |
 | [T05](M03-T05.md) | API and milestone integration | T01–T04 |
 
 Preferred execution: human authorization -> T01 -> T02 -> T03 -> T04 -> T05.
@@ -119,15 +119,15 @@ That historical documentation verification did not execute application suites or
 
 ## Accepted tasks and current closure
 
-M03 remains IN PROGRESS. T01 DONE; T02 DONE; T03 DONE; T04 REVIEW REQUIRED; T05 PLANNED. Current action: final PR #2 CI and human review of T04. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
+M03 remains IN PROGRESS. T01 DONE; T02 DONE; T03 DONE; T04 DONE; T05 PLANNED and next allowed implementation task. T04 implementation is human accepted; current action: documentation closure correction and final PR #2 CI. M04 remains NOT STARTED; Gate 0 remains NOT EXECUTED.
 
 Accepted records: [T01](../completed/M03-T01.md), [T02](../completed/M03-T02.md), [T03](../completed/M03-T03.md). T01/T02 records are unchanged by T03 closure.
 
 T03 human-accepted head: `119f8d86f9ea307be979f6051d83958e7a563549`. Final accepted GitHub Actions [run 39506256233](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39506256233): full CI GREEN; unit 11 files / 146 tests PASS (Category 31, Merchant 13); integration 10 files / 136 tests PASS; T03 integration 36 tests PASS. Build, typecheck, lint and formatting PASS. Accepted hierarchy, lifecycle, lock/retry, two-backend concurrency, uniqueness, duplicate-Merchant and historical-reference behavior is detailed in the completed T03 record.
 
-Closure moves T03 to completed/ and updates PROJECT_STATE.md and this overview. Application suites are not rerun locally solely for documentation. Frozen docs, migrations, source, tests, package manifests, lockfile, ADRs, completed T01/T02 records and T04/T05 contracts remain unchanged. No migration/security impact or remaining T03 issue. T03 PR #1 was squash-merged to main (main commit: `1b3345b00a46799ae2398f1372ad48d84e159dd1`; post-merge main CI run `39508114443` = SUCCESS); no live infrastructure activity.
+The accepted T03 closure moved T03 to completed/ and updated PROJECT_STATE.md and this overview. Application suites were not rerun locally solely for that documentation closure. Frozen docs, migrations, source, tests, package manifests, lockfile, ADRs, completed T01/T02 records and T04/T05 contracts were unchanged by that closure. No migration/security impact or remaining T03 issue. T03 PR #1 was squash-merged to main (main commit: `1b3345b00a46799ae2398f1372ad48d84e159dd1`; post-merge main CI run `39508114443` = SUCCESS); no live infrastructure activity.
 
 
-## Current T04 review evidence
+## Final accepted T04 evidence
 
-T04 remains active and REVIEW REQUIRED on Draft PR #2. Native-WSL frozen install, lint, format:check, build and typecheck PASS; unit 14 files / 214 tests PASS, integration 14 files / 198 tests PASS. T04 contributes 68 unit and 62 PostgreSQL tests, including 28 independent-backend races. See [T04](M03-T04.md) for correction evidence. No frozen/migration/dependency/API changes; no T05 or live infrastructure work. Final PR CI and human acceptance remain required.
+T04 is human accepted and DONE; see [completed T04](../completed/M03-T04.md). Accepted implementation head: 681a51b37d7ea0e917a6f2b401e8e847a4bbcb53; accepted GitHub Actions [run 39527608979](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/39527608979) = SUCCESS. Unit 14 files / 215 tests PASS; PostgreSQL integration 14 files / 199 tests PASS. T04 contributes 69 unit and 63 integration tests, including 28 independent-backend races. Frozen install, lint, format:check, build and typecheck PASS. No remaining T04 blocker. M03 remains IN PROGRESS because T05 is PLANNED and the next allowed implementation task. Documentation closure does not rerun local application suites. Draft PR #2 remains unmerged; no T05 implementation or live infrastructure work is authorized by this closure.

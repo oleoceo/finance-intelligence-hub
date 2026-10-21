@@ -61,7 +61,7 @@ M02 - Database Foundation: DONE; human accepted on 2026-10-20.
 M02-T01, M02-T02, M02-T03, M02-T04 and M02-T05: DONE.
 M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
 
-Functional roadmap completed through M03. M04 planning was accepted and integrated at `d369261aceb8c91a2ee3449c64be7d7b24af11ab` (post-merge CI `39661571275` = SUCCESS). M04 Activation Review PASS against current main `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; M04 and T01–T08 are ACTIVE / execution-ready, but implementation is NOT AUTHORIZED. Gate A and Gate 0 are NOT EXECUTED.
+Functional roadmap completed through M03. M04 planning was accepted and integrated at `d369261aceb8c91a2ee3449c64be7d7b24af11ab` (post-merge CI `39661571275` = SUCCESS). M04 Activation Review PASS against current main `ead8f7380ed214cd3ce680fb87c6391cadd45011`. M04 is ACTIVE. M04-T01 implementation is REVIEW REQUIRED on branch `m04-t01-transaction-primitives` (head `ddc114c`). M04-T02 through M04-T08 are ACTIVE / execution-ready but NOT AUTHORIZED. Gate A and Gate 0 are NOT EXECUTED.
 
 Architecture and canonical documentation remain frozen. ADR-001/002 remain ACCEPTED. Established M01 Docker/CI evidence is preserved below. M03-T05 is human accepted, DONE and integrated. Accepted implementation head `da0a6ced16e8ce5831e144d498e841dc2a6a0ead`; GitHub Actions run `39640634314` = SUCCESS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. T04 remains human accepted and DONE. V0.1 Forward Planning was accepted and integrated at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` = SUCCESS.
 

@@ -151,3 +151,83 @@ export type {
   CreateAuthorizedSenderInput as CreateAuthorizedSenderUseCaseInput,
   UpdateAuthorizedSenderInput as UpdateAuthorizedSenderUseCaseInput,
 } from './domain/master-data/authorized-sender.js';
+
+// M04-T01: Finance domain primitives
+export { Money } from './domain/finance/money.js';
+
+export {
+  TRANSACTION_TYPES,
+  TRANSACTION_STATUSES,
+  TRANSACTION_CREATE_SOURCES,
+  isValidTransactionType,
+  isValidTransactionStatus,
+  isValidTransactionCreateSource,
+  assertTransactionType,
+  assertTransactionStatus,
+  type TransactionType,
+  type TransactionStatus,
+  type TransactionCreateSource,
+} from './domain/finance/transaction-types.js';
+
+export {
+  validateTransactionDate,
+  validateTransactionDateNotFuture,
+  validateMoneyAmount,
+  validateTransactionType,
+  validateTransactionStatus,
+  validateTransactionCreateSource,
+  validateHumanRefField,
+  validateTransferAccountsDiffer,
+} from './domain/finance/transaction-validation.js';
+
+export {
+  isValidHumanRef,
+  assertHumanRef,
+  DeterministicHumanRefGenerator,
+  type HumanRefGenerator,
+} from './domain/finance/human-ref.js';
+
+export {
+  FinancialError,
+  FinancialValidationError,
+  FinancialInvariantError,
+} from './domain/finance/errors.js';
+
+// M04-T01: Application ports
+export {
+  type TransactionRecord,
+  type CreateTransactionInput,
+  type CreateExpenseInput,
+  type CreateIncomeInput,
+  type CreateTransferInput,
+  type ListTransactionsInput,
+  type ListTransactionsResult,
+  type GetLastTransactionInput,
+  type TransactionRepository,
+  type TransactionReadPort,
+} from './application/ports/transaction-ports.js';
+
+export {
+  IDEMPOTENCY_STATES,
+  type IdempotencyState,
+  type IdempotencyKeyRecord,
+  type ClaimIdempotencyKeyInput,
+  type CompleteIdempotencyKeyInput,
+  type IdempotencyKeyRepository,
+} from './application/ports/idempotency-ports.js';
+
+export {
+  AUDIT_ACTIONS,
+  AUDIT_ENTITY_TYPES,
+  AUDIT_SOURCES,
+  type AuditAction,
+  type AuditEntityType,
+  type AuditSource,
+  type CreateAuditEventInput,
+  type AuditWriter,
+} from './application/ports/audit-ports.js';
+
+export {
+  type FinancialTransactionContext,
+  type FinancialTransactionPort,
+} from './application/ports/financial-transaction-port.js';

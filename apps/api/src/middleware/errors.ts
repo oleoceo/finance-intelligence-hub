@@ -5,6 +5,7 @@ import {
   ImmutabilityError,
   DependencyError,
   ConcurrencyError,
+  FinancialError,
 } from '@finance-hub/core';
 import { meta } from '../routes/admin/shared.js';
 
@@ -87,6 +88,12 @@ export function mapError(error: unknown): ApiError {
     return selected ? new ApiError(...selected) : new ApiError(500, 'INTERNAL_ERROR');
   }
   if (error instanceof ConcurrencyError) return validation('configuration_changed', 409);
+  if (error instanceof FinancialError) {
+    if (/^(BOOK|ACCOUNT|CATEGORY|MERCHANT)_NOT_FOUND$/.test(error.code))
+      return new ApiError(404, error.code);
+    if (error.code === 'IDEMPOTENCY_CONFLICT') return new ApiError(409, error.code);
+    return new ApiError(422, error.code);
+  }
   if (error instanceof ImmutabilityError) return validation('immutable_field');
   if (error instanceof DependencyError)
     return new ApiError(

@@ -37,6 +37,112 @@ If a genuine contradiction exists between the authorized task and higher frozen 
 
 Do not reopen already accepted tasks unless the current task exposes an objective regression.
 
+### Remote state + Sync Gate
+
+The GitHub remote (`origin/main`) is the authority for the already-integrated state of the repository.
+
+Before starting a new task:
+
+1. `git fetch origin --prune`
+2. inspect all relevant workspaces before synchronizing;
+3. preserve unique local work;
+4. never use `reset --hard` on an unknown/dirty tree;
+5. fast-forward local main when possible;
+6. align Windows workspace and WSL worktree to the remote baseline;
+7. re-read PROJECT_STATE/overview/task after synchronization;
+8. only then create the task branch.
+
+A local working tree that is behind does not redefine the project's canonical state.
+
+### Standing workflow authorization
+
+The human may establish continuous operational authorization.
+
+When standing authorization exists:
+
+- normal corrections;
+- self-healing;
+- validations;
+- documentary closure;
+- PR creation;
+- CI inspection;
+- bookkeeping;
+- activation of the next task already selected by handoff;
+
+may proceed without a new human checkpoint, provided they:
+
+- are within already-approved scope;
+- do not introduce new architectural/business/security decisions;
+- are not destructive;
+- do not involve Lab/Production/VPS;
+- are not merges.
+
+Explicit authorization continues to be required for:
+
+- merge;
+- irreversible actions;
+- live infrastructure;
+- architectural change;
+- new business decisions;
+- unfrozen security decisions;
+- destructive data changes.
+
+Never interpret standing authorization as generic authorization for future unselected tasks.
+
+The handoff must explicitly name the task being started.
+
+### Remote closure permitted
+
+After technical/human acceptance and CI GREEN, documentary closure may be executed:
+
+- by the local agent;
+- or by an authenticated coordinator directly on GitHub.
+
+If remote closure has already been validated, do not require an artificial roundtrip to the agent just to repeat the same edits locally.
+
+The local workspace absorbs the closure at the next task's Sync Gate.
+
+### Post-merge bookkeeping efficient
+
+Avoid creating an independent PR solely to replace:
+
+`PR open/unmerged`
+
+with:
+
+`PR merged`
+
+when no implementation or decision depends on it immediately.
+
+Prefer pre-merge stable wording when possible.
+
+After merge:
+
+- verify squash SHA;
+- verify post-merge CI;
+- provide this in the handoff;
+- record the updated state in the first operational edit of the next task before implementation.
+
+Exception:
+
+if obsolete state blocks or makes an immediate operation ambiguous, perform a narrow post-merge correction before proceeding.
+
+### Mandatory handoff
+
+Add to the workflow that each new task receives a minimal handoff containing:
+
+- previous task;
+- merge PR;
+- squash SHA;
+- post-merge CI;
+- current `origin/main` SHA;
+- regression test totals;
+- selected next task;
+- authorization state;
+- explicit Sync Gate.
+
+This reduces dependence on agent/conversation memory.
+
 ---
 
 ## 2. Confirm task boundary

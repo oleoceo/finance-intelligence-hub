@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { randomBytes } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { checkPostgreSQLReadiness, createConfigurationStore } from '@finance-hub/database';
 import type { ConfigurationOptions } from './routes/admin/shared.js';
@@ -10,8 +11,15 @@ import { registerCategories } from './routes/admin/categories.js';
 import { registerMerchants } from './routes/admin/merchants.js';
 import { registerClassificationRules } from './routes/admin/classification-rules.js';
 import { registerAuthorizedSenders } from './routes/admin/authorized-senders.js';
-import { normalizeName } from '@finance-hub/core';
+import {
+  GenericCreateTransaction,
+  normalizeName,
+  type FinancialTransactionPort,
+  type HumanRefGenerator,
+  type TransactionReadPort,
+} from '@finance-hub/core';
 import { strict } from './schemas/configuration.js';
+import { registerTransactions, type TransactionRouteOptions } from './routes/transactions.js';
 
 const ALLOWED_CORRELATION_CHARS = /^[A-Za-z0-9._:-]+$/;
 const MAX_CORRELATION_LENGTH = 128;
@@ -31,6 +39,10 @@ function isValidCorrelationId(value: unknown): value is string {
 
 export interface AppOptions extends Credentials {
   transactions?: ConfigurationOptions['transactions'];
+  financialTransactions?: FinancialTransactionPort;
+  transactionReads?: TransactionReadPort;
+  genericCreate?: TransactionRouteOptions['genericCreate'];
+  humanRefGenerator?: HumanRefGenerator;
   now?: () => Date;
 }
 function buildApp(options: AppOptions = {}) {
@@ -97,6 +109,29 @@ function buildApp(options: AppOptions = {}) {
       },
     now: options.now ?? (() => new Date()),
   };
+  const unavailable = async (): Promise<never> => {
+    throw new ApiError(503, 'DATABASE_UNAVAILABLE');
+  };
+  const transactionReads: TransactionReadPort = options.transactionReads ??
+    store?.transactionReads ?? {
+      findById: unavailable,
+      list: unavailable,
+      getLast: unavailable,
+    };
+  const genericCreate =
+    options.genericCreate ??
+    new GenericCreateTransaction(
+      options.financialTransactions ??
+        store?.financialTransactions ?? {
+          runInTransaction: unavailable,
+        },
+      {
+        humanRefGenerator: options.humanRefGenerator ?? {
+          generate: () => randomBytes(8).toString('hex').toUpperCase(),
+        },
+        now: options.now ?? (() => new Date()),
+      },
+    );
 
   // Add correlation ID extraction hook
   app.addHook('onRequest', (request, _reply, done) => {
@@ -171,6 +206,7 @@ function buildApp(options: AppOptions = {}) {
     registerMerchants(admin, configuration);
     registerClassificationRules(admin, configuration);
     registerAuthorizedSenders(admin, configuration);
+    registerTransactions(admin, { genericCreate, transactionReads });
   });
 
   // Health endpoint - independent of external dependencies

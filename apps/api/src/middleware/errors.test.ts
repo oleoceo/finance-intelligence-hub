@@ -5,11 +5,39 @@ import {
   ImmutabilityError,
   DependencyError,
   ConcurrencyError,
+  FinancialError,
 } from '@finance-hub/core';
 import { buildApp } from '../index.js';
 import { mapError } from './errors.js';
 
 const cases: [unknown, number, string, string?][] = [
+  ...['BOOK_NOT_FOUND', 'ACCOUNT_NOT_FOUND', 'CATEGORY_NOT_FOUND', 'MERCHANT_NOT_FOUND'].map(
+    (code) =>
+      [
+        new FinancialError('private', code as ConstructorParameters<typeof FinancialError>[1]),
+        404,
+        code,
+      ] as [unknown, number, string],
+  ),
+  ...[
+    'BOOK_INACTIVE',
+    'ACCOUNT_INACTIVE',
+    'CATEGORY_INACTIVE',
+    'MERCHANT_INACTIVE',
+    'TRANSACTION_DATE_IN_FUTURE',
+    'TRANSFER_SAME_ACCOUNT',
+    'CROSS_BOOK_TRANSFER_NOT_SUPPORTED',
+    'CURRENCY_MISMATCH',
+    'VALIDATION_ERROR',
+  ].map(
+    (code) =>
+      [
+        new FinancialError('private', code as ConstructorParameters<typeof FinancialError>[1]),
+        422,
+        code,
+      ] as [unknown, number, string],
+  ),
+  [new FinancialError('private', 'IDEMPOTENCY_CONFLICT'), 409, 'IDEMPOTENCY_CONFLICT'],
   ...['BOOK', 'ACCOUNT', 'CATEGORY', 'MERCHANT'].flatMap(
     (entity) =>
       [

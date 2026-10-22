@@ -2,6 +2,8 @@ import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 import type { DB } from './db-types.js';
 import { KyselyTransactionPort } from './transaction/configuration-transaction.js';
+import { KyselyFinancialTransactionPort } from './transaction/financial-transaction.js';
+import { KyselyTransactionReadRepository } from './repositories/transaction-read-repository.js';
 
 export function createConfigurationStore(connectionString: string) {
   const db = new Kysely<DB>({
@@ -9,5 +11,10 @@ export function createConfigurationStore(connectionString: string) {
       pool: new Pool({ connectionString, connectionTimeoutMillis: 2000 }),
     }),
   });
-  return { transactions: new KyselyTransactionPort(db), close: () => db.destroy() };
+  return {
+    transactions: new KyselyTransactionPort(db),
+    financialTransactions: new KyselyFinancialTransactionPort(db),
+    transactionReads: new KyselyTransactionReadRepository(db),
+    close: () => db.destroy(),
+  };
 }

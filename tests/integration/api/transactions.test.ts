@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:net';
 import { buildApp } from '../../../apps/api/src/index.js';
 import { t02Database } from '../repositories/t02-fixtures.js';
 
@@ -85,6 +86,39 @@ async function counts(key: string) {
   return { transactions, audits, keys };
 }
 
+function buildForConnection(
+  connectionString: string,
+  options: Parameters<typeof buildApp>[0] = {},
+) {
+  const previous = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = connectionString;
+  try {
+    return buildApp({
+      adminToken: 'integration-admin',
+      ingestToken: 'integration-ingest',
+      now: () => now,
+      ...options,
+    });
+  } finally {
+    if (previous === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previous;
+  }
+}
+
+async function unusedLocalPort() {
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No local TCP port assigned');
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+  return address.port;
+}
+
 beforeAll(async () => {
   const first = await seedBook();
   bookId = first.book;
@@ -134,18 +168,7 @@ beforeAll(async () => {
       updatedAt: now,
     });
   });
-  const previous = process.env.DATABASE_URL;
-  process.env.DATABASE_URL = fixture.connectionString;
-  try {
-    app = buildApp({
-      adminToken: 'integration-admin',
-      ingestToken: 'integration-ingest',
-      now: () => now,
-    });
-  } finally {
-    if (previous === undefined) delete process.env.DATABASE_URL;
-    else process.env.DATABASE_URL = previous;
-  }
+  app = buildForConnection(fixture.connectionString);
   await app.ready();
 }, 180000);
 afterAll(async () => {
@@ -463,6 +486,115 @@ describe('M04-T08 API with production Database store and PostgreSQL', () => {
         .set({ active: true, archived_at: null })
         .where('id', '=', id)
         .execute();
+    }
+  });
+
+  it('maps a real unavailable PostgreSQL connection to HTTP 503 without connection details', async () => {
+    const port = await unusedLocalPort();
+    const unavailable = buildForConnection(
+      `postgresql://t08_probe:private_t08_probe@127.0.0.1:${port}/missing`,
+    );
+    try {
+      const response = await unavailable.inject({
+        method: 'POST',
+        url: '/api/v1/transactions',
+        headers: { ...admin, 'idempotency-key': randomUUID() },
+        payload: createBody(),
+      });
+      expect(response.statusCode).toBe(503);
+      expect(response.json().error.code).toBe('DATABASE_UNAVAILABLE');
+      for (const privateDetail of [
+        'private_t08_probe',
+        't08_probe',
+        'postgresql://',
+        '127.0.0.1',
+        'ECONNREFUSED',
+        'stack',
+      ]) {
+        expect(response.body).not.toContain(privateDetail);
+      }
+    } finally {
+      await unavailable.close();
+    }
+  });
+
+  it('rolls back human_ref exhaustion through HTTP and real PostgreSQL as INTERNAL_ERROR', async () => {
+    const own = await seedBook();
+    const fixedRef = 'T08REF0000000001';
+    const collisionApp = buildForConnection(fixture.connectionString, {
+      humanRefGenerator: { generate: () => fixedRef },
+    });
+    const firstKey = randomUUID();
+    const failedKey = randomUUID();
+    const payload = {
+      ...createBody('expense'),
+      book_id: own.book,
+      account_id: own.account,
+      category_id: null,
+      merchant_id: null,
+    };
+    try {
+      const first = await collisionApp.inject({
+        method: 'POST',
+        url: '/api/v1/transactions',
+        headers: { ...admin, 'idempotency-key': firstKey, 'x-correlation-id': firstKey },
+        payload,
+      });
+      expect(first.statusCode).toBe(201);
+      expect(first.json().data.human_ref).toBe(fixedRef);
+
+      const failed = await collisionApp.inject({
+        method: 'POST',
+        url: '/api/v1/transactions',
+        headers: { ...admin, 'idempotency-key': failedKey, 'x-correlation-id': failedKey },
+        payload,
+      });
+      expect(failed.statusCode).toBe(500);
+      expect(failed.json().error.code).toBe('INTERNAL_ERROR');
+      for (const privateDetail of [fixedRef, 'human_ref', 'SQL', 'stack', 'postgresql://']) {
+        expect(failed.body).not.toContain(privateDetail);
+      }
+
+      const [transactions, firstAudit, failedAudit, firstKeys, failedKeys] = await Promise.all([
+        fixture.db.selectFrom('transactions').selectAll().where('book_id', '=', own.book).execute(),
+        fixture.db
+          .selectFrom('audit_events')
+          .selectAll()
+          .where('correlation_id', '=', firstKey)
+          .execute(),
+        fixture.db
+          .selectFrom('audit_events')
+          .selectAll()
+          .where('correlation_id', '=', failedKey)
+          .execute(),
+        fixture.db
+          .selectFrom('idempotency_keys')
+          .selectAll()
+          .where('idempotency_key', '=', firstKey)
+          .execute(),
+        fixture.db
+          .selectFrom('idempotency_keys')
+          .selectAll()
+          .where('idempotency_key', '=', failedKey)
+          .execute(),
+      ]);
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0]).toMatchObject({ id: first.json().data.id, human_ref: fixedRef });
+      expect(firstAudit).toHaveLength(1);
+      expect(firstAudit[0]?.entity_id).toBe(first.json().data.id);
+      expect(failedAudit).toHaveLength(0);
+      expect(firstKeys).toHaveLength(1);
+      expect(firstKeys[0]?.status).toBe('completed');
+      expect(failedKeys).toHaveLength(0);
+      const stillReadable = await collisionApp.inject({
+        method: 'GET',
+        url: `/api/v1/transactions/${first.json().data.id}`,
+        headers: admin,
+      });
+      expect(stillReadable.statusCode).toBe(200);
+      expect(stillReadable.json().data.id).toBe(first.json().data.id);
+    } finally {
+      await collisionApp.close();
     }
   });
 });

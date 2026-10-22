@@ -9,6 +9,7 @@
 import { describe, it, expect, expectTypeOf } from 'vitest';
 import type {
   TransactionRecord,
+  TransactionReadRecord,
   CreateTransactionInput,
   CreateExpenseInput,
   CreateIncomeInput,
@@ -141,7 +142,7 @@ describe('Transaction ports compile checks', () => {
     // @ts-expect-error cursor pagination is outside the accepted contract
     void input.cursor;
     const result: ListTransactionsResult = {} as ListTransactionsResult;
-    expectTypeOf(result.items).toEqualTypeOf<TransactionRecord[]>();
+    expectTypeOf(result.items).toEqualTypeOf<TransactionReadRecord[]>();
     expectTypeOf(result.total).toEqualTypeOf<number>();
     expectTypeOf(result.page).toEqualTypeOf<number>();
     expectTypeOf(result.pageSize).toEqualTypeOf<number>();
@@ -159,24 +160,18 @@ describe('Transaction ports compile checks', () => {
     expectTypeOf<
       TransactionRepository['findByHumanRef']
     >().returns.resolves.toEqualTypeOf<TransactionRecord | null>();
-    expectTypeOf<
-      TransactionRepository['list']
-    >().returns.resolves.toEqualTypeOf<ListTransactionsResult>();
-    expectTypeOf<
-      TransactionRepository['getLast']
-    >().returns.resolves.toEqualTypeOf<TransactionRecord | null>();
   });
 
   it('TransactionReadPort methods return correct types', () => {
     expectTypeOf<
       TransactionReadPort['findById']
-    >().returns.resolves.toEqualTypeOf<TransactionRecord | null>();
+    >().returns.resolves.toEqualTypeOf<TransactionReadRecord | null>();
     expectTypeOf<
       TransactionReadPort['list']
     >().returns.resolves.toEqualTypeOf<ListTransactionsResult>();
     expectTypeOf<
       TransactionReadPort['getLast']
-    >().returns.resolves.toEqualTypeOf<TransactionRecord | null>();
+    >().returns.resolves.toEqualTypeOf<TransactionReadRecord | null>();
   });
 });
 

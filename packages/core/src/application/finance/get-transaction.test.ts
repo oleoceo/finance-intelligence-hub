@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { getTransaction } from './get-transaction.js';
-import type { TransactionReadPort, TransactionRecord } from '../ports/transaction-ports.js';
+import type { TransactionReadPort, TransactionReadRecord } from '../ports/transaction-ports.js';
 
 describe('GetTransaction', () => {
   const mockReadPort: TransactionReadPort = {
@@ -9,7 +9,7 @@ describe('GetTransaction', () => {
     getLast: vi.fn(),
   };
 
-  const mockTransaction: TransactionRecord = {
+  const mockTransaction: TransactionReadRecord = {
     id: '550e8400-e29b-41d4-a716-446655440000',
     humanRef: 'TXN-0001',
     bookId: 'book-123',
@@ -33,6 +33,7 @@ describe('GetTransaction', () => {
     updatedAt: new Date(),
     voidedAt: null,
     voidReason: null,
+    isRefund: false,
   };
 
   it('returns transaction when found', async () => {
@@ -51,5 +52,27 @@ describe('GetTransaction', () => {
 
     expect(result).toBeNull();
     expect(mockReadPort.findById).toHaveBeenCalledWith('non-existent-id');
+  });
+
+  it('returns the derived refund representation', async () => {
+    const refund = {
+      ...mockTransaction,
+      type: 'income' as const,
+      refundOfTransactionId: mockTransaction.id,
+      isRefund: true,
+    };
+    vi.mocked(mockReadPort.findById).mockResolvedValue(refund);
+    await expect(getTransaction(refund.id, { readPort: mockReadPort })).resolves.toMatchObject({
+      isRefund: true,
+      refundOfTransactionId: mockTransaction.id,
+    });
+  });
+
+  it.each([null, 42, {}, ''])('rejects malformed id %s before reading', async (id) => {
+    vi.mocked(mockReadPort.findById).mockClear();
+    await expect(getTransaction(id as string, { readPort: mockReadPort })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    expect(mockReadPort.findById).not.toHaveBeenCalled();
   });
 });

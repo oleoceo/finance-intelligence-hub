@@ -43,6 +43,11 @@ export interface TransactionRecord {
   voidReason: string | null;
 }
 
+/** Read representation; the refund flag is derived from the persisted relation. */
+export interface TransactionReadRecord extends TransactionRecord {
+  isRefund: boolean;
+}
+
 /**
  * Discriminated union input for creating a Transaction.
  * Generic create accepts only expense, income, transfer.
@@ -110,7 +115,7 @@ export interface ListTransactionsInput {
  * Paginated result for list operations.
  */
 export interface ListTransactionsResult {
-  items: TransactionRecord[];
+  items: TransactionReadRecord[];
   total: number;
   page: number;
   pageSize: number;
@@ -143,8 +148,6 @@ export interface TransactionRepository {
   ): Promise<TransactionRecord | null>;
   findById(id: string): Promise<TransactionRecord | null>;
   findByHumanRef(humanRef: string): Promise<TransactionRecord | null>;
-  list(input: ListTransactionsInput): Promise<ListTransactionsResult>;
-  getLast(input: GetLastTransactionInput): Promise<TransactionRecord | null>;
 }
 
 /**
@@ -152,7 +155,7 @@ export interface TransactionRepository {
  * Separated from write repository to enforce CQRS at the port level.
  */
 export interface TransactionReadPort {
-  findById(id: string): Promise<TransactionRecord | null>;
+  findById(id: string): Promise<TransactionReadRecord | null>;
   list(input: ListTransactionsInput): Promise<ListTransactionsResult>;
-  getLast(input: GetLastTransactionInput): Promise<TransactionRecord | null>;
+  getLast(input: GetLastTransactionInput): Promise<TransactionReadRecord | null>;
 }

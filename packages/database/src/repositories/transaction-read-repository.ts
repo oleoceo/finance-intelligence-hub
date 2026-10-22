@@ -9,6 +9,7 @@ import type { Kysely } from 'kysely';
 import type {
   TransactionReadPort,
   TransactionRecord,
+  TransactionReadRecord,
   ListTransactionsInput,
   ListTransactionsResult,
   GetLastTransactionInput,
@@ -19,7 +20,7 @@ import { sql } from 'kysely';
 export class KyselyTransactionReadRepository implements TransactionReadPort {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async findById(id: string): Promise<TransactionRecord | null> {
+  async findById(id: string): Promise<TransactionReadRecord | null> {
     const result = await this.db
       .selectFrom('transactions')
       .selectAll()
@@ -32,12 +33,12 @@ export class KyselyTransactionReadRepository implements TransactionReadPort {
 
   async list(input: ListTransactionsInput): Promise<ListTransactionsResult> {
     const page = input.page ?? 1;
-    const pageSize = Math.min(input.pageSize ?? 50, 100);
+    const pageSize = input.pageSize ?? 50;
 
     if (page < 1 || !Number.isInteger(page)) {
       throw new Error('Invalid page: must be a positive integer');
     }
-    if (pageSize < 1 || !Number.isInteger(pageSize)) {
+    if (pageSize < 1 || pageSize > 100 || !Number.isInteger(pageSize)) {
       throw new Error('Invalid pageSize: must be a positive integer (max 100)');
     }
 
@@ -138,7 +139,7 @@ export class KyselyTransactionReadRepository implements TransactionReadPort {
     };
   }
 
-  async getLast(input: GetLastTransactionInput): Promise<TransactionRecord | null> {
+  async getLast(input: GetLastTransactionInput): Promise<TransactionReadRecord | null> {
     const result = await this.db
       .selectFrom('transactions')
       .selectAll()
@@ -152,13 +153,6 @@ export class KyselyTransactionReadRepository implements TransactionReadPort {
     if (!result) return null;
     return mapToTransactionReadRecord(result);
   }
-}
-
-/**
- * Extended TransactionRecord with derived isRefund field for read operations.
- */
-export interface TransactionReadRecord extends TransactionRecord {
-  isRefund: boolean;
 }
 
 function mapToTransactionReadRecord(row: DB['transactions']): TransactionReadRecord {

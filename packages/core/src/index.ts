@@ -197,6 +197,7 @@ export { FinancialError, FinancialValidationError } from './domain/finance/error
 // M04-T01: Application ports
 export {
   type TransactionRecord,
+  type TransactionReadRecord,
   type CreateTransactionInput,
   type CreateExpenseInput,
   type CreateIncomeInput,

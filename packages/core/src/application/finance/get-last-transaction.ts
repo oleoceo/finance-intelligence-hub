@@ -7,9 +7,10 @@
 
 import type {
   TransactionReadPort,
-  TransactionRecord,
+  TransactionReadRecord,
   GetLastTransactionInput,
 } from '../ports/transaction-ports.js';
+import { FinancialValidationError } from '../../domain/finance/errors.js';
 
 export interface GetLastTransactionDependencies {
   readPort: TransactionReadPort;
@@ -18,9 +19,14 @@ export interface GetLastTransactionDependencies {
 export async function getLastTransaction(
   input: GetLastTransactionInput,
   deps: GetLastTransactionDependencies,
-): Promise<TransactionRecord | null> {
-  if (!input.bookId) {
-    throw new Error('VALIDATION_ERROR: bookId is required');
+): Promise<TransactionReadRecord | null> {
+  if (
+    typeof input !== 'object' ||
+    input === null ||
+    typeof input.bookId !== 'string' ||
+    input.bookId.length === 0
+  ) {
+    throw new FinancialValidationError('bookId must be a non-empty string', 'bookId');
   }
 
   return deps.readPort.getLast(input);

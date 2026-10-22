@@ -28,4 +28,5 @@ export {
 } from './transaction/configuration-transaction.js';
 export { KyselyFinancialTransactionPort } from './transaction/financial-transaction.js';
 export { KyselyTransactionRepository } from './repositories/transaction-repository.js';
+export { KyselyTransactionReadRepository } from './repositories/transaction-read-repository.js';
 export { createConfigurationStore } from './configuration-store.js';

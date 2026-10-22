@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { getLastTransaction } from './get-last-transaction.js';
-import type { TransactionReadPort, TransactionRecord } from '../ports/transaction-ports.js';
+import type { TransactionReadPort, TransactionReadRecord } from '../ports/transaction-ports.js';
 
 describe('GetLastTransaction', () => {
   const mockReadPort: TransactionReadPort = {
@@ -9,7 +9,7 @@ describe('GetLastTransaction', () => {
     getLast: vi.fn(),
   };
 
-  const mockTransaction: TransactionRecord = {
+  const mockTransaction: TransactionReadRecord = {
     id: '550e8400-e29b-41d4-a716-446655440000',
     humanRef: 'TXN-0001',
     bookId: 'book-123',
@@ -33,6 +33,7 @@ describe('GetLastTransaction', () => {
     updatedAt: new Date(),
     voidedAt: null,
     voidReason: null,
+    isRefund: false,
   };
 
   it('returns last posted transaction when found', async () => {
@@ -52,9 +53,25 @@ describe('GetLastTransaction', () => {
     expect(result).toBeNull();
   });
 
-  it('throws when bookId is missing', async () => {
-    await expect(getLastTransaction({ bookId: '' }, { readPort: mockReadPort })).rejects.toThrow(
-      'VALIDATION_ERROR: bookId is required',
-    );
+  it.each([null, { bookId: 1 }, { bookId: {} }, { bookId: '' }])(
+    'rejects invalid input %s before reading',
+    async (input) => {
+      vi.mocked(mockReadPort.getLast).mockClear();
+      await expect(
+        getLastTransaction(input as { bookId: string }, { readPort: mockReadPort }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+      expect(mockReadPort.getLast).not.toHaveBeenCalled();
+    },
+  );
+
+  it('preserves the read-model refund flag', async () => {
+    vi.mocked(mockReadPort.getLast).mockResolvedValue({
+      ...mockTransaction,
+      isRefund: true,
+      refundOfTransactionId: 'original',
+    });
+    await expect(
+      getLastTransaction({ bookId: mockTransaction.bookId }, { readPort: mockReadPort }),
+    ).resolves.toMatchObject({ isRefund: true });
   });
 });

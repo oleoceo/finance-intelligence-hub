@@ -15,12 +15,7 @@ import {
   ConcurrencyError,
   IdempotencyInProgressRetryError,
 } from '@finance-hub/core';
-import type {
-  FinancialTransactionPort,
-  FinancialTransactionContext,
-  AuditWriter,
-  WriteAuditEventInput,
-} from '@finance-hub/core';
+import type { FinancialTransactionPort, FinancialTransactionContext } from '@finance-hub/core';
 import { KyselyBookRepository } from '../repositories/book-repository.js';
 import { KyselyAccountRepository } from '../repositories/account-repository.js';
 import { KyselyCategoryRepository } from '../repositories/category-repository.js';
@@ -29,17 +24,8 @@ import { KyselyConfigurationLockPort } from './configuration-transaction.js';
 import { KyselyFinancialUsageReader } from '../readers/financial-usage-reader.js';
 import { KyselyTransactionRepository } from '../repositories/transaction-repository.js';
 import { KyselyIdempotencyKeyRepository } from '../repositories/idempotency-key-repository.js';
+import { KyselyAuditWriter } from '../repositories/audit-writer.js';
 import type { DB } from '../db-types.js';
-
-/**
- * Stub audit writer for T02 context composition.
- * T07 owns the real implementation. T02 does not invoke audit writes.
- */
-class StubAuditWriter implements AuditWriter {
-  async write(_input: WriteAuditEventInput): Promise<void> {
-    throw new Error('AuditWriter.write not implemented in M04-T02; deferred to T07');
-  }
-}
 
 export class KyselyFinancialTransactionPort implements FinancialTransactionPort {
   constructor(private readonly db: Kysely<DB>) {}
@@ -56,7 +42,7 @@ export class KyselyFinancialTransactionPort implements FinancialTransactionPort 
           const financialUsage = new KyselyFinancialUsageReader(tx);
           const transactions = new KyselyTransactionRepository(tx);
           const idempotencyKeys = new KyselyIdempotencyKeyRepository(tx);
-          const audit = new StubAuditWriter();
+          const audit = new KyselyAuditWriter(tx);
 
           const ctx: FinancialTransactionContext = {
             books,

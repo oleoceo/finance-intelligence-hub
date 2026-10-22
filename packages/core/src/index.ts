@@ -282,3 +282,9 @@ export {
   getLastTransaction,
   type GetLastTransactionDependencies,
 } from './application/finance/get-last-transaction.js';
+export {
+  GenericCreateTransaction,
+  transactionSnapshot,
+  type GenericCreateDependencies,
+  type FinancialRequestContext,
+} from './application/finance/create-transaction.js';

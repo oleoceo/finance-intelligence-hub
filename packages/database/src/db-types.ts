@@ -6,6 +6,18 @@
  */
 
 export interface DB {
+  audit_events: {
+    id: string;
+    entity_type: string;
+    entity_id: string;
+    action: string;
+    source: string;
+    actor_reference: string | null;
+    old_data: Record<string, unknown> | null;
+    new_data: Record<string, unknown> | null;
+    correlation_id: string | null;
+    created_at: Date;
+  };
   idempotency_keys: {
     id: string;
     scope: string;

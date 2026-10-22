@@ -229,7 +229,9 @@ describe('Audit ports compile checks', () => {
     expectTypeOf(input.source).toEqualTypeOf<AuditSource>();
     expectTypeOf(input.actorReference).toEqualTypeOf<null>();
     expectTypeOf(input.oldData).toEqualTypeOf<null>();
-    expectTypeOf(input.newData).toEqualTypeOf<TransactionRecord>();
+    expectTypeOf(input.newData).toEqualTypeOf<Record<string, unknown>>();
+    expectTypeOf(input.id).toEqualTypeOf<string>();
+    expectTypeOf(input.createdAt).toEqualTypeOf<Date>();
     expectTypeOf(input.correlationId).toEqualTypeOf<string>();
   });
 

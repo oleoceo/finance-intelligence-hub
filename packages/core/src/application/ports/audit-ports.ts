@@ -9,8 +9,6 @@
  * actor_reference: null for direct API orchestration
  */
 
-import type { TransactionRecord } from './transaction-ports.js';
-
 export const AUDIT_ACTIONS = ['TRANSACTION_CREATED'] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -25,6 +23,8 @@ export type AuditSource = (typeof AUDIT_SOURCES)[number];
  * Compatible with the accepted physical audit_events schema.
  */
 export interface WriteAuditEventInput {
+  id: string;
+  createdAt: Date;
   entityType: AuditEntityType;
   entityId: string;
   action: AuditAction;
@@ -34,7 +34,7 @@ export interface WriteAuditEventInput {
   /** Previous state snapshot (serialized JSON). Null for creation events. */
   oldData: null;
   /** New state snapshot (serialized JSON). */
-  newData: TransactionRecord;
+  newData: Record<string, unknown>;
   /** Correlation ID linking this audit event to the originating request. */
   correlationId: string;
 }

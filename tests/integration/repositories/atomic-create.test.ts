@@ -142,6 +142,12 @@ describe('M04-T07 atomic generic create on PostgreSQL', () => {
       correlation_id: key,
       created_at: now,
     });
+    expect(state.audit[0]!.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(state.audit[0]!.new_data).not.toHaveProperty('authorization');
+    expect(state.audit[0]!.new_data).not.toHaveProperty('credential');
+    expect(state.keys[0]!.response_body).not.toHaveProperty('correlationId');
     expect(state.audit[0]!.new_data).toEqual(transactionSnapshot(fresh));
     expect(state.keys[0]).toMatchObject({
       status: 'completed',

@@ -16,10 +16,6 @@
  */
 import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { Pool } from 'pg';
-import { Kysely, PostgresDialect } from 'kysely';
-import type { DB } from '../../../packages/database/src/db-types.js';
-import { KyselyFinancialTransactionPort, KyselyTransactionPort } from '@finance-hub/database';
 import {
   createExpense,
   archiveBook,
@@ -33,6 +29,7 @@ import {
   type MasterDataTransactionContextT04,
 } from '@finance-hub/core';
 import { t02Database } from './t02-fixtures.js';
+import { coordinatedFinancialCreateRace } from '../helpers/financial-create-race.js';
 
 const db = t02Database();
 
@@ -691,28 +688,6 @@ type RaceKind =
   | 'account-type';
 type Targets = Awaited<ReturnType<typeof seedTargets>>;
 
-function barrier() {
-  let release!: () => void;
-  const promise = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  return { promise, release };
-}
-
-async function bounded<T>(promise: Promise<T>): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('Race barrier timed out')), 10000);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer!);
-  }
-}
-
 async function configOperation(kind: RaceKind, ids: Targets, ctx: MasterDataTransactionContextT04) {
   const now = new Date('2026-10-21T12:00:00Z');
   switch (kind) {
@@ -751,95 +726,13 @@ async function expenseOperation(kind: RaceKind, ids: Targets, ctx: FinancialTran
 }
 
 async function coordinatedRace(kind: RaceKind, configFirst: boolean, ids: Targets) {
-  const pool1 = new Pool({
-    connectionString: db.connectionString,
-    max: 1,
-    options: '-c statement_timeout=10000 -c lock_timeout=10000',
-  });
-  const pool2 = new Pool({
-    connectionString: db.connectionString,
-    max: 1,
-    options: '-c statement_timeout=10000 -c lock_timeout=10000',
-  });
-  const db1 = new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool1 }) });
-  const db2 = new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool2 }) });
-  const held = barrier();
-  const release = barrier();
-  const started = barrier();
-  let pending: Promise<PromiseSettledResult<unknown>[]> | undefined;
-  try {
-    const pid1 = (await pool1.query('select pg_backend_pid() as pid')).rows[0].pid as number;
-    const pid2 = (await pool2.query('select pg_backend_pid() as pid')).rows[0].pid as number;
-    expect(pid1).not.toBe(pid2);
-    const holdLocks = async <T extends { locks: FinancialTransactionContext['locks'] }>(
-      ctx: T,
-    ) => ({
-      ...ctx,
-      locks: {
-        acquireLocks: async (spec: Parameters<T['locks']['acquireLocks']>[0]) => {
-          await ctx.locks.acquireLocks(spec);
-          if (spec.books?.length || spec.merchants?.length) {
-            held.release();
-            await bounded(release.promise);
-          }
-        },
-      },
-    });
-    const markStarted = async <T extends { locks: FinancialTransactionContext['locks'] }>(
-      ctx: T,
-    ) => ({
-      ...ctx,
-      locks: {
-        acquireLocks: async (spec: Parameters<T['locks']['acquireLocks']>[0]) => {
-          if (spec.books?.length || spec.merchants?.length) started.release();
-          await ctx.locks.acquireLocks(spec);
-        },
-      },
-    });
-    const first = configFirst
-      ? new KyselyTransactionPort(db1).runInTransaction(async (ctx) =>
-          configOperation(kind, ids, await holdLocks(ctx)),
-        )
-      : new KyselyFinancialTransactionPort(db1).runInTransaction(async (ctx) =>
-          expenseOperation(kind, ids, await holdLocks(ctx)),
-        );
-    const firstObserved = Promise.allSettled([first]);
-    await bounded(held.promise);
-    const second = configFirst
-      ? new KyselyFinancialTransactionPort(db2).runInTransaction(async (ctx) =>
-          expenseOperation(kind, ids, await markStarted(ctx)),
-        )
-      : new KyselyTransactionPort(db2).runInTransaction(async (ctx) =>
-          configOperation(kind, ids, await markStarted(ctx)),
-        );
-    pending = Promise.allSettled([first, second]);
-    await bounded(started.promise);
-    await bounded(
-      (async () => {
-        for (;;) {
-          const observed = await db.pool.query(
-            'select pg_blocking_pids($1) as blockers, wait_event_type from pg_stat_activity where pid=$1',
-            [pid2],
-          );
-          if (
-            observed.rows[0]?.blockers.includes(pid1) &&
-            observed.rows[0].wait_event_type === 'Lock'
-          ) {
-            break;
-          }
-        }
-      })(),
-    );
-    release.release();
-    const result = await bounded(pending);
-    await firstObserved;
-    return result;
-  } finally {
-    release.release();
-    if (pending) await pending;
-    await db1.destroy();
-    await db2.destroy();
-  }
+  return coordinatedFinancialCreateRace(
+    db.connectionString,
+    db.pool,
+    configFirst,
+    (ctx) => configOperation(kind, ids, ctx),
+    (ctx) => expenseOperation(kind, ids, ctx),
+  );
 }
 
 describe('M04-T02 real PostgreSQL configuration races', { timeout: 30000 }, () => {

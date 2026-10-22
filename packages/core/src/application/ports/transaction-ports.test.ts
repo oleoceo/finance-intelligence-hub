@@ -152,7 +152,7 @@ describe('Transaction ports compile checks', () => {
   it('TransactionRepository methods return correct types', () => {
     expectTypeOf<
       TransactionRepository['create']
-    >().returns.resolves.toEqualTypeOf<TransactionRecord>();
+    >().returns.resolves.toEqualTypeOf<TransactionRecord | null>();
     expectTypeOf<
       TransactionRepository['findById']
     >().returns.resolves.toEqualTypeOf<TransactionRecord | null>();

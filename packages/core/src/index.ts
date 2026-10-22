@@ -234,3 +234,9 @@ export {
   type FinancialTransactionContext,
   type FinancialTransactionPort,
 } from './application/ports/financial-transaction-port.js';
+
+// M04-T02: Create Expense use case
+export {
+  createExpense,
+  type CreateExpenseDependencies,
+} from './application/finance/create-expense.js';

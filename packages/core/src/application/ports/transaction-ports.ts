@@ -128,6 +128,11 @@ export interface GetLastTransactionInput {
  * Database adapter implements this; Core consumes it.
  */
 export interface TransactionRepository {
+  /**
+   * Insert a Transaction row. Returns null when human_ref collides
+   * (ON CONFLICT DO NOTHING). Caller retries with next candidate inside
+   * the same financial transaction. Never throws on unique violation.
+   */
   create(
     input: CreateTransactionInput & {
       id: string;
@@ -135,7 +140,7 @@ export interface TransactionRepository {
       source: TransactionCreateSource;
       currency: string; // derived from the locked Book, not client input
     },
-  ): Promise<TransactionRecord>;
+  ): Promise<TransactionRecord | null>;
   findById(id: string): Promise<TransactionRecord | null>;
   findByHumanRef(humanRef: string): Promise<TransactionRecord | null>;
   list(input: ListTransactionsInput): Promise<ListTransactionsResult>;

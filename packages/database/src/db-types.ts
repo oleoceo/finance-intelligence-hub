@@ -58,7 +58,7 @@ export interface DB {
     id: string;
     human_ref: string;
     book_id: string;
-    account_id: string | null;
+    account_id: string;
     destination_account_id: string | null;
     category_id: string | null;
     merchant_id: string | null;

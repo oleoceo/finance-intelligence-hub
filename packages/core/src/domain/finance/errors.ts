@@ -16,10 +16,16 @@ export class FinancialError extends Error {
   constructor(
     message: string,
     public readonly code:
+      | 'BOOK_NOT_FOUND'
       | 'BOOK_INACTIVE'
+      | 'ACCOUNT_NOT_FOUND'
       | 'ACCOUNT_INACTIVE'
+      | 'CATEGORY_NOT_FOUND'
       | 'CATEGORY_INACTIVE'
+      | 'MERCHANT_NOT_FOUND'
       | 'MERCHANT_INACTIVE'
+      | 'CURRENCY_MISMATCH'
+      | 'VALIDATION_ERROR'
       | 'TRANSACTION_DATE_IN_FUTURE'
       | 'TRANSFER_SAME_ACCOUNT',
   ) {

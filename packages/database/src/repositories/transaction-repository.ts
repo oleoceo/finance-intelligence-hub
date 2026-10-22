@@ -15,9 +15,6 @@ import type {
   TransactionRepository,
   TransactionRecord,
   CreateTransactionInput,
-  ListTransactionsInput,
-  ListTransactionsResult,
-  GetLastTransactionInput,
   TransactionCreateSource,
 } from '@finance-hub/core';
 import type { DB } from '../db-types.js';
@@ -105,16 +102,6 @@ export class KyselyTransactionRepository implements TransactionRepository {
 
     if (!result) return null;
     return this.mapToTransactionRecord(result);
-  }
-
-  async list(_input: ListTransactionsInput): Promise<ListTransactionsResult> {
-    // Deferred to T05 query task
-    throw new Error('TransactionRepository.list not implemented in M04-T02');
-  }
-
-  async getLast(_input: GetLastTransactionInput): Promise<TransactionRecord | null> {
-    // Deferred to T05 query task
-    throw new Error('TransactionRepository.getLast not implemented in M04-T02');
   }
 
   private mapToTransactionRecord(row: DB['transactions']): TransactionRecord {

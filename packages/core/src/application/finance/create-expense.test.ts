@@ -208,8 +208,6 @@ function createMockContext(
       create: vi.fn().mockResolvedValue(createResult),
       findById: vi.fn().mockResolvedValue(null),
       findByHumanRef: vi.fn().mockResolvedValue(null),
-      list: vi.fn().mockRejectedValue(new Error('not implemented')),
-      getLast: vi.fn().mockRejectedValue(new Error('not implemented')),
     },
     idempotencyKeys: {
       create: vi.fn().mockRejectedValue(new Error('not implemented in T02')),

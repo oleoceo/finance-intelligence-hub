@@ -197,6 +197,7 @@ export { FinancialError, FinancialValidationError } from './domain/finance/error
 // M04-T01: Application ports
 export {
   type TransactionRecord,
+  type TransactionReadRecord,
   type CreateTransactionInput,
   type CreateExpenseInput,
   type CreateIncomeInput,
@@ -252,3 +253,19 @@ export {
   createTransfer,
   type CreateTransferDependencies,
 } from './application/finance/create-transfer.js';
+
+// M04-T05: Transaction Queries use cases
+export {
+  getTransaction,
+  type GetTransactionDependencies,
+} from './application/finance/get-transaction.js';
+
+export {
+  listTransactions,
+  type ListTransactionsDependencies,
+} from './application/finance/list-transactions.js';
+
+export {
+  getLastTransaction,
+  type GetLastTransactionDependencies,
+} from './application/finance/get-last-transaction.js';

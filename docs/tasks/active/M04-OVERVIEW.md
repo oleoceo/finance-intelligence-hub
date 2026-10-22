@@ -46,7 +46,7 @@ Generic create supports only `expense`, `income` and `transfer`. Initial status 
 | [M04-T07](M04-T07.md) | Basic Audit and atomic financial create | T01, T02, T03, T04, T06 |
 | [M04-T08](M04-T08.md) | API Integration and Milestone Verification | T01–T07 |
 
-Current execution state: T01–T05 DONE / integrated; T06 REVIEW REQUIRED; T07/T08 NOT AUTHORIZED and retain the dependency order below.
+Current execution state: T01–T05 DONE / integrated; T06 DONE / accepted with PR #13 as integration vehicle; T07/T08 NOT AUTHORIZED and retain the dependency order below.
 
 Formal graph: T01 → {T02, T03, T04, T05, T06}; {T02, T03, T04, T06} → T07; {T01, T02, T03, T04, T05, T06, T07} → T08.
 

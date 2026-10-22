@@ -21,7 +21,17 @@ import {
   type FinancialTransactionContext,
 } from '@finance-hub/core';
 import { t02Database } from './t02-fixtures.js';
-import { FinancialError, FinancialValidationError } from '@finance-hub/core';
+import {
+  archiveBook,
+  archiveAccount,
+  updateBook,
+  updateAccount,
+  type MasterDataTransactionContextT04,
+} from '@finance-hub/core';
+import {
+  coordinatedFinancialCreateRace,
+  coordinatedFinancialPair,
+} from '../helpers/financial-create-race.js';
 
 const db = t02Database();
 
@@ -120,10 +130,10 @@ describe('M04-T04 CreateTransfer PostgreSQL integration', () => {
         expect(persisted).not.toBeNull();
         expect(persisted!.id).toBe(record.id);
         expect(persisted!.type).toBe('transfer');
-        expect(persisted!.destination_account_id).toBe(destAccountId);
-        expect(persisted!.category_id).toBeNull();
-        expect(persisted!.merchant_id).toBeNull();
-        expect(persisted!.refund_of_transaction_id).toBeNull();
+        expect(persisted!.destinationAccountId).toBe(destAccountId);
+        expect(persisted!.categoryId).toBeNull();
+        expect(persisted!.merchantId).toBeNull();
+        expect(persisted!.refundOfTransactionId).toBeNull();
         return record;
       });
       expect(result).toBeDefined();
@@ -228,7 +238,49 @@ describe('M04-T04 CreateTransfer PostgreSQL integration', () => {
             deps,
           );
         }),
-      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+      ).rejects.toMatchObject({ code: 'CROSS_BOOK_TRANSFER_NOT_SUPPORTED' });
+    });
+    it('leaves no Transaction when real Accounts belong to different Books', async () => {
+      const ids = await db.run(seedTargets);
+      const other = await db.run(async (ctx) => {
+        const now = new Date('2026-10-21T12:00:00Z');
+        const bookId = randomUUID();
+        const accountId = randomUUID();
+        await ctx.books.create({
+          id: bookId,
+          name: 'Other',
+          normalizedName: `other-${bookId}`,
+          currency: 'USD',
+          timezone: 'UTC',
+          active: true,
+          archivedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await ctx.accounts.create({
+          id: accountId,
+          bookId,
+          name: 'Other',
+          normalizedName: `other-${accountId}`,
+          type: 'checking',
+          currency: 'USD',
+          institutionName: null,
+          notes: null,
+          active: true,
+          archivedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+        return accountId;
+      });
+      const before = await db.pool.query('select count(*)::int as total from transactions');
+      await expect(
+        db.run((ctx) =>
+          createTransfer({ ...transferInput(ids), destinationAccountId: other }, ctx, makeDeps()),
+        ),
+      ).rejects.toMatchObject({ code: 'CROSS_BOOK_TRANSFER_NOT_SUPPORTED' });
+      const after = await db.pool.query('select count(*)::int as total from transactions');
+      expect(after.rows[0].total).toBe(before.rows[0].total);
     });
   });
 
@@ -361,7 +413,7 @@ describe('M04-T04 CreateTransfer PostgreSQL integration', () => {
             deps,
           );
         }),
-      ).rejects.toThrow(FinancialValidationError);
+      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     });
 
     it('rejects merchantId field', async () => {
@@ -384,7 +436,7 @@ describe('M04-T04 CreateTransfer PostgreSQL integration', () => {
             deps,
           );
         }),
-      ).rejects.toThrow(FinancialValidationError);
+      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     });
 
     it('rejects refundOfTransactionId field', async () => {
@@ -407,7 +459,223 @@ describe('M04-T04 CreateTransfer PostgreSQL integration', () => {
             deps,
           );
         }),
-      ).rejects.toThrow(FinancialValidationError);
+      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     });
+  });
+});
+
+type Targets = Awaited<ReturnType<typeof seedTargets>>;
+type RaceKind =
+  | 'book-archive'
+  | 'source-archive'
+  | 'destination-archive'
+  | 'book-currency'
+  | 'source-currency'
+  | 'destination-currency'
+  | 'source-type'
+  | 'destination-type';
+const raceKinds: RaceKind[] = [
+  'book-archive',
+  'source-archive',
+  'destination-archive',
+  'book-currency',
+  'source-currency',
+  'destination-currency',
+  'source-type',
+  'destination-type',
+];
+
+function transferInput(ids: Targets) {
+  return {
+    type: 'transfer' as const,
+    bookId: ids.bookId,
+    accountId: ids.sourceAccountId,
+    destinationAccountId: ids.destAccountId,
+    amount: '11.00',
+    description: 'Concurrent transfer',
+    transactionDate: '2026-10-21',
+  };
+}
+
+async function configOperation(kind: RaceKind, ids: Targets, ctx: MasterDataTransactionContextT04) {
+  const now = new Date('2026-10-21T12:00:00Z');
+  const accountId = kind.startsWith('source') ? ids.sourceAccountId : ids.destAccountId;
+  switch (kind) {
+    case 'book-archive':
+      return archiveBook(ids.bookId, ctx, now);
+    case 'source-archive':
+    case 'destination-archive':
+      return archiveAccount(accountId, ctx, now);
+    case 'book-currency':
+      return updateBook({ id: ids.bookId, currency: 'USD' }, ctx, now);
+    case 'source-currency':
+    case 'destination-currency':
+      return updateAccount({ id: accountId, currency: 'USD' }, ctx, now);
+    case 'source-type':
+    case 'destination-type':
+      return updateAccount({ id: accountId, type: 'savings' }, ctx, now);
+  }
+}
+
+describe('M04-T04 structural PostgreSQL constraints', () => {
+  it.each([
+    [
+      'transactions_transfer_different_accounts',
+      (id: Targets) => ['destination_account_id', id.sourceAccountId],
+    ],
+    ['transactions_transfer_requires_destination', () => ['destination_account_id', null]],
+    [
+      'transactions_transfer_no_refund',
+      (_: Targets, transactionId: string) => ['refund_of_transaction_id', transactionId],
+    ],
+  ] as const)('%s rejects a direct physical violation', async (constraint, change) => {
+    const { ids, recordId } = await db.run(async (ctx) => {
+      const ids = await seedTargets(ctx);
+      const record = await createTransfer(transferInput(ids), ctx, makeDeps());
+      return { ids, recordId: record.id };
+    });
+    const [column, value] = change(ids, recordId);
+    await expect(
+      db.pool.query(`update transactions set ${column} = $1 where id = $2`, [value, recordId]),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint:
+        constraint === 'transactions_transfer_no_refund'
+          ? 'transactions_refund_is_income'
+          : constraint,
+    });
+    if (constraint === 'transactions_transfer_no_refund') {
+      const check = await db.pool.query(
+        'select pg_get_constraintdef(oid) as definition from pg_constraint where conname = $1',
+        [constraint],
+      );
+      expect(check.rows[0]?.definition).toContain('refund_of_transaction_id IS NULL');
+    }
+    const persisted = await db.run((ctx) => ctx.transactions.findById(recordId));
+    expect(persisted?.destinationAccountId).toBe(ids.destAccountId);
+    expect(persisted?.refundOfTransactionId).toBeNull();
+  });
+
+  it('composite FK rejects Account currency different from its Book', async () => {
+    const ids = await db.run(seedTargets);
+    await expect(
+      db.pool.query('update accounts set currency = $1 where id = $2', ['USD', ids.destAccountId]),
+    ).rejects.toMatchObject({ code: '23503' });
+  });
+
+  it('retries a colliding human_ref with the same logical ID and keeps the transaction usable', async () => {
+    const ids = await db.run(seedTargets);
+    const blocker = await db.run((ctx) =>
+      createTransfer(
+        transferInput(ids),
+        ctx,
+        makeDeps({ humanRefGenerator: { generate: () => 'TRANSFERREF0001' } }),
+      ),
+    );
+    let attempts = 0;
+    const logicalId = randomUUID();
+    const created = await db.run(async (ctx) => {
+      const record = await createTransfer(
+        transferInput(ids),
+        ctx,
+        makeDeps({
+          generateId: () => logicalId,
+          humanRefGenerator: {
+            generate: () => (++attempts === 1 ? 'TRANSFERREF0001' : 'TRANSFERREF0002'),
+          },
+        }),
+      );
+      expect(await ctx.transactions.findById(blocker.id)).not.toBeNull();
+      expect(await ctx.transactions.findById(logicalId)).not.toBeNull();
+      return record;
+    });
+    expect(attempts).toBe(2);
+    expect(created.id).toBe(logicalId);
+    expect(created.humanRef).toBe('TRANSFERREF0002');
+  });
+});
+
+describe('M04-T04 real PostgreSQL configuration races', { timeout: 30000 }, () => {
+  it.each(raceKinds)('%s: configuration first, Transfer re-reads', async (kind) => {
+    const ids = await db.run(seedTargets);
+    const [configuration, creation] = await coordinatedFinancialCreateRace(
+      db.connectionString,
+      db.pool,
+      true,
+      (ctx) => configOperation(kind, ids, ctx),
+      (ctx) => createTransfer(transferInput(ids), ctx, makeDeps()),
+    );
+    if (kind.endsWith('archive')) {
+      expect(configuration.status).toBe('fulfilled');
+      expect(creation).toMatchObject({
+        status: 'rejected',
+        reason: { code: kind === 'book-archive' ? 'BOOK_INACTIVE' : 'ACCOUNT_INACTIVE' },
+      });
+    } else if (kind.endsWith('type')) {
+      expect(configuration.status).toBe('fulfilled');
+      expect(creation.status).toBe('fulfilled');
+    } else {
+      expect(configuration).toMatchObject({
+        status: 'rejected',
+        reason: { code: kind === 'book-currency' ? 'IMMUTABILITY_ERROR' : 'CURRENCY_MISMATCH' },
+      });
+      expect(creation.status).toBe('fulfilled');
+    }
+  });
+
+  it.each(raceKinds)('%s: Transfer first, mutation observes history', async (kind) => {
+    const ids = await db.run(seedTargets);
+    const [creation, configuration] = await coordinatedFinancialCreateRace(
+      db.connectionString,
+      db.pool,
+      false,
+      (ctx) => configOperation(kind, ids, ctx),
+      (ctx) => createTransfer(transferInput(ids), ctx, makeDeps()),
+    );
+    expect(creation.status).toBe('fulfilled');
+    if (kind.endsWith('archive')) {
+      expect(configuration.status).toBe('fulfilled');
+    } else {
+      expect(configuration).toMatchObject({
+        status: 'rejected',
+        reason: { code: 'IMMUTABILITY_ERROR' },
+      });
+    }
+    const recordId = creation.status === 'fulfilled' ? (creation.value as { id: string }).id : '';
+    await db.run(async (ctx) => {
+      expect(await ctx.transactions.findById(recordId)).not.toBeNull();
+      expect(await ctx.financialUsage.hasAccountUsage(ids.sourceAccountId)).toBe(true);
+      expect(await ctx.financialUsage.hasAccountUsage(ids.destAccountId)).toBe(true);
+    });
+  });
+});
+
+describe('M04-T04 overlapping reverse transfers', { timeout: 30000 }, () => {
+  it('locks the same UUID-ascending Account set in both directions and commits both', async () => {
+    const ids = await db.run(seedTargets);
+    const forward = transferInput(ids);
+    const reverse = {
+      ...forward,
+      accountId: ids.destAccountId,
+      destinationAccountId: ids.sourceAccountId,
+    };
+    const results = await coordinatedFinancialPair(
+      db.connectionString,
+      db.pool,
+      (ctx) => createTransfer(forward, ctx, makeDeps()),
+      (ctx) => createTransfer(reverse, ctx, makeDeps()),
+      (first, second) => {
+        expect(first).toEqual([ids.sourceAccountId, ids.destAccountId].sort());
+        expect(second).toEqual(first);
+      },
+    );
+    expect(results.map((result) => result.status)).toEqual(['fulfilled', 'fulfilled']);
+    for (const result of results) {
+      if (result.status !== 'fulfilled') throw result.reason;
+      const record = result.value as { id: string };
+      const persisted = await db.run((ctx) => ctx.transactions.findById(record.id));
+      expect(persisted?.type).toBe('transfer');
+      expect(persisted?.destinationAccountId).not.toBeNull();
+    }
   });
 });

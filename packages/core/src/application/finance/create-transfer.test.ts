@@ -31,9 +31,9 @@ function buildValidInput(overrides?: Partial<CreateTransferInput>): CreateTransf
   };
 }
 
-function buildMockCtx(
-  overrides?: Partial<FinancialTransactionContext>,
-): FinancialTransactionContext {
+function buildMockCtx(overrides?: {
+  [K in keyof FinancialTransactionContext]?: unknown;
+}): FinancialTransactionContext {
   const books = {
     findById: vi.fn().mockResolvedValue({
       id: 'book-1',
@@ -128,6 +128,18 @@ describe('CreateTransfer', () => {
     expect(result.categoryId).toBeNull();
     expect(result.merchantId).toBeNull();
     expect(result.refundOfTransactionId).toBeNull();
+    expect(ctx.transactions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'test-id-v7',
+        type: 'transfer',
+        bookId: 'book-1',
+        amount: '100.00',
+        currency: 'BRL',
+        accountId: 'account-source',
+        destinationAccountId: 'account-dest',
+        source: 'direct_api',
+      }),
+    );
   });
 
   it('rejects same source and destination account', async () => {
@@ -136,6 +148,7 @@ describe('CreateTransfer', () => {
     await expect(createTransfer(input, ctx, deps)).rejects.toMatchObject({
       code: 'TRANSFER_SAME_ACCOUNT',
     });
+    expect(ctx.locks.acquireLocks).not.toHaveBeenCalled();
   });
 
   it('rejects cross-book transfers', async () => {
@@ -164,10 +177,8 @@ describe('CreateTransfer', () => {
     });
     const input = buildValidInput();
     await expect(createTransfer(input, mockCtx, deps)).rejects.toThrow(FinancialError);
-    // The implementation checks individual account-book membership first, resulting in VALIDATION_ERROR
-    // before reaching the explicit CROSS_BOOK_TRANSFER_NOT_SUPPORTED check.
     await expect(createTransfer(input, mockCtx, deps)).rejects.toMatchObject({
-      code: 'VALIDATION_ERROR',
+      code: 'CROSS_BOOK_TRANSFER_NOT_SUPPORTED',
     });
   });
 
@@ -281,5 +292,165 @@ describe('CreateTransfer', () => {
         accounts: ['a-account', 'z-account'],
       }),
     );
+  });
+
+  it.each(['0', '-1', '1.234', '01', 'NaN', '99999999999999999.00'])(
+    'rejects invalid amount %s',
+    async (amount) => {
+      await expect(createTransfer(buildValidInput({ amount }), ctx, deps)).rejects.toMatchObject({
+        code: 'VALIDATION_ERROR',
+      });
+    },
+  );
+
+  it('canonicalizes amount with the authoritative Book currency', async () => {
+    await createTransfer(buildValidInput({ amount: '1.2' }), ctx, deps);
+    expect(ctx.transactions.create).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: '1.20', currency: 'BRL' }),
+    );
+  });
+
+  it.each(['2026-02-30', '2026-13-01', 'not-a-date'])(
+    'rejects invalid date %s before locking',
+    async (transactionDate) => {
+      await expect(
+        createTransfer(buildValidInput({ transactionDate }), ctx, deps),
+      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+      expect(ctx.locks.acquireLocks).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['expense', 'income', '', null])('rejects non-transfer type %s', async (type) => {
+    await expect(
+      createTransfer({ ...buildValidInput(), type } as CreateTransferInput, ctx, deps),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
+  it.each([
+    'bookId',
+    'accountId',
+    'destinationAccountId',
+    'amount',
+    'description',
+    'transactionDate',
+  ] as const)('rejects missing %s', async (field) => {
+    const input = { ...buildValidInput() } as Record<string, unknown>;
+    delete input[field];
+    await expect(
+      createTransfer(input as unknown as CreateTransferInput, ctx, deps),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    expect(ctx.locks.acquireLocks).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'bookId',
+    'accountId',
+    'destinationAccountId',
+    'amount',
+    'description',
+    'transactionDate',
+  ] as const)('rejects wrong runtime type for %s', async (field) => {
+    await expect(
+      createTransfer({ ...buildValidInput(), [field]: 42 } as CreateTransferInput, ctx, deps),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(ctx.locks.acquireLocks).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'categoryId',
+    'category_id',
+    'merchantId',
+    'merchant_id',
+    'refundOfTransactionId',
+    'refund_of_transaction_id',
+  ])('rejects prohibited %s even when null', async (field) => {
+    await expect(
+      createTransfer({ ...buildValidInput(), [field]: null } as CreateTransferInput, ctx, deps),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(ctx.locks.acquireLocks).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['book missing', 'BOOK_NOT_FOUND', null, undefined],
+    [
+      'book inactive',
+      'BOOK_INACTIVE',
+      { id: 'book-1', currency: 'BRL', timezone: 'UTC', active: false },
+      undefined,
+    ],
+    ['source missing', 'ACCOUNT_NOT_FOUND', undefined, { 'account-source': null }],
+    ['destination missing', 'ACCOUNT_NOT_FOUND', undefined, { 'account-dest': null }],
+    [
+      'source inactive',
+      'ACCOUNT_INACTIVE',
+      undefined,
+      { 'account-source': { bookId: 'book-1', currency: 'BRL', active: false } },
+    ],
+    [
+      'destination inactive',
+      'ACCOUNT_INACTIVE',
+      undefined,
+      { 'account-dest': { bookId: 'book-1', currency: 'BRL', active: false } },
+    ],
+    [
+      'source wrong Book',
+      'VALIDATION_ERROR',
+      undefined,
+      {
+        'account-source': { bookId: 'book-2', currency: 'BRL', active: true },
+        'account-dest': { bookId: 'book-2', currency: 'BRL', active: true },
+      },
+    ],
+    [
+      'destination wrong Book',
+      'VALIDATION_ERROR',
+      undefined,
+      {
+        'account-source': { bookId: 'book-2', currency: 'BRL', active: true },
+        'account-dest': { bookId: 'book-2', currency: 'BRL', active: true },
+      },
+    ],
+    [
+      'destination currency',
+      'CURRENCY_MISMATCH',
+      undefined,
+      { 'account-dest': { bookId: 'book-1', currency: 'USD', active: true } },
+    ],
+  ] as const)('%s returns %s', async (_label, code, book, accountOverrides) => {
+    const base = buildMockCtx();
+    const mockCtx = buildMockCtx({
+      books: book === undefined ? base.books : { findById: vi.fn().mockResolvedValue(book) },
+      accounts:
+        accountOverrides === undefined
+          ? base.accounts
+          : {
+              findById: vi
+                .fn()
+                .mockImplementation(async (id: string) =>
+                  id in accountOverrides
+                    ? accountOverrides[id as keyof typeof accountOverrides]
+                    : base.accounts.findById(id),
+                ),
+            },
+    });
+    await expect(createTransfer(buildValidInput(), mockCtx, deps)).rejects.toMatchObject({ code });
+  });
+
+  it('uses one logical ID across a human-ref collision retry', async () => {
+    const create = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'test-id-v7' });
+    const mockCtx = buildMockCtx({
+      transactions: { create },
+    });
+    let candidate = 0;
+    await createTransfer(
+      buildValidInput(),
+      mockCtx,
+      buildDeps({ humanRefGenerator: { generate: () => `REF${++candidate}` } }),
+    );
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls.map(([input]) => input.id)).toEqual(['test-id-v7', 'test-id-v7']);
+    expect(create.mock.calls.map(([input]) => input.humanRef)).toEqual(['REF1', 'REF2']);
   });
 });

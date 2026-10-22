@@ -241,6 +241,12 @@ export {
   type CreateExpenseDependencies,
 } from './application/finance/create-expense.js';
 
+// M04-T03: Create Ordinary Income use case
+export {
+  createOrdinaryIncome,
+  type CreateIncomeDependencies,
+} from './application/finance/create-income.js';
+
 // M04-T04: Create Transfer use case
 export {
   createTransfer,

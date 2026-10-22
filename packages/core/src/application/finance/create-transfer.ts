@@ -95,7 +95,7 @@ export async function createTransfer(
   }
 
   validateTransactionDate(input.transactionDate);
-  validateMoneyAmount(input.amount, 'BRL');
+  validateTransferAccountsDiffer(input.accountId, input.destinationAccountId);
   const generateId = deps.generateId ?? uuidv7;
   const now = deps.now;
 
@@ -134,10 +134,15 @@ export async function createTransfer(
   }
   rejectInactiveAccount(destinationAccount);
 
-  // Validate source != destination
-  validateTransferAccountsDiffer(sourceAccountId, destinationAccountId);
+  // Compare the authoritative Account Books before matching the requested Book.
+  if (sourceAccount.bookId !== destinationAccount.bookId) {
+    throw new FinancialError(
+      'Cross-Book transfers are not supported',
+      'CROSS_BOOK_TRANSFER_NOT_SUPPORTED',
+    );
+  }
 
-  // Both accounts must belong to the same Book
+  // Both accounts must belong to the requested Book.
   if (sourceAccount.bookId !== bookId) {
     throw new FinancialError(
       `Source Account ${sourceAccountId} does not belong to Book ${bookId}`,
@@ -148,14 +153,6 @@ export async function createTransfer(
     throw new FinancialError(
       `Destination Account ${destinationAccountId} does not belong to Book ${bookId}`,
       'VALIDATION_ERROR',
-    );
-  }
-
-  // Cross-Book transfer check (redundant given above, but explicit per frozen docs)
-  if (sourceAccount.bookId !== destinationAccount.bookId) {
-    throw new FinancialError(
-      'Cross-Book transfers are not supported',
-      'CROSS_BOOK_TRANSFER_NOT_SUPPORTED',
     );
   }
 
@@ -200,8 +197,6 @@ export async function createTransfer(
       currency: book.currency,
       accountId: sourceAccountId,
       destinationAccountId: destinationAccountId,
-      categoryId: null,
-      merchantId: null,
       description: input.description,
       notes: input.notes ?? null,
       transactionDate: input.transactionDate,

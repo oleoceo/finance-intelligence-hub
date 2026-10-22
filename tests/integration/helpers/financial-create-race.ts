@@ -123,3 +123,87 @@ export async function coordinatedFinancialCreateRace(
     await db2.destroy();
   }
 }
+
+/** Holds the first financial writer after its Account locks while the reverse writer waits on PostgreSQL. */
+export async function coordinatedFinancialPair(
+  connectionString: string,
+  observationPool: Pool,
+  firstOperation: (ctx: FinancialTransactionContext) => Promise<unknown>,
+  secondOperation: (ctx: FinancialTransactionContext) => Promise<unknown>,
+  inspectLocks: (first: string[], second: string[]) => void,
+): Promise<PromiseSettledResult<unknown>[]> {
+  const pool1 = new Pool({
+    connectionString,
+    max: 1,
+    options: '-c statement_timeout=10000 -c lock_timeout=10000',
+  });
+  const pool2 = new Pool({
+    connectionString,
+    max: 1,
+    options: '-c statement_timeout=10000 -c lock_timeout=10000',
+  });
+  const db1 = new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool1 }) });
+  const db2 = new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool2 }) });
+  const held = barrier();
+  const release = barrier();
+  const started = barrier();
+  let pending: Promise<PromiseSettledResult<unknown>[]> | undefined;
+  let firstLocks: string[] = [];
+  let secondLocks: string[] = [];
+  try {
+    const pid1 = (await pool1.query('select pg_backend_pid() as pid')).rows[0].pid as number;
+    const pid2 = (await pool2.query('select pg_backend_pid() as pid')).rows[0].pid as number;
+    if (pid1 === pid2) throw new Error('Pair requires independent PostgreSQL backends');
+    const first = new KyselyFinancialTransactionPort(db1).runInTransaction((ctx) =>
+      firstOperation({
+        ...ctx,
+        locks: {
+          acquireLocks: async (spec) => {
+            firstLocks = spec.accounts ?? [];
+            await ctx.locks.acquireLocks(spec);
+            held.release();
+            await bounded(release.promise);
+          },
+        },
+      }),
+    );
+    await bounded(held.promise);
+    const second = new KyselyFinancialTransactionPort(db2).runInTransaction((ctx) =>
+      secondOperation({
+        ...ctx,
+        locks: {
+          acquireLocks: async (spec) => {
+            secondLocks = spec.accounts ?? [];
+            started.release();
+            await ctx.locks.acquireLocks(spec);
+          },
+        },
+      }),
+    );
+    pending = Promise.allSettled([first, second]);
+    await bounded(started.promise);
+    inspectLocks(firstLocks, secondLocks);
+    await bounded(
+      (async () => {
+        for (;;) {
+          const observed = await observationPool.query(
+            'select pg_blocking_pids($1) as blockers, wait_event_type from pg_stat_activity where pid=$1',
+            [pid2],
+          );
+          if (
+            observed.rows[0]?.blockers.includes(pid1) &&
+            observed.rows[0].wait_event_type === 'Lock'
+          )
+            break;
+        }
+      })(),
+    );
+    release.release();
+    return await bounded(pending);
+  } finally {
+    release.release();
+    if (pending) await pending;
+    await db1.destroy();
+    await db2.destroy();
+  }
+}

@@ -1,14 +1,14 @@
 # M04 — Transaction Core: Active Milestone Overview
 
 **Status:** ACTIVE
-**Milestone state:** ACTIVE; M04-T01 DONE / integrated; M04-T02 DONE / integrated via PR #9 (squash `ad041e8`; CI `39705765258` SUCCESS); M04-T03 DONE / accepted; M04-T04 through M04-T08 NOT AUTHORIZED
-**Implementation:** M04-T01 integrated in `main`; M04-T02 integrated via PR #9 merged as `ad041e8ed31846794c6263596b9cf1da173d4f52`; post-merge CI `39705765258` = SUCCESS; M04-T03 DONE / accepted; M04-T04 through M04-T08 NOT AUTHORIZED
+**Milestone state:** ACTIVE; M04-T01/T02/T03 DONE / integrated; M04-T04 REVIEW REQUIRED; M04-T05 through M04-T08 NOT AUTHORIZED
+**Implementation:** M04-T01 integrated in `main`; M04-T02 integrated via PR #9 merged as `ad041e8ed31846794c6263596b9cf1da173d4f52`; post-merge CI `39705765258` = SUCCESS; M04-T03 integrated via PR #10 squash `51b3c97880d154c6543a3c753ef6e7419ea1ea0d`; post-merge CI `39777604808` SUCCESS; M04-T04 REVIEW REQUIRED
 **Gate A:** NOT EXECUTED
 **Gate 0:** NOT EXECUTED
 **Activation review:** [M04-ACTIVATION-REVIEW.md](M04-ACTIVATION-REVIEW.md) — 2026-10-21; PASS; human accepted and integrated via PR #6 at `1c7e16d45fa03df8cd2b54c28100820af8d08142`; post-merge CI `39675385219` = SUCCESS; no material planning delta
 **M04-T01 acceptance:** Human accepted on 2026-10-21. Accepted implementation head `d80672507b6fd36df9a7035af90e3cccdab44239`; GitHub Actions run `39691263503` attempt 2 = SUCCESS; unit 23 files / 664 tests PASS; PostgreSQL integration 15 files / 236 tests PASS. PR #7 was squash-merged to `main` as `9dabedefd9b58ef8090a1e0e8d88e63d9fdbd323`; post-merge GitHub Actions run `39693573292` = SUCCESS.
 
-M04-T01 is DONE / integrated. M04-T02 is DONE / integrated via PR #9; squash commit `ad041e8ed31846794c6263596b9cf1da173d4f52`; post-merge CI `39705765258` = SUCCESS. M04-T03 (Create Income) is DONE / accepted; integration vehicle PR #10; accepted head `7fee927dfff7a28a8abd6ecd5e5fceab97fcb95b`; exact-head CI `39773475190` = SUCCESS. M04-T04 through M04-T08 remain NOT AUTHORIZED and require explicit human authorization.
+M04-T01 is DONE / integrated. M04-T02 is DONE / integrated via PR #9; squash commit `ad041e8ed31846794c6263596b9cf1da173d4f52`; post-merge CI `39705765258` = SUCCESS. M04-T03 (Create Income) is DONE / integrated via PR #10; accepted head `7fee927dfff7a28a8abd6ecd5e5fceab97fcb95b`; exact-head CI `39773475190` SUCCESS; squash `51b3c97880d154c6543a3c753ef6e7419ea1ea0d`; post-merge CI `39777604808` SUCCESS. M04-T04 is REVIEW REQUIRED. M04-T05 through M04-T08 remain NOT AUTHORIZED.
 
 ## Authority
 
@@ -40,13 +40,13 @@ Generic create supports only `expense`, `income` and `transfer`. Initial status 
 | [M04-T01](../completed/M04-T01.md) | Transaction primitives and Core ports — DONE | Accepted M02/M03 |
 | [M04-T02](../completed/M04-T02.md) | Create Expense - DONE | T01 |
 | [M04-T03](../completed/M04-T03.md) | Create Income - DONE | T01 |
-| [M04-T04](M04-T04.md) | Create Transfer | T01 |
+| [M04-T04](M04-T04.md) | Create Transfer — REVIEW REQUIRED | T01 |
 | [M04-T05](M04-T05.md) | Transaction Queries (Get/List/Last) | T01 |
 | [M04-T06](M04-T06.md) | Direct API Idempotency Core/Database | T01 |
 | [M04-T07](M04-T07.md) | Basic Audit and atomic financial create | T01, T02, T03, T04, T06 |
 | [M04-T08](M04-T08.md) | API Integration and Milestone Verification | T01–T07 |
 
-Current execution state: T01 DONE / integrated; T02 DONE / integrated via PR #9; T03 DONE / accepted with PR #10 as integration vehicle; T04 through T08 remain NOT AUTHORIZED; T07/T08 retain the dependency order below.
+Current execution state: T01/T02/T03 DONE / integrated; T04 REVIEW REQUIRED; T05 through T08 NOT AUTHORIZED; T07/T08 retain the dependency order below.
 
 Formal graph: T01 → {T02, T03, T04, T05, T06}; {T02, T03, T04, T06} → T07; {T01, T02, T03, T04, T05, T06, T07} → T08.
 

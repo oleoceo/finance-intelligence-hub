@@ -105,11 +105,7 @@ function realPort() {
 async function rows(key: string, bookId: string) {
   const [transactions, audit, keys, outbox] = await Promise.all([
     fixture.db.selectFrom('transactions').selectAll().where('book_id', '=', bookId).execute(),
-    fixture.db
-      .selectFrom('audit_events')
-      .selectAll()
-      .where('correlation_id', '=', key)
-      .execute(),
+    fixture.db.selectFrom('audit_events').selectAll().where('correlation_id', '=', key).execute(),
     fixture.db
       .selectFrom('idempotency_keys')
       .selectAll()
@@ -188,7 +184,7 @@ describe('M04-T07 atomic generic create on PostgreSQL', () => {
     const ids = await seed();
     await fixture.db
       .updateTable('accounts')
-      .set({ active: false })
+      .set({ active: false, archived_at: now })
       .where('id', '=', ids.accountId)
       .execute();
     const key = randomUUID();
@@ -338,6 +334,83 @@ describe('M04-T07 atomic generic create on PostgreSQL', () => {
     } finally {
       release.release();
       await Promise.allSettled([first, second].filter((p): p is Promise<unknown> => !!p));
+      await firstDb.destroy();
+      await secondDb.destroy();
+    }
+  });
+
+  it('takes the financial Account lock after idempotency claim and re-reads inactive state', async () => {
+    const ids = await seed();
+    const key = randomUUID();
+    const firstPool = new Pool({ connectionString: fixture.connectionString, max: 1 });
+    const secondPool = new Pool({ connectionString: fixture.connectionString, max: 1 });
+    const firstDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: firstPool }) });
+    const secondDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: secondPool }) });
+    const held = gate();
+    const claimed = gate();
+    const release = gate();
+    let configuration: Promise<unknown> | undefined;
+    let creation: Promise<unknown> | undefined;
+    try {
+      const pid1 = (await firstPool.query('select pg_backend_pid() pid')).rows[0].pid as number;
+      const pid2 = (await secondPool.query('select pg_backend_pid() pid')).rows[0].pid as number;
+      expect(pid1).not.toBe(pid2);
+      configuration = firstDb.transaction().execute(async (tx) => {
+        await tx
+          .updateTable('accounts')
+          .set({ active: false, archived_at: now })
+          .where('id', '=', ids.accountId)
+          .execute();
+        held.release();
+        await bounded(release.promise);
+      });
+      await bounded(held.promise);
+      const observedPort: FinancialTransactionPort = {
+        runInTransaction: (fn) =>
+          new KyselyFinancialTransactionPort(secondDb).runInTransaction((ctx) =>
+            fn({
+              ...ctx,
+              idempotencyKeys: {
+                create: async (value) => {
+                  const row = await ctx.idempotencyKeys.create(value);
+                  if (row) claimed.release();
+                  return row;
+                },
+                complete: (value) => ctx.idempotencyKeys.complete(value),
+                findByKeyAndScope: (k, scope) => ctx.idempotencyKeys.findByKeyAndScope(k, scope),
+                findByKeyAndScopeForUpdate: (k, scope) =>
+                  ctx.idempotencyKeys.findByKeyAndScopeForUpdate(k, scope),
+              },
+            }),
+          ),
+      };
+      creation = create(observedPort, command(ids), key);
+      await bounded(claimed.promise);
+      await bounded(
+        (async () => {
+          for (;;) {
+            const observed = await fixture.pool.query(
+              'select pg_blocking_pids($1) blockers, wait_event_type from pg_stat_activity where pid=$1',
+              [pid2],
+            );
+            if (
+              observed.rows[0]?.blockers.includes(pid1) &&
+              observed.rows[0]?.wait_event_type === 'Lock'
+            )
+              return;
+          }
+        })(),
+      );
+      release.release();
+      await bounded(configuration);
+      await expect(bounded(creation)).rejects.toMatchObject({ code: 'ACCOUNT_INACTIVE' });
+      const state = await rows(key, ids.bookId);
+      expect(state.transactions).toHaveLength(0);
+      expect(state.audit).toHaveLength(0);
+      expect(state.keys).toHaveLength(0);
+    } finally {
+      release.release();
+      await Promise.allSettled([configuration, creation].filter((p): p is Promise<unknown> => !!p));
       await firstDb.destroy();
       await secondDb.destroy();
     }

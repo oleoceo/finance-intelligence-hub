@@ -1,14 +1,14 @@
 # M04 — Transaction Core: Active Milestone Overview
 
 **Status:** ACTIVE
-**Milestone state:** ACTIVE; M04-T01 DONE; M04-T02 through M04-T08 ACTIVE / execution-ready
-**Implementation:** M04-T01 DONE / human accepted; M04-T02 through M04-T08 NOT AUTHORIZED
+**Milestone state:** ACTIVE; M04-T01 DONE; M04-T02 REVIEW REQUIRED; M04-T03 through M04-T08 execution-ready
+**Implementation:** M04-T01 DONE / integrated; M04-T02 implemented on `m04-t02-create-expense`, awaiting human review; M04-T03 through M04-T08 NOT AUTHORIZED
 **Gate A:** NOT EXECUTED
 **Gate 0:** NOT EXECUTED
 **Activation review:** [M04-ACTIVATION-REVIEW.md](M04-ACTIVATION-REVIEW.md) — 2026-10-21; PASS; human accepted and integrated via PR #6 at `1c7e16d45fa03df8cd2b54c28100820af8d08142`; post-merge CI `39675385219` = SUCCESS; no material planning delta
 **M04-T01 acceptance:** Human accepted on 2026-10-21. Accepted implementation head `d80672507b6fd36df9a7035af90e3cccdab44239`; GitHub Actions run `39691263503` attempt 2 = SUCCESS; unit 23 files / 664 tests PASS; PostgreSQL integration 15 files / 236 tests PASS. PR #7 was squash-merged to `main` as `9dabedefd9b58ef8090a1e0e8d88e63d9fdbd323`; post-merge GitHub Actions run `39693573292` = SUCCESS.
 
-M04-T01 is human accepted and DONE. M04-T02 through M04-T08 remain execution-ready, but each later task still requires its own explicit human authorization.
+M04-T01 is human accepted and DONE. M04-T02 remains REVIEW REQUIRED and unmerged. M04-T03 through M04-T08 require explicit human authorization.
 
 ## Authority
 
@@ -46,7 +46,7 @@ Generic create supports only `expense`, `income` and `transfer`. Initial status 
 | [M04-T07](M04-T07.md) | Basic Audit and atomic financial create | T01, T02, T03, T04, T06 |
 | [M04-T08](M04-T08.md) | API Integration and Milestone Verification | T01–T07 |
 
-Current execution state: T01 DONE. The next candidate slice is T02 (or another independent T02–T06 slice only if explicitly authorized); T07/T08 retain the dependency order below.
+Current execution state: T01 DONE; T02 REVIEW REQUIRED. T03–T08 remain NOT AUTHORIZED; T07/T08 retain the dependency order below.
 
 Formal graph: T01 → {T02, T03, T04, T05, T06}; {T02, T03, T04, T06} → T07; {T01, T02, T03, T04, T05, T06, T07} → T08.
 

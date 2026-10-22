@@ -43,7 +43,6 @@ export function t02Database() {
 
   afterAll(async () => {
     if (db) await db.destroy();
-    if (pool) await pool.end();
     if (container) await container.stop();
   });
 

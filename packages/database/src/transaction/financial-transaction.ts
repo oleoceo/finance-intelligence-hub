@@ -10,6 +10,7 @@
  */
 
 import type { Kysely } from 'kysely';
+import { ConfigurationLockSetChangedError, ConcurrencyError } from '@finance-hub/core';
 import type {
   FinancialTransactionPort,
   FinancialTransactionContext,
@@ -66,30 +67,39 @@ export class KyselyFinancialTransactionPort implements FinancialTransactionPort 
   constructor(private readonly db: Kysely<DB>) {}
 
   async runInTransaction<T>(fn: (ctx: FinancialTransactionContext) => Promise<T>): Promise<T> {
-    return await this.db.transaction().execute(async (tx) => {
-      const books = new KyselyBookRepository(tx);
-      const accounts = new KyselyAccountRepository(tx);
-      const categories = new KyselyCategoryRepository(tx);
-      const merchants = new KyselyMerchantRepository(tx);
-      const locks = new KyselyConfigurationLockPort(tx);
-      const financialUsage = new KyselyFinancialUsageReader(tx);
-      const transactions = new KyselyTransactionRepository(tx);
-      const idempotencyKeys = new StubIdempotencyKeyRepository();
-      const audit = new StubAuditWriter();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.db.transaction().execute(async (tx) => {
+          const books = new KyselyBookRepository(tx);
+          const accounts = new KyselyAccountRepository(tx);
+          const categories = new KyselyCategoryRepository(tx);
+          const merchants = new KyselyMerchantRepository(tx);
+          const locks = new KyselyConfigurationLockPort(tx);
+          const financialUsage = new KyselyFinancialUsageReader(tx);
+          const transactions = new KyselyTransactionRepository(tx);
+          const idempotencyKeys = new StubIdempotencyKeyRepository();
+          const audit = new StubAuditWriter();
 
-      const ctx: FinancialTransactionContext = {
-        books,
-        accounts,
-        categories,
-        merchants,
-        locks,
-        financialUsage,
-        transactions,
-        idempotencyKeys,
-        audit,
-      };
+          const ctx: FinancialTransactionContext = {
+            books,
+            accounts,
+            categories,
+            merchants,
+            locks,
+            financialUsage,
+            transactions,
+            idempotencyKeys,
+            audit,
+          };
 
-      return await fn(ctx);
-    });
+          return await fn(ctx);
+        });
+      } catch (error) {
+        const deadlock =
+          typeof error === 'object' && error !== null && 'code' in error && error.code === '40P01';
+        if (!(error instanceof ConfigurationLockSetChangedError) && !deadlock) throw error;
+      }
+    }
+    throw new ConcurrencyError('Configuration references changed repeatedly; retry operation');
   }
 }

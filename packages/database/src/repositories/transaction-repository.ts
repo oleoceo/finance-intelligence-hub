@@ -18,6 +18,7 @@ import type {
   ListTransactionsInput,
   ListTransactionsResult,
   GetLastTransactionInput,
+  TransactionCreateSource,
 } from '@finance-hub/core';
 import type { DB } from '../db-types.js';
 
@@ -33,7 +34,7 @@ export class KyselyTransactionRepository implements TransactionRepository {
     input: CreateTransactionInput & {
       id: string;
       humanRef: string;
-      source: string;
+      source: TransactionCreateSource;
       currency: string;
     },
   ): Promise<TransactionRecord | null> {
@@ -107,12 +108,12 @@ export class KyselyTransactionRepository implements TransactionRepository {
   }
 
   async list(_input: ListTransactionsInput): Promise<ListTransactionsResult> {
-    // Deferred to T08 query task
+    // Deferred to T05 query task
     throw new Error('TransactionRepository.list not implemented in M04-T02');
   }
 
   async getLast(_input: GetLastTransactionInput): Promise<TransactionRecord | null> {
-    // Deferred to T08 query task
+    // Deferred to T05 query task
     throw new Error('TransactionRepository.getLast not implemented in M04-T02');
   }
 

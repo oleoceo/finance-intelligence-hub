@@ -296,6 +296,44 @@ describe('CreateExpense', () => {
   });
 
   describe('input validation', () => {
+    it.each(['income', 'transfer', 'arbitrary', undefined])(
+      'rejects runtime type %s before locking',
+      async (type) => {
+        const ctx = createMockContext();
+        await expect(
+          createExpense({ ...makeInput(), type } as CreateExpenseInput, ctx, makeDeps()),
+        ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+        expect(ctx.locks.acquireLocks).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['bookId', 'accountId', 'amount', 'description', 'transactionDate'] as const)(
+      'rejects missing or wrong-type %s before locking',
+      async (field) => {
+        for (const value of [undefined, null, 123]) {
+          const ctx = createMockContext();
+          await expect(
+            createExpense(
+              { ...makeInput(), [field]: value } as CreateExpenseInput,
+              ctx,
+              makeDeps(),
+            ),
+          ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+          expect(ctx.locks.acquireLocks).not.toHaveBeenCalled();
+        }
+      },
+    );
+
+    it.each(['refundOfTransactionId', 'refund_of_transaction_id'])(
+      'rejects refund bypass field %s',
+      async (field) => {
+        const ctx = createMockContext();
+        await expect(
+          createExpense({ ...makeInput(), [field]: ACCOUNT_ID }, ctx, makeDeps()),
+        ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+        expect(ctx.locks.acquireLocks).not.toHaveBeenCalled();
+      },
+    );
     it('rejects invalid amount format', async () => {
       const input = makeInput({ amount: 'abc' });
       const deps = makeDeps();
@@ -338,13 +376,13 @@ describe('CreateExpense', () => {
   });
 
   describe('invariant enforcement', () => {
-    it('rejects nonexistent Book with BOOK_INACTIVE code', async () => {
+    it('rejects nonexistent Book with BOOK_NOT_FOUND code', async () => {
       const input = makeInput();
       const deps = makeDeps();
       const ctx = createMockContext({ book: null });
 
       await expect(createExpense(input, ctx, deps)).rejects.toMatchObject({
-        code: 'BOOK_INACTIVE',
+        code: 'BOOK_NOT_FOUND',
       });
     });
 
@@ -358,13 +396,13 @@ describe('CreateExpense', () => {
       });
     });
 
-    it('rejects nonexistent Account with ACCOUNT_INACTIVE code', async () => {
+    it('rejects nonexistent Account with ACCOUNT_NOT_FOUND code', async () => {
       const input = makeInput();
       const deps = makeDeps();
       const ctx = createMockContext({ account: null });
 
       await expect(createExpense(input, ctx, deps)).rejects.toMatchObject({
-        code: 'ACCOUNT_INACTIVE',
+        code: 'ACCOUNT_NOT_FOUND',
       });
     });
 
@@ -378,7 +416,7 @@ describe('CreateExpense', () => {
       });
     });
 
-    it('rejects Account not belonging to Book with ACCOUNT_INACTIVE code', async () => {
+    it('rejects Account not belonging to Book with VALIDATION_ERROR code', async () => {
       const input = makeInput();
       const deps = makeDeps();
       const otherBookId = '0192738a-0000-7000-8000-000000000099';
@@ -387,7 +425,7 @@ describe('CreateExpense', () => {
       });
 
       await expect(createExpense(input, ctx, deps)).rejects.toMatchObject({
-        code: 'ACCOUNT_INACTIVE',
+        code: 'VALIDATION_ERROR',
       });
     });
 
@@ -399,7 +437,7 @@ describe('CreateExpense', () => {
       });
 
       await expect(createExpense(input, ctx, deps)).rejects.toMatchObject({
-        code: 'ACCOUNT_INACTIVE',
+        code: 'CURRENCY_MISMATCH',
       });
     });
 
@@ -413,13 +451,13 @@ describe('CreateExpense', () => {
       });
     });
 
-    it('rejects nonexistent Category with CATEGORY_INACTIVE code', async () => {
+    it('rejects nonexistent Category with CATEGORY_NOT_FOUND code', async () => {
       const input = makeInput({ categoryId: CATEGORY_ID });
       const deps = makeDeps();
       const ctx = createMockContext({ category: null });
 
       await expect(createExpense(input, ctx, deps)).rejects.toMatchObject({
-        code: 'CATEGORY_INACTIVE',
+        code: 'CATEGORY_NOT_FOUND',
       });
     });
 
@@ -435,7 +473,7 @@ describe('CreateExpense', () => {
       });
     });
 
-    it('rejects Category not belonging to Book with CATEGORY_INACTIVE code', async () => {
+    it('rejects Category not belonging to Book with VALIDATION_ERROR code', async () => {
       const input = makeInput({ categoryId: CATEGORY_ID });
       const deps = makeDeps();
       const otherBookId = '0192738a-0000-7000-8000-000000000099';
@@ -444,17 +482,17 @@ describe('CreateExpense', () => {
       });
 
       await expect(createExpense(input, ctx, deps)).rejects.toMatchObject({
-        code: 'CATEGORY_INACTIVE',
+        code: 'VALIDATION_ERROR',
       });
     });
 
-    it('rejects nonexistent Merchant with MERCHANT_INACTIVE code', async () => {
+    it('rejects nonexistent Merchant with MERCHANT_NOT_FOUND code', async () => {
       const input = makeInput({ merchantId: MERCHANT_ID });
       const deps = makeDeps();
       const ctx = createMockContext({ merchant: null });
 
       await expect(createExpense(input, ctx, deps)).rejects.toMatchObject({
-        code: 'MERCHANT_INACTIVE',
+        code: 'MERCHANT_NOT_FOUND',
       });
     });
 
@@ -488,6 +526,8 @@ describe('CreateExpense', () => {
 
       expect(result).toEqual(expectedRecord);
       expect(ctx.transactions.create).toHaveBeenCalledTimes(2);
+      const calls = (ctx.transactions.create as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls[0][0].id).toBe(calls[1][0].id);
     });
 
     it('throws after exhausting all 3 human_ref candidates', async () => {

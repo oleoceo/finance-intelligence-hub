@@ -29,7 +29,7 @@ import {
   rejectInactiveCategory,
   rejectInactiveMerchant,
 } from '../../domain/finance/transaction-validation.js';
-import { FinancialError } from '../../domain/finance/errors.js';
+import { FinancialError, FinancialValidationError } from '../../domain/finance/errors.js';
 
 /**
  * Dependencies injectable for deterministic testing.
@@ -46,7 +46,7 @@ const MAX_HUMAN_REF_ATTEMPTS = 3;
 /**
  * Create an Expense transaction.
  *
- * @param input - Validated CreateExpenseInput (type='expense' already asserted by caller)
+ * @param input - CreateExpenseInput, checked again at this runtime boundary
  * @param ctx - FinancialTransactionContext provided by the outer transaction owner
  * @param deps - Injectable dependencies for testability
  * @returns The persisted TransactionRecord
@@ -60,6 +60,28 @@ export async function createExpense(
   ctx: FinancialTransactionContext,
   deps: CreateExpenseDependencies,
 ): Promise<TransactionRecord> {
+  if (input === null || typeof input !== 'object') {
+    throw new FinancialValidationError('Expense input must be an object');
+  }
+  if (input.type !== 'expense') {
+    throw new FinancialValidationError('Transaction type must be expense', 'type');
+  }
+  for (const field of [
+    'bookId',
+    'accountId',
+    'amount',
+    'description',
+    'transactionDate',
+  ] as const) {
+    if (typeof input[field] !== 'string') {
+      throw new FinancialValidationError(`Invalid or missing ${field}`, field);
+    }
+  }
+  if ('refundOfTransactionId' in input || 'refund_of_transaction_id' in input) {
+    throw new FinancialValidationError('Refund relation is not accepted for Expense');
+  }
+  validateTransactionDate(input.transactionDate);
+  validateMoneyAmount(input.amount, 'BRL');
   const generateId = deps.generateId ?? uuidv7;
   const now = deps.now;
 
@@ -89,13 +111,13 @@ export async function createExpense(
   // ── 4. Re-read authoritative state under locks ──────────────────────
   const book = await ctx.books.findById(bookId);
   if (!book) {
-    throw new FinancialError(`Book not found: ${bookId}`, 'BOOK_INACTIVE');
+    throw new FinancialError(`Book not found: ${bookId}`, 'BOOK_NOT_FOUND');
   }
   rejectInactiveBook(book);
 
   const account = await ctx.accounts.findById(accountId);
   if (!account) {
-    throw new FinancialError(`Account not found: ${accountId}`, 'ACCOUNT_INACTIVE');
+    throw new FinancialError(`Account not found: ${accountId}`, 'ACCOUNT_NOT_FOUND');
   }
   rejectInactiveAccount(account);
 
@@ -103,7 +125,7 @@ export async function createExpense(
   if (account.bookId !== bookId) {
     throw new FinancialError(
       `Account ${accountId} does not belong to Book ${bookId}`,
-      'ACCOUNT_INACTIVE',
+      'VALIDATION_ERROR',
     );
   }
 
@@ -111,7 +133,7 @@ export async function createExpense(
   if (account.currency !== book.currency) {
     throw new FinancialError(
       `Account currency (${account.currency}) does not match Book currency (${book.currency})`,
-      'ACCOUNT_INACTIVE',
+      'CURRENCY_MISMATCH',
     );
   }
 
@@ -128,13 +150,13 @@ export async function createExpense(
   if (categoryId) {
     const category = await ctx.categories.findById(categoryId);
     if (!category) {
-      throw new FinancialError(`Category not found: ${categoryId}`, 'CATEGORY_INACTIVE');
+      throw new FinancialError(`Category not found: ${categoryId}`, 'CATEGORY_NOT_FOUND');
     }
     rejectInactiveCategory(category);
     if (category.bookId !== bookId) {
       throw new FinancialError(
         `Category ${categoryId} does not belong to Book ${bookId}`,
-        'CATEGORY_INACTIVE',
+        'VALIDATION_ERROR',
       );
     }
   }
@@ -143,7 +165,7 @@ export async function createExpense(
   if (merchantId) {
     const merchant = await ctx.merchants.findById(merchantId);
     if (!merchant) {
-      throw new FinancialError(`Merchant not found: ${merchantId}`, 'MERCHANT_INACTIVE');
+      throw new FinancialError(`Merchant not found: ${merchantId}`, 'MERCHANT_NOT_FOUND');
     }
     rejectInactiveMerchant(merchant);
   }

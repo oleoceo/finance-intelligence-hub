@@ -16,11 +16,21 @@
  */
 import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
+import { Kysely, PostgresDialect } from 'kysely';
+import type { DB } from '../../../packages/database/src/db-types.js';
+import { KyselyFinancialTransactionPort, KyselyTransactionPort } from '@finance-hub/database';
 import {
   createExpense,
-  DeterministicHumanRefGenerator,
+  archiveBook,
+  archiveAccount,
+  archiveCategory,
+  archiveMerchant,
+  updateBook,
+  updateAccount,
   type CreateExpenseDependencies,
   type FinancialTransactionContext,
+  type MasterDataTransactionContextT04,
 } from '@finance-hub/core';
 import { t02Database } from './t02-fixtures.js';
 
@@ -28,7 +38,9 @@ const db = t02Database();
 
 function makeDeps(overrides: Partial<CreateExpenseDependencies> = {}): CreateExpenseDependencies {
   return {
-    humanRefGenerator: new DeterministicHumanRefGenerator(),
+    humanRefGenerator: {
+      generate: () => randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase(),
+    },
     now: new Date('2026-10-21T12:00:00Z'),
     ...overrides,
   };
@@ -301,7 +313,7 @@ describe('M04-T02 CreateExpense PostgreSQL integration', () => {
   });
 
   describe('currency mismatch', () => {
-    it('rejects expense when Account currency differs from Book currency', async () => {
+    it('composite FK prevents Account currency differing from Book currency', async () => {
       await expect(
         db.run(async (ctx) => {
           const now = new Date('2026-10-21T12:00:00Z');
@@ -332,21 +344,8 @@ describe('M04-T02 CreateExpense PostgreSQL integration', () => {
             createdAt: now,
             updatedAt: now,
           });
-          const deps = makeDeps();
-          await createExpense(
-            {
-              type: 'expense',
-              bookId,
-              accountId,
-              amount: '10.00',
-              description: 'Currency mismatch',
-              transactionDate: '2026-10-21',
-            },
-            ctx,
-            deps,
-          );
         }),
-      ).rejects.toMatchObject({ code: 'ACCOUNT_INACTIVE' });
+      ).rejects.toMatchObject({ code: '23503', constraint: 'fk_accounts_book_currency' });
     });
   });
 
@@ -679,5 +678,231 @@ describe('M04-T02 CreateExpense PostgreSQL integration', () => {
         expect(persisted!.merchantId).toBe(merchantId);
       });
     });
+  });
+});
+
+type RaceKind =
+  | 'book-archive'
+  | 'account-archive'
+  | 'category-archive'
+  | 'merchant-archive'
+  | 'book-currency'
+  | 'account-currency'
+  | 'account-type';
+type Targets = Awaited<ReturnType<typeof seedTargets>>;
+
+function barrier() {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+}
+
+async function bounded<T>(promise: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Race barrier timed out')), 10000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
+
+async function configOperation(kind: RaceKind, ids: Targets, ctx: MasterDataTransactionContextT04) {
+  const now = new Date('2026-10-21T12:00:00Z');
+  switch (kind) {
+    case 'book-archive':
+      return archiveBook(ids.bookId, ctx, now);
+    case 'account-archive':
+      return archiveAccount(ids.accountId, ctx, now);
+    case 'category-archive':
+      return archiveCategory(ids.categoryId, ctx, now);
+    case 'merchant-archive':
+      return archiveMerchant(ids.merchantId, ctx, now);
+    case 'book-currency':
+      return updateBook({ id: ids.bookId, currency: 'USD' }, ctx, now);
+    case 'account-currency':
+      return updateAccount({ id: ids.accountId, currency: 'USD' }, ctx, now);
+    case 'account-type':
+      return updateAccount({ id: ids.accountId, type: 'savings' }, ctx, now);
+  }
+}
+
+async function expenseOperation(kind: RaceKind, ids: Targets, ctx: FinancialTransactionContext) {
+  return createExpense(
+    {
+      type: 'expense',
+      bookId: ids.bookId,
+      accountId: ids.accountId,
+      categoryId: kind === 'category-archive' ? ids.categoryId : null,
+      merchantId: kind === 'merchant-archive' ? ids.merchantId : null,
+      amount: '11.00',
+      description: 'Concurrent expense',
+      transactionDate: '2026-10-21',
+    },
+    ctx,
+    makeDeps(),
+  );
+}
+
+async function coordinatedRace(kind: RaceKind, configFirst: boolean, ids: Targets) {
+  const pool1 = new Pool({
+    connectionString: db.connectionString,
+    max: 1,
+    options: '-c statement_timeout=10000 -c lock_timeout=10000',
+  });
+  const pool2 = new Pool({
+    connectionString: db.connectionString,
+    max: 1,
+    options: '-c statement_timeout=10000 -c lock_timeout=10000',
+  });
+  const db1 = new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool1 }) });
+  const db2 = new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool2 }) });
+  const held = barrier();
+  const release = barrier();
+  const started = barrier();
+  let pending: Promise<PromiseSettledResult<unknown>[]> | undefined;
+  try {
+    const pid1 = (await pool1.query('select pg_backend_pid() as pid')).rows[0].pid as number;
+    const pid2 = (await pool2.query('select pg_backend_pid() as pid')).rows[0].pid as number;
+    expect(pid1).not.toBe(pid2);
+    const holdLocks = async <T extends { locks: FinancialTransactionContext['locks'] }>(
+      ctx: T,
+    ) => ({
+      ...ctx,
+      locks: {
+        acquireLocks: async (spec: Parameters<T['locks']['acquireLocks']>[0]) => {
+          await ctx.locks.acquireLocks(spec);
+          if (spec.books?.length || spec.merchants?.length) {
+            held.release();
+            await bounded(release.promise);
+          }
+        },
+      },
+    });
+    const markStarted = async <T extends { locks: FinancialTransactionContext['locks'] }>(
+      ctx: T,
+    ) => ({
+      ...ctx,
+      locks: {
+        acquireLocks: async (spec: Parameters<T['locks']['acquireLocks']>[0]) => {
+          if (spec.books?.length || spec.merchants?.length) started.release();
+          await ctx.locks.acquireLocks(spec);
+        },
+      },
+    });
+    const first = configFirst
+      ? new KyselyTransactionPort(db1).runInTransaction(async (ctx) =>
+          configOperation(kind, ids, await holdLocks(ctx)),
+        )
+      : new KyselyFinancialTransactionPort(db1).runInTransaction(async (ctx) =>
+          expenseOperation(kind, ids, await holdLocks(ctx)),
+        );
+    const firstObserved = Promise.allSettled([first]);
+    await bounded(held.promise);
+    const second = configFirst
+      ? new KyselyFinancialTransactionPort(db2).runInTransaction(async (ctx) =>
+          expenseOperation(kind, ids, await markStarted(ctx)),
+        )
+      : new KyselyTransactionPort(db2).runInTransaction(async (ctx) =>
+          configOperation(kind, ids, await markStarted(ctx)),
+        );
+    pending = Promise.allSettled([first, second]);
+    await bounded(started.promise);
+    await bounded(
+      (async () => {
+        for (;;) {
+          const observed = await db.pool.query(
+            'select pg_blocking_pids($1) as blockers, wait_event_type from pg_stat_activity where pid=$1',
+            [pid2],
+          );
+          if (
+            observed.rows[0]?.blockers.includes(pid1) &&
+            observed.rows[0].wait_event_type === 'Lock'
+          ) {
+            break;
+          }
+        }
+      })(),
+    );
+    release.release();
+    const result = await bounded(pending);
+    await firstObserved;
+    return result;
+  } finally {
+    release.release();
+    if (pending) await pending;
+    await db1.destroy();
+    await db2.destroy();
+  }
+}
+
+describe('M04-T02 real PostgreSQL configuration races', { timeout: 30000 }, () => {
+  it.each([
+    'book-archive',
+    'account-archive',
+    'category-archive',
+    'merchant-archive',
+    'book-currency',
+    'account-currency',
+    'account-type',
+  ] as const)('%s: configuration first, expense waits and re-reads', async (kind) => {
+    const ids = await db.run(seedTargets);
+    const [configuration, expense] = await coordinatedRace(kind, true, ids);
+    if (kind.endsWith('archive')) {
+      expect(configuration.status).toBe('fulfilled');
+      const code =
+        kind === 'book-archive'
+          ? 'BOOK_INACTIVE'
+          : kind === 'account-archive'
+            ? 'ACCOUNT_INACTIVE'
+            : kind === 'category-archive'
+              ? 'CATEGORY_INACTIVE'
+              : 'MERCHANT_INACTIVE';
+      expect(expense).toMatchObject({ status: 'rejected', reason: { code } });
+    } else if (kind === 'account-type') {
+      expect(configuration.status).toBe('fulfilled');
+      expect(expense.status).toBe('fulfilled');
+      const account = await db.run((ctx) => ctx.accounts.findById(ids.accountId));
+      expect(account?.type).toBe('savings');
+    } else {
+      const code = kind === 'account-currency' ? 'CURRENCY_MISMATCH' : 'IMMUTABILITY_ERROR';
+      expect(configuration).toMatchObject({ status: 'rejected', reason: { code } });
+      expect(expense.status).toBe('fulfilled');
+    }
+  });
+
+  it.each([
+    'book-archive',
+    'account-archive',
+    'category-archive',
+    'merchant-archive',
+    'book-currency',
+    'account-currency',
+    'account-type',
+  ] as const)('%s: expense first, mutation observes committed history', async (kind) => {
+    const ids = await db.run(seedTargets);
+    const [expense, configuration] = await coordinatedRace(kind, false, ids);
+    expect(expense.status).toBe('fulfilled');
+    if (kind.endsWith('archive')) {
+      expect(configuration.status).toBe('fulfilled');
+      const record = expense.status === 'fulfilled' ? (expense.value as { id: string }) : null;
+      const persisted = await db.run((ctx) => ctx.transactions.findById(record!.id));
+      expect(persisted).not.toBeNull();
+    } else {
+      expect(configuration).toMatchObject({
+        status: 'rejected',
+        reason: { code: 'IMMUTABILITY_ERROR' },
+      });
+      await db.run(async (ctx) => {
+        expect(await ctx.financialUsage.hasBookUsage(ids.bookId)).toBe(true);
+        expect(await ctx.financialUsage.hasAccountUsage(ids.accountId)).toBe(true);
+      });
+    }
   });
 });

@@ -16,6 +16,37 @@ const MONEY_REGEX = /^(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,2})?$/;
  */
 const MAX_CENTS = BigInt('999999999999999999');
 
+/** Validate and canonicalize an amount without inventing a currency. */
+export function canonicalizeMoneyAmount(amount: string): string {
+  if (typeof amount !== 'string') {
+    throw new Error('Money amount must be a string');
+  }
+  if (!MONEY_REGEX.test(amount)) {
+    throw new Error(
+      `Invalid money amount format: "${amount}". Must match ^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,2})?$`,
+    );
+  }
+  if (amount.startsWith('+')) {
+    throw new Error('Money amount must not have an explicit positive sign');
+  }
+  const dotIndex = amount.indexOf('.');
+  const integralStr = dotIndex === -1 ? amount : amount.substring(0, dotIndex);
+  const fractionalStr = dotIndex === -1 ? '' : amount.substring(dotIndex + 1);
+  const integralBigInt = BigInt(integralStr);
+  const fractionalPadded = fractionalStr.padEnd(2, '0');
+  const fractionalValue = fractionalPadded === '' ? 0n : BigInt(fractionalPadded);
+  if (integralBigInt === 0n && fractionalValue === 0n) {
+    throw new Error('Money amount must be strictly greater than zero');
+  }
+  const cents = integralBigInt * 100n + fractionalValue;
+  if (cents > MAX_CENTS) {
+    throw new Error(
+      `Money amount exceeds maximum NUMERIC(18,2): ${amount}. Max is 9999999999999999.99`,
+    );
+  }
+  return `${integralStr}.${fractionalPadded}`;
+}
+
 export class Money {
   private readonly _amount: string;
   private readonly _currency: string;
@@ -30,58 +61,10 @@ export class Money {
    * Validates strictly per M04 contract.
    */
   static create(amount: string, currency: string): Money {
-    if (typeof amount !== 'string') {
-      throw new Error('Money amount must be a string');
-    }
-
+    const canonicalAmount = canonicalizeMoneyAmount(amount);
     if (typeof currency !== 'string' || !/^[A-Z]{3}$/.test(currency)) {
       throw new Error('Money currency must match [A-Z]{3}');
     }
-
-    if (!MONEY_REGEX.test(amount)) {
-      throw new Error(
-        `Invalid money amount format: "${amount}". Must match ^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,2})?$`,
-      );
-    }
-
-    // Reject explicit positive sign (regex already rejects, but defensive)
-    if (amount.startsWith('+')) {
-      throw new Error('Money amount must not have an explicit positive sign');
-    }
-
-    // Parse integral and fractional parts using string operations only
-    const dotIndex = amount.indexOf('.');
-    let integralStr: string;
-    let fractionalStr: string;
-
-    if (dotIndex === -1) {
-      integralStr = amount;
-      fractionalStr = '';
-    } else {
-      integralStr = amount.substring(0, dotIndex);
-      fractionalStr = amount.substring(dotIndex + 1);
-    }
-
-    // Reject zero value: both integral and fractional must not be all zeros
-    const integralBigInt = BigInt(integralStr);
-    const fractionalPadded = fractionalStr.padEnd(2, '0');
-    const fractionalValue = fractionalPadded === '' ? 0n : BigInt(fractionalPadded);
-
-    if (integralBigInt === 0n && fractionalValue === 0n) {
-      throw new Error('Money amount must be strictly greater than zero');
-    }
-
-    // Check overflow: convert to cents and compare against max
-    const cents = integralBigInt * 100n + fractionalValue;
-    if (cents > MAX_CENTS) {
-      throw new Error(
-        `Money amount exceeds maximum NUMERIC(18,2): ${amount}. Max is 9999999999999999.99`,
-      );
-    }
-
-    // Canonicalize to exactly two decimal places
-    const canonicalAmount = `${integralStr}.${fractionalPadded}`;
-
     return new Money(canonicalAmount, currency);
   }
 

@@ -193,6 +193,7 @@ export {
 } from './domain/finance/human-ref.js';
 
 export { FinancialError, FinancialValidationError } from './domain/finance/errors.js';
+export { canonicalizeMoneyAmount } from './domain/finance/money.js';
 
 // M04-T01: Application ports
 export {
@@ -219,6 +220,18 @@ export {
   type CompleteIdempotencyKeyInput,
   type IdempotencyKeyRepository,
 } from './application/ports/idempotency-ports.js';
+
+export {
+  TRANSACTION_CREATE_SCOPE,
+  resolveTransactionCreateScope,
+  validateIdempotencyKey,
+  canonicalJson,
+  canonicalTransactionCreate,
+  fingerprintTransactionCreate,
+  decideExistingIdempotency,
+  IdempotencyInProgressRetryError,
+  type ExistingIdempotencyDecision,
+} from './application/finance/idempotency.js';
 
 export {
   AUDIT_ACTIONS,

@@ -214,6 +214,7 @@ function createMockContext(
       create: vi.fn().mockRejectedValue(new Error('not implemented in T03')),
       complete: vi.fn().mockRejectedValue(new Error('not implemented in T03')),
       findByKeyAndScope: vi.fn().mockRejectedValue(new Error('not implemented in T03')),
+      findByKeyAndScopeForUpdate: vi.fn().mockRejectedValue(new Error('not implemented in T03')),
     },
     audit: {
       write: vi.fn().mockRejectedValue(new Error('not implemented in T03')),

@@ -10,14 +10,14 @@
  */
 
 import type { Kysely } from 'kysely';
-import { ConfigurationLockSetChangedError, ConcurrencyError } from '@finance-hub/core';
+import {
+  ConfigurationLockSetChangedError,
+  ConcurrencyError,
+  IdempotencyInProgressRetryError,
+} from '@finance-hub/core';
 import type {
   FinancialTransactionPort,
   FinancialTransactionContext,
-  IdempotencyKeyRepository,
-  IdempotencyKeyRecord,
-  CreateIdempotencyKeyInput,
-  CompleteIdempotencyKeyInput,
   AuditWriter,
   WriteAuditEventInput,
 } from '@finance-hub/core';
@@ -28,31 +28,13 @@ import { KyselyMerchantRepository } from '../repositories/merchant-repository.js
 import { KyselyConfigurationLockPort } from './configuration-transaction.js';
 import { KyselyFinancialUsageReader } from '../readers/financial-usage-reader.js';
 import { KyselyTransactionRepository } from '../repositories/transaction-repository.js';
+import { KyselyIdempotencyKeyRepository } from '../repositories/idempotency-key-repository.js';
 import type { DB } from '../db-types.js';
 
 /**
  * Stub idempotency key repository for T02 context composition.
  * T06 owns the real implementation. T02 does not invoke idempotency operations.
  */
-class StubIdempotencyKeyRepository implements IdempotencyKeyRepository {
-  async create(_input: CreateIdempotencyKeyInput): Promise<IdempotencyKeyRecord> {
-    throw new Error('IdempotencyKeyRepository.create not implemented in M04-T02; deferred to T06');
-  }
-  async complete(_input: CompleteIdempotencyKeyInput): Promise<IdempotencyKeyRecord> {
-    throw new Error(
-      'IdempotencyKeyRepository.complete not implemented in M04-T02; deferred to T06',
-    );
-  }
-  async findByKeyAndScope(
-    _idempotencyKey: string,
-    _scope: 'transactions:create',
-  ): Promise<IdempotencyKeyRecord | null> {
-    throw new Error(
-      'IdempotencyKeyRepository.findByKeyAndScope not implemented in M04-T02; deferred to T06',
-    );
-  }
-}
-
 /**
  * Stub audit writer for T02 context composition.
  * T07 owns the real implementation. T02 does not invoke audit writes.
@@ -77,7 +59,7 @@ export class KyselyFinancialTransactionPort implements FinancialTransactionPort 
           const locks = new KyselyConfigurationLockPort(tx);
           const financialUsage = new KyselyFinancialUsageReader(tx);
           const transactions = new KyselyTransactionRepository(tx);
-          const idempotencyKeys = new StubIdempotencyKeyRepository();
+          const idempotencyKeys = new KyselyIdempotencyKeyRepository(tx);
           const audit = new StubAuditWriter();
 
           const ctx: FinancialTransactionContext = {
@@ -97,9 +79,17 @@ export class KyselyFinancialTransactionPort implements FinancialTransactionPort 
       } catch (error) {
         const deadlock =
           typeof error === 'object' && error !== null && 'code' in error && error.code === '40P01';
-        if (!(error instanceof ConfigurationLockSetChangedError) && !deadlock) throw error;
+        const lockTimeout =
+          typeof error === 'object' && error !== null && 'code' in error && error.code === '55P03';
+        if (
+          !(error instanceof ConfigurationLockSetChangedError) &&
+          !(error instanceof IdempotencyInProgressRetryError) &&
+          !deadlock &&
+          !lockTimeout
+        )
+          throw error;
       }
     }
-    throw new ConcurrencyError('Configuration references changed repeatedly; retry operation');
+    throw new ConcurrencyError('Financial transaction could not complete after three attempts');
   }
 }

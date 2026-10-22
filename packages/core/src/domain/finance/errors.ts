@@ -28,7 +28,8 @@ export class FinancialError extends Error {
       | 'VALIDATION_ERROR'
       | 'TRANSACTION_DATE_IN_FUTURE'
       | 'TRANSFER_SAME_ACCOUNT'
-      | 'CROSS_BOOK_TRANSFER_NOT_SUPPORTED',
+      | 'CROSS_BOOK_TRANSFER_NOT_SUPPORTED'
+      | 'IDEMPOTENCY_CONFLICT',
   ) {
     super(message);
     this.name = 'FinancialError';

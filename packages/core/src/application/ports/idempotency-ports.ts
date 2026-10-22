@@ -62,7 +62,7 @@ export interface IdempotencyKeyRepository {
   /**
    * Create an in_progress record. T06 defines conflict and replay handling.
    */
-  create(input: CreateIdempotencyKeyInput): Promise<IdempotencyKeyRecord>;
+  create(input: CreateIdempotencyKeyInput): Promise<IdempotencyKeyRecord | null>;
 
   /**
    * Mark a previously created key as completed with replayable response data.
@@ -74,6 +74,12 @@ export interface IdempotencyKeyRepository {
    * Look up an existing key without mutating state.
    */
   findByKeyAndScope(
+    idempotencyKey: string,
+    scope: IdempotencyScope,
+  ): Promise<IdempotencyKeyRecord | null>;
+
+  /** Authoritative PostgreSQL FOR UPDATE read, only inside the outer transaction. */
+  findByKeyAndScopeForUpdate(
     idempotencyKey: string,
     scope: IdempotencyScope,
   ): Promise<IdempotencyKeyRecord | null>;

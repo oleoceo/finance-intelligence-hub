@@ -6,6 +6,19 @@
  */
 
 export interface DB {
+  idempotency_keys: {
+    id: string;
+    scope: string;
+    idempotency_key: string;
+    request_hash: string;
+    status: string;
+    resource_type: string | null;
+    resource_id: string | null;
+    response_status: number | null;
+    response_body: Record<string, unknown> | null;
+    created_at: Date;
+    completed_at: Date | null;
+  };
   books: {
     id: string;
     name: string;

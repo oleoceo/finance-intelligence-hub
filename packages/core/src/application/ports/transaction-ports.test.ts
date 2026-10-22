@@ -198,12 +198,15 @@ describe('Idempotency ports compile checks', () => {
   it('IdempotencyKeyRepository methods return correct types', () => {
     expectTypeOf<
       IdempotencyKeyRepository['create']
-    >().returns.resolves.toEqualTypeOf<IdempotencyKeyRecord>();
+    >().returns.resolves.toEqualTypeOf<IdempotencyKeyRecord | null>();
     expectTypeOf<
       IdempotencyKeyRepository['complete']
     >().returns.resolves.toEqualTypeOf<IdempotencyKeyRecord>();
     expectTypeOf<
       IdempotencyKeyRepository['findByKeyAndScope']
+    >().returns.resolves.toEqualTypeOf<IdempotencyKeyRecord | null>();
+    expectTypeOf<
+      IdempotencyKeyRepository['findByKeyAndScopeForUpdate']
     >().returns.resolves.toEqualTypeOf<IdempotencyKeyRecord | null>();
   });
 

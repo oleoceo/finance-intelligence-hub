@@ -1287,7 +1287,7 @@ M02 Database Foundation
 DONE
 
 M04 Transaction Core
-ACTIVE; M04-T01 DONE / human accepted; M04-T02 DONE / accepted; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS); M04-T03 DONE / accepted; PR #10 is the integration vehicle; M04-T04 through M04-T08 NOT AUTHORIZED
+ACTIVE; M04-T01 DONE / human accepted; M04-T02 DONE / accepted; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS); M04-T03 DONE / accepted; M04-T04 REVIEW REQUIRED on branch `m04-t04-create-transfer` (commit `aae3181`); M04-T05 through M04-T08 NOT AUTHORIZED
 
 V0.1 Forward Planning
 ACCEPTED / INTEGRATED at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` = SUCCESS

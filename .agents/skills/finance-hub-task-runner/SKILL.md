@@ -127,6 +127,8 @@ Exception:
 
 if obsolete state blocks or makes an immediate operation ambiguous, perform a narrow post-merge correction before proceeding.
 
+When post-merge bookkeeping or a task transition changes current state, search for the task ID, PR number, `open`, `unmerged`, `NOT AUTHORIZED`, `REVIEW REQUIRED`, and `DONE`. Review the overview header, narrative, and table plus every `PROJECT_STATE.md` current-state section. Keep true historical evidence, but remove contradictory current-state wording.
+
 ### Mandatory handoff
 
 Add to the workflow that each new task receives a minimal handoff containing:
@@ -581,9 +583,11 @@ After merge:
 
 - verify `main` points to the expected merge/squash commit
 - verify post-merge `main` CI
-- if closure documents were intentionally written before merge and still say the PR is Draft/unmerged, perform a narrow post-merge state correction recording the squash commit and post-merge CI while preserving the accepted implementation head/run
+- retain the squash SHA and post-merge CI run in the handoff
+- if pre-merge documentary state is stable and does not block an immediate operation, record integration during the Sync Gate / first operational edit of the next selected task
+- perform a separate narrow post-merge correction only when obsolete state blocks, makes ambiguous, or makes unsafe an immediate operation
 - distinguish “no external dependency upgrade” from authorized workspace/package wiring, and describe security impact precisely rather than using overly broad “no security change” wording
-- only then consider the task fully integrated
+- consider the task integrated after the merge and post-merge CI are verified
 
 Do not start the next implementation task before the previous merge/state transition is coherent unless explicitly authorized.
 

@@ -43,7 +43,7 @@ export interface CreateIdempotencyKeyInput {
 }
 
 /**
- * Input for completing an idempotency key after successful commit.
+ * Input for completing an idempotency key before the outer commit.
  */
 export interface CompleteIdempotencyKeyInput {
   id: string;

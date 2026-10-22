@@ -61,10 +61,11 @@ export class Money {
    * Validates strictly per M04 contract.
    */
   static create(amount: string, currency: string): Money {
+    const canonicalAmount = canonicalizeMoneyAmount(amount);
     if (typeof currency !== 'string' || !/^[A-Z]{3}$/.test(currency)) {
       throw new Error('Money currency must match [A-Z]{3}');
     }
-    return new Money(canonicalizeMoneyAmount(amount), currency);
+    return new Money(canonicalAmount, currency);
   }
 
   /**

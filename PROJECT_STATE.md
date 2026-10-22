@@ -967,6 +967,8 @@ M04-T04 is DONE / integrated. Accepted implementation head `693e817a3d500dac2a4b
 
 M04-T05 is DONE / integrated. Accepted implementation head `f7aa2e3172b98525f1557c6ef689987530de52dc`; PR #12 MERGED as `815309db057489e402db8061a9ec9fd7bab92db0`; post-merge CI `39801330979` = SUCCESS; exact-head GitHub Actions run `39799272165` = SUCCESS. Core owns the derived Transaction read model and input validation; Database provides read-only Get/List/Last queries. Unit 30 files / 827 tests PASS; PostgreSQL integration 19 files / 351 tests PASS; focused T05 34 unit / 17 integration PASS. No migration, API, frozen-document, dependency, lockfile, VPS, or Gate change. M04-T06 REVIEW REQUIRED; M04-T07/T08 remain NOT AUTHORIZED; Gates remain NOT EXECUTED. See [completed T05](docs/tasks/completed/M04-T05.md).
 
+M04-T06 is REVIEW REQUIRED on branch `m04-t06-direct-api-idempotency`. PostgreSQL-canonical claim, completion and locked replay infrastructure is implemented; T07 composition and T08 API remain NOT AUTHORIZED. Native-WSL validation: frozen install, lint, format:check, build, typecheck, unit 31 files / 856 tests, PostgreSQL integration 20 files / 359 tests, focused T06 unit 48 and integration 8, diff check PASS. No migration, API, frozen-document, manifest, lockfile, Redis, Audit implementation, VPS or Gate change.
+
 ---
 
 # 47. Environment status

@@ -19,6 +19,13 @@ export function validateIdempotencyKey(value: unknown): string {
   if (typeof value !== 'string' || value.trim().length === 0 || [...value].length > 255) {
     throw new FinancialValidationError('Invalid Idempotency-Key', 'idempotency_key');
   }
+  // A lone UTF-16 surrogate cannot represent a UTF-8 character.
+  for (const character of value) {
+    const codePoint = character.codePointAt(0)!;
+    if (codePoint >= 0xd800 && codePoint <= 0xdfff) {
+      throw new FinancialValidationError('Invalid Idempotency-Key', 'idempotency_key');
+    }
+  }
   return value;
 }
 
@@ -59,13 +66,16 @@ export function canonicalTransactionCreate(input: CreateTransactionInput): Recor
 }
 
 /** Input must already be validated by the generic-create boundary. */
-export function fingerprintTransactionCreate(input: CreateTransactionInput): IdempotencyFingerprint {
-  return createHash('sha256').update(canonicalJson(canonicalTransactionCreate(input))).digest('hex');
+export function fingerprintTransactionCreate(
+  input: CreateTransactionInput,
+): IdempotencyFingerprint {
+  return createHash('sha256')
+    .update(canonicalJson(canonicalTransactionCreate(input)))
+    .digest('hex');
 }
 
 export type ExistingIdempotencyDecision =
-  | { kind: 'replay'; record: IdempotencyKeyRecord }
-  | { kind: 'retry' };
+  { kind: 'replay'; record: IdempotencyKeyRecord } | { kind: 'retry' };
 
 /** T07 throws this signal to restart the entire outer transaction after a locked read. */
 export class IdempotencyInProgressRetryError extends Error {
@@ -80,7 +90,10 @@ export function decideExistingIdempotency(
   fingerprint: IdempotencyFingerprint,
 ): ExistingIdempotencyDecision {
   if (existing.requestHash !== fingerprint) {
-    throw new FinancialError('Idempotency key already used for another request', 'IDEMPOTENCY_CONFLICT');
+    throw new FinancialError(
+      'Idempotency key already used for another request',
+      'IDEMPOTENCY_CONFLICT',
+    );
   }
   if (existing.status === 'in_progress') return { kind: 'retry' };
   return { kind: 'replay', record: existing };

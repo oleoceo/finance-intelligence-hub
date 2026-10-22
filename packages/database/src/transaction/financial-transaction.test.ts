@@ -29,10 +29,7 @@ describe('financial full transaction retries', () => {
     new IdempotencyInProgressRetryError(),
     new ConfigurationLockSetChangedError(),
   ])('retries the whole transaction then succeeds after %j', async (failure) => {
-    const execute = vi
-      .fn()
-      .mockRejectedValueOnce(failure)
-      .mockResolvedValueOnce('committed');
+    const execute = vi.fn().mockRejectedValueOnce(failure).mockResolvedValueOnce('committed');
     const transaction = vi.fn(() => ({ execute }));
     const port = new KyselyFinancialTransactionPort({ transaction } as unknown as Kysely<DB>);
     await expect(port.runInTransaction(async () => null)).resolves.toBe('committed');

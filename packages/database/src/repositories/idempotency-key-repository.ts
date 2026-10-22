@@ -39,7 +39,9 @@ export class KyselyIdempotencyKeyRepository implements IdempotencyKeyRepository 
   }
 
   private async setFiniteLockWait(): Promise<void> {
-    await sql`select set_config('lock_timeout', ${`${this.lockTimeoutMs}ms`}, true)`.execute(this.tx);
+    await sql`select set_config('lock_timeout', ${`${this.lockTimeoutMs}ms`}, true)`.execute(
+      this.tx,
+    );
   }
 
   async create(input: CreateIdempotencyKeyInput): Promise<IdempotencyKeyRecord | null> {

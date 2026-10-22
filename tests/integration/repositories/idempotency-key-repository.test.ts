@@ -98,7 +98,10 @@ describe('M04-T06 PostgreSQL idempotency repository', () => {
     expect(completed.completedAt).toBeInstanceOf(Date);
     const replay = await fixture.run(async (ctx) => {
       expect(await ctx.idempotencyKeys.create({ ...input, id: randomUUID() })).toBeNull();
-      const locked = await ctx.idempotencyKeys.findByKeyAndScopeForUpdate(input.idempotencyKey, scope);
+      const locked = await ctx.idempotencyKeys.findByKeyAndScopeForUpdate(
+        input.idempotencyKey,
+        scope,
+      );
       return decideExistingIdempotency(locked!, input.requestHash);
     });
     expect(replay).toMatchObject({ kind: 'replay', record: completed });
@@ -110,7 +113,10 @@ describe('M04-T06 PostgreSQL idempotency repository', () => {
     await expect(
       fixture.run(async (ctx) => {
         expect(await ctx.idempotencyKeys.create({ ...input, id: randomUUID() })).toBeNull();
-        const locked = await ctx.idempotencyKeys.findByKeyAndScopeForUpdate(input.idempotencyKey, scope);
+        const locked = await ctx.idempotencyKeys.findByKeyAndScopeForUpdate(
+          input.idempotencyKey,
+          scope,
+        );
         return decideExistingIdempotency(locked!, 'b'.repeat(64));
       }),
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
@@ -134,7 +140,10 @@ describe('M04-T06 PostgreSQL idempotency repository', () => {
       fixture.run(async (ctx) => {
         attempts++;
         expect(await ctx.idempotencyKeys.create(input)).not.toBeNull();
-        const locked = await ctx.idempotencyKeys.findByKeyAndScopeForUpdate(input.idempotencyKey, scope);
+        const locked = await ctx.idempotencyKeys.findByKeyAndScopeForUpdate(
+          input.idempotencyKey,
+          scope,
+        );
         expect(decideExistingIdempotency(locked!, input.requestHash)).toEqual({ kind: 'retry' });
         throw new IdempotencyInProgressRetryError();
       }),
@@ -155,11 +164,7 @@ describe('M04-T06 PostgreSQL idempotency repository', () => {
     expect(routines.rows).toEqual([]);
   });
 
-  it.each([
-    ['same hash', 'a'.repeat(64), false],
-    ['different hash', 'b'.repeat(64), false],
-    ['winner rollback', 'a'.repeat(64), true],
-  ] as const)('serializes concurrent %s on independent backends', async (_, contenderHash, rollback) => {
+  it('uses a finite PostgreSQL lock wait and exhausts three whole transactions', async () => {
     const input = claim(randomUUID());
     const firstPool = new Pool({ connectionString: fixture.connectionString, max: 1 });
     const secondPool = new Pool({ connectionString: fixture.connectionString, max: 1 });
@@ -168,68 +173,120 @@ describe('M04-T06 PostgreSQL idempotency repository', () => {
     const held = barrier();
     const release = barrier();
     let first: Promise<unknown> | undefined;
-    let second: Promise<unknown> | undefined;
     try {
-      const pid1 = (await firstPool.query('select pg_backend_pid() pid')).rows[0].pid as number;
-      const pid2 = (await secondPool.query('select pg_backend_pid() pid')).rows[0].pid as number;
-      expect(pid1).not.toBe(pid2);
       first = new KyselyFinancialTransactionPort(firstDb).runInTransaction(async (ctx) => {
-        const owned = await ctx.idempotencyKeys.create(input);
-        expect(owned).not.toBeNull();
+        expect(await ctx.idempotencyKeys.create(input)).not.toBeNull();
         held.release();
         await bounded(release.promise);
-        if (rollback) throw new Error('winner aborted');
-        return complete(ctx.idempotencyKeys, owned!.id);
       });
       await bounded(held.promise);
-      second = new KyselyFinancialTransactionPort(secondDb).runInTransaction(async (ctx) => {
-        const owned = await ctx.idempotencyKeys.create({ ...input, id: randomUUID(), requestHash: contenderHash });
-        if (owned) return { kind: 'owner', record: await complete(ctx.idempotencyKeys, owned.id) };
-        const existing = await ctx.idempotencyKeys.findByKeyAndScopeForUpdate(input.idempotencyKey, scope);
-        if (!existing) throw new IdempotencyInProgressRetryError();
-        const decision = decideExistingIdempotency(existing, contenderHash);
-        if (decision.kind === 'retry') throw new IdempotencyInProgressRetryError();
-        return decision;
-      });
-      await bounded(
-        (async () => {
-          for (;;) {
-            const observed = await fixture.pool.query(
-              'select pg_blocking_pids($1) blockers, wait_event_type from pg_stat_activity where pid=$1',
-              [pid2],
-            );
-            if (
-              observed.rows[0]?.blockers.includes(pid1) &&
-              observed.rows[0]?.wait_event_type === 'Lock'
-            )
-              break;
-          }
-        })(),
-      );
+      await expect(
+        bounded(
+          new KyselyFinancialTransactionPort(secondDb).runInTransaction(async (ctx) =>
+            ctx.idempotencyKeys.create({ ...input, id: randomUUID() }),
+          ),
+        ),
+      ).rejects.toBeInstanceOf(ConcurrencyError);
       release.release();
-      const [winner, contender] = await bounded(Promise.allSettled([first, second]));
-      if (rollback) {
-        expect(winner).toMatchObject({ status: 'rejected', reason: new Error('winner aborted') });
-        expect(contender).toMatchObject({ status: 'fulfilled', value: { kind: 'owner' } });
-      } else if (contenderHash !== input.requestHash) {
-        expect(winner.status).toBe('fulfilled');
-        expect(contender).toMatchObject({
-          status: 'rejected',
-          reason: expect.objectContaining({ code: 'IDEMPOTENCY_CONFLICT' }),
-        });
-      } else {
-        expect(winner.status).toBe('fulfilled');
-        expect(contender).toMatchObject({
-          status: 'fulfilled',
-          value: { kind: 'replay', record: (winner as PromiseFulfilledResult<unknown>).value },
-        });
-      }
-      expect(await count(input.idempotencyKey)).toEqual([{ status: 'completed' }]);
+      await bounded(first);
+      expect(await count(input.idempotencyKey)).toEqual([{ status: 'in_progress' }]);
     } finally {
       release.release();
-      await Promise.allSettled([first, second].filter((p): p is Promise<unknown> => !!p));
+      if (first) await Promise.allSettled([first]);
       await firstDb.destroy();
       await secondDb.destroy();
     }
+    // This test's committed owner intentionally has no financial result.
+    await fixture.db.deleteFrom('idempotency_keys').where('id', '=', input.id).execute();
+    expect(await count(input.idempotencyKey)).toEqual([]);
   });
+
+  it.each([
+    ['same hash', 'a'.repeat(64), false],
+    ['different hash', 'b'.repeat(64), false],
+    ['winner rollback', 'a'.repeat(64), true],
+  ] as const)(
+    'serializes concurrent %s on independent backends',
+    async (_, contenderHash, rollback) => {
+      const input = claim(randomUUID());
+      const firstPool = new Pool({ connectionString: fixture.connectionString, max: 1 });
+      const secondPool = new Pool({ connectionString: fixture.connectionString, max: 1 });
+      const firstDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: firstPool }) });
+      const secondDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: secondPool }) });
+      const held = barrier();
+      const release = barrier();
+      let first: Promise<unknown> | undefined;
+      let second: Promise<unknown> | undefined;
+      try {
+        const pid1 = (await firstPool.query('select pg_backend_pid() pid')).rows[0].pid as number;
+        const pid2 = (await secondPool.query('select pg_backend_pid() pid')).rows[0].pid as number;
+        expect(pid1).not.toBe(pid2);
+        first = new KyselyFinancialTransactionPort(firstDb).runInTransaction(async (ctx) => {
+          const owned = await ctx.idempotencyKeys.create(input);
+          expect(owned).not.toBeNull();
+          held.release();
+          await bounded(release.promise);
+          if (rollback) throw new Error('winner aborted');
+          return complete(ctx.idempotencyKeys, owned!.id);
+        });
+        await bounded(held.promise);
+        second = new KyselyFinancialTransactionPort(secondDb).runInTransaction(async (ctx) => {
+          const owned = await ctx.idempotencyKeys.create({
+            ...input,
+            id: randomUUID(),
+            requestHash: contenderHash,
+          });
+          if (owned)
+            return { kind: 'owner', record: await complete(ctx.idempotencyKeys, owned.id) };
+          const existing = await ctx.idempotencyKeys.findByKeyAndScopeForUpdate(
+            input.idempotencyKey,
+            scope,
+          );
+          if (!existing) throw new IdempotencyInProgressRetryError();
+          const decision = decideExistingIdempotency(existing, contenderHash);
+          if (decision.kind === 'retry') throw new IdempotencyInProgressRetryError();
+          return decision;
+        });
+        await bounded(
+          (async () => {
+            for (;;) {
+              const observed = await fixture.pool.query(
+                'select pg_blocking_pids($1) blockers, wait_event_type from pg_stat_activity where pid=$1',
+                [pid2],
+              );
+              if (
+                observed.rows[0]?.blockers.includes(pid1) &&
+                observed.rows[0]?.wait_event_type === 'Lock'
+              )
+                break;
+            }
+          })(),
+        );
+        release.release();
+        const [winner, contender] = await bounded(Promise.allSettled([first, second]));
+        if (rollback) {
+          expect(winner).toMatchObject({ status: 'rejected', reason: new Error('winner aborted') });
+          expect(contender).toMatchObject({ status: 'fulfilled', value: { kind: 'owner' } });
+        } else if (contenderHash !== input.requestHash) {
+          expect(winner.status).toBe('fulfilled');
+          expect(contender).toMatchObject({
+            status: 'rejected',
+            reason: expect.objectContaining({ code: 'IDEMPOTENCY_CONFLICT' }),
+          });
+        } else {
+          expect(winner.status).toBe('fulfilled');
+          expect(contender).toMatchObject({
+            status: 'fulfilled',
+            value: { kind: 'replay', record: (winner as PromiseFulfilledResult<unknown>).value },
+          });
+        }
+        expect(await count(input.idempotencyKey)).toEqual([{ status: 'completed' }]);
+      } finally {
+        release.release();
+        await Promise.allSettled([first, second].filter((p): p is Promise<unknown> => !!p));
+        await firstDb.destroy();
+        await secondDb.destroy();
+      }
+    },
+  );
 });

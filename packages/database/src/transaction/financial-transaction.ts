@@ -3,7 +3,7 @@
  *
  * M04-T02 scope: provides a single outer PostgreSQL transaction that includes
  * master-data repositories, configuration locks, financial usage reader,
- * transaction repository, and stub idempotency/audit ports for context composition.
+ * transaction repository, real idempotency repository and stub audit port.
  *
  * T07 owns calling runInTransaction in production. T02 tests call it directly.
  * This adapter reuses the existing KyselyConfigurationLockPort and M03 repositories.
@@ -31,10 +31,6 @@ import { KyselyTransactionRepository } from '../repositories/transaction-reposit
 import { KyselyIdempotencyKeyRepository } from '../repositories/idempotency-key-repository.js';
 import type { DB } from '../db-types.js';
 
-/**
- * Stub idempotency key repository for T02 context composition.
- * T06 owns the real implementation. T02 does not invoke idempotency operations.
- */
 /**
  * Stub audit writer for T02 context composition.
  * T07 owns the real implementation. T02 does not invoke audit writes.

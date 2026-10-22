@@ -57,8 +57,12 @@ describe('M04-T06 canonical direct create fingerprint', () => {
 
   it('preserves semantic whitespace in description and notes', () => {
     const hash = fingerprintTransactionCreate(expense);
-    expect(fingerprintTransactionCreate({ ...expense, description: 'payment  note' })).not.toBe(hash);
-    expect(fingerprintTransactionCreate({ ...expense, description: ' payment note' })).not.toBe(hash);
+    expect(fingerprintTransactionCreate({ ...expense, description: 'payment  note' })).not.toBe(
+      hash,
+    );
+    expect(fingerprintTransactionCreate({ ...expense, description: ' payment note' })).not.toBe(
+      hash,
+    );
     expect(fingerprintTransactionCreate({ ...expense, notes: ' x' })).not.toBe(
       fingerprintTransactionCreate({ ...expense, notes: 'x' }),
     );
@@ -81,9 +85,9 @@ describe('M04-T06 canonical direct create fingerprint', () => {
     { transactionDate: '2026-10-20' },
     { description: 'another payment' },
   ])('changes hash for changed required field %j', (change) => {
-    expect(fingerprintTransactionCreate({ ...expense, ...change } as CreateTransactionInput)).not.toBe(
-      fingerprintTransactionCreate(expense),
-    );
+    expect(
+      fingerprintTransactionCreate({ ...expense, ...change } as CreateTransactionInput),
+    ).not.toBe(fingerprintTransactionCreate(expense));
   });
 
   it('includes destination for Transfer and omits category/merchant keys', () => {
@@ -111,7 +115,7 @@ describe('M04-T06 key and existing decision', () => {
     expect(validateIdempotencyKey('😀'.repeat(255))).toBe('😀'.repeat(255));
   });
 
-  it.each(['', '  \t ', 'a'.repeat(256), '😀'.repeat(256), null, 3])(
+  it.each(['', '  \t ', 'a'.repeat(256), '😀'.repeat(256), '\ud800', null, 3])(
     'rejects invalid key %j with VALIDATION_ERROR',
     (value) => {
       expect(() => validateIdempotencyKey(value)).toThrow(

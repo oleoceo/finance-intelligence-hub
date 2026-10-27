@@ -760,4 +760,124 @@ describe('P05 Inbox API with PostgreSQL', () => {
       await later.close();
     }
   });
+
+  it('keeps numeric choices contextual and rejects a duplicate reply', async () => {
+    const initial = await post(body('gastei 18'));
+    expect(initial.json().data.result.type).toBe('confirmation_required');
+    const before = await count('transactions');
+    const choiceRequest = body('1');
+    const choice = await post(choiceRequest);
+    expect(choice.statusCode, choice.body).toBe(200);
+    expect(choice.json().data.result.type).toBe('choice');
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('status')
+          .where('id', '=', initial.json().data.result.confirmation.id)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('pending');
+    expect(await count('transactions')).toBe(before);
+    const duplicate = await post(choiceRequest);
+    expect(duplicate.json().data.result.type).toBe('duplicate_message');
+    expect(duplicate.json().data.reply.should_send).toBe(false);
+    const affirmative = await post(body('sim'));
+    expect(affirmative.json().data.result.type).toBe('confirmation_required');
+    expect(await count('transactions')).toBe(before);
+    expect((await post(body('não'))).json().data.result.type).toBe('cancelled');
+  });
+
+  it('returns a safe empty result for a different default Book without financial writes', async () => {
+    const secondBook = randomUUID();
+    const secondAccount = randomUUID();
+    const secondSender = randomUUID();
+    const secondReference = '5511777666555';
+    await fixture.run(async (ctx) => {
+      await ctx.books.create({
+        id: secondBook,
+        name: 'Pessoal',
+        normalizedName: 'pessoal',
+        currency: 'BRL',
+        timezone: 'America/Sao_Paulo',
+        active: true,
+        archivedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.accounts.create({
+        id: secondAccount,
+        bookId: secondBook,
+        name: 'Pessoal',
+        normalizedName: 'pessoal',
+        type: 'checking',
+        currency: 'BRL',
+        institutionName: null,
+        notes: null,
+        active: true,
+        archivedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.authorizedSenders.create({
+        id: secondSender,
+        channel: 'whatsapp',
+        senderReference: secondReference,
+        name: 'Other sender',
+        defaultBookId: secondBook,
+        defaultAccountId: secondAccount,
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+    const before = {
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    const result = await post({ ...body('último'), sender_reference: secondReference });
+    expect(result.statusCode, result.body).toBe(200);
+    expect(result.json().data.result.type).toBe('query_last');
+    expect(result.json().data.result.transaction).toBeNull();
+    expect(await count('transactions')).toBe(before.transactions);
+    expect(await count('audit_events')).toBe(before.audits);
+    expect(await count('idempotency_keys')).toBe(before.keys);
+  });
+
+  it('returns only posted Transactions with created_at and id tie ordering', async () => {
+    const ids: string[] = [];
+    for (const amount of [31, 32, 33]) {
+      const result = await post(body(`gastei ${amount} café`));
+      expect(result.statusCode, result.body).toBe(200);
+      ids.push(result.json().data.result.transaction.id as string);
+    }
+    const tieTime = new Date('2026-11-01T12:00:00Z');
+    await fixture.db
+      .updateTable('transactions')
+      .set({ created_at: tieTime })
+      .where('id', 'in', ids.slice(0, 2))
+      .execute();
+    await fixture.db
+      .updateTable('transactions')
+      .set({
+        created_at: new Date('2026-11-02T12:00:00Z'),
+        status: 'voided',
+        voided_at: now,
+        void_reason: 'test ordering',
+      })
+      .where('id', '=', ids[2]!)
+      .execute();
+    const before = {
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    const result = await post(body('último empresa'));
+    expect(result.statusCode, result.body).toBe(200);
+    expect(result.json().data.result.transaction.id).toBe(ids.slice(0, 2).sort().at(-1));
+    expect(await count('transactions')).toBe(before.transactions);
+    expect(await count('audit_events')).toBe(before.audits);
+    expect(await count('idempotency_keys')).toBe(before.keys);
+  });
 });

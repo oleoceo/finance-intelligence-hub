@@ -850,7 +850,7 @@ These belong to Gate 0.
 
 # 39. Current allowed next actions
 
-M01, M02, M03 and M04 are DONE. M04-T01 through M04-T08 are integrated; PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` with post-merge CI `39836071361` = SUCCESS. Gate A PASS proves Finance Core/API independence from Evolution, n8n, AI, Firefly and Metabase. V0.1 Forward Planning remains ACCEPTED / INTEGRATED at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9` (CI `39672168104` SUCCESS). M05–M09 remain PLANNED, NOT ACTIVE and NOT AUTHORIZED. Gate 0, Gate B and Gate C remain NOT EXECUTED. Next candidate: M05 Activation Review, requiring separate explicit authorization.
+M01, M02, M03 and M04 are DONE. M04-T01 through M04-T08 are integrated; PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef`; Gate A PASS. Verified main `d4cfb5a4b93506e4c42e11179a6999dfbd59d6d1` has post-merge CI `40514723831` SUCCESS. Accepted baseline: unit 33 files / 934 tests; PostgreSQL integration 22 files / 379 tests; M04 API/PostgreSQL E2E 10 tests. M05 Activation Review is authorized and its report plus P01–P06 contracts are proposed on the review branch; human acceptance is pending. M05–M09 remain PLANNED, NOT ACTIVE and implementation NOT AUTHORIZED. Gate 0, Gate B and Gate C remain NOT EXECUTED. Next action: human review of M05 Activation Review; then promotion and separate P01 implementation authorization.
 
 ---
 
@@ -1317,6 +1317,6 @@ NONE
 
 # 63. Next action
 
-M01, M02, M03 and M04 are DONE. M04-T01 through M04-T08 are integrated; PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` with post-merge CI `39836071361` = SUCCESS. Gate A PASS proves Finance Core/API independence from Evolution, n8n, AI, Firefly and Metabase. V0.1 Forward Planning remains ACCEPTED / INTEGRATED at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9` (CI `39672168104` SUCCESS). M05–M09 remain PLANNED, NOT ACTIVE and NOT AUTHORIZED. Gate 0, Gate B and Gate C remain NOT EXECUTED. Next candidate: M05 Activation Review, requiring separate explicit authorization.
+M01, M02, M03 and M04 are DONE; Gate A PASS. Verified `origin/main` is `d4cfb5a4b93506e4c42e11179a6999dfbd59d6d1`; post-merge CI `40514723831` SUCCESS. M05 Activation Review report and P01–P06 execution-ready contracts are proposed for human review. M05–M09 remain PLANNED, NOT ACTIVE and implementation NOT AUTHORIZED; Gate 0, B and C remain NOT EXECUTED. Next action: accept or correct the M05 review, then promote documents and separately authorize P01 implementation.
 
 ---

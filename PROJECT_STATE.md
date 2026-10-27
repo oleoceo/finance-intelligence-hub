@@ -199,6 +199,7 @@ M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
 M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
 M03-T01 through M03-T05 are accepted; completed records and the [M03 overview](docs/tasks/completed/M03-OVERVIEW.md) are in docs/tasks/completed/. Draft PR #2 was squash-merged to main as fd5aa49ab129bcdb87f18a0c58025bc1de6a739b; post-merge main CI 39585567173 = SUCCESS. PR #3 was squash-merged to `main` as `f94f965d448160bdf54d8a86b14d2eb6411d70ad`; post-merge GitHub Actions run `39645547149` = SUCCESS. M04 planning was accepted and squash-merged to `main` as `d369261aceb8c91a2ee3449c64be7d7b24af11ab`; post-merge CI `39661571275` = SUCCESS. V0.1 Forward Planning was accepted and integrated at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` = SUCCESS. M04 Activation Review was accepted and integrated via PR #6 at `1c7e16d45fa03df8cd2b54c28100820af8d08142`; post-merge CI `39675385219` = SUCCESS. M04 is DONE / Gate A PASS. M04-T01 is human accepted and DONE; accepted head `d80672507b6fd36df9a7035af90e3cccdab44239`, GitHub Actions run `39691263503` attempt 2 = SUCCESS. PR #7 was squash-merged to `main` as `9dabedefd9b58ef8090a1e0e8d88e63d9fdbd323`; post-merge CI `39693573292` = SUCCESS. M04-T02 is DONE / accepted; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS); M04-T03 is DONE / integrated via PR #10; exact-head CI `39773475190` = SUCCESS; squash `51b3c97880d154c6543a3c753ef6e7419ea1ea0d`; post-merge CI `39777604808` = SUCCESS; M04-T04 is DONE / integrated via PR #11; exact-head CI `39788951807` = SUCCESS; squash `5c4ef3971d411b4706265c452180185e34c84bef`; post-merge CI `39790495902` = SUCCESS; M04-T05 is DONE / integrated via PR #12; squash `815309db057489e402db8061a9ec9fd7bab92db0`; post-merge CI `39801330979` = SUCCESS; M04-T06 DONE / integrated; PR #13 MERGED as 6908ec30650ab9c8eca90a6909958d8adbb31f5d (post-merge CI 39811484800 SUCCESS); M04-T07 DONE / integrated via PR #14 MERGED as d923eb4c11790c7e901d4faee67af05ffc27f165 (post-merge CI 39818569159 attempt 2 SUCCESS); M04-T08 DONE / integrated via PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` (post-merge CI `39836071361` SUCCESS). Gate A PASS; Gate 0 remains NOT EXECUTED.
+M05 Activation Review accepted 2026-10-27, PR #17 squash `df0a28669b59928a78a12823e4a0a408390e0800`. M05 ACTIVE on promotion; P01–P06 implementation requires separate human authorization.
 
 ---
 
@@ -770,10 +771,10 @@ M04 Transaction Core
 DONE — M04-T01 DONE / human accepted; M04-T02 DONE / accepted; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS); M04-T03 DONE / integrated; PR #10 MERGED as `51b3c97880d154c6543a3c753ef6e7419ea1ea0d` (post-merge CI `39777604808` SUCCESS); M04-T04 DONE / integrated; PR #11 MERGED as `5c4ef3971d411b4706265c452180185e34c84bef` (post-merge CI `39790495902` SUCCESS); M04-T05 DONE / integrated; PR #12 MERGED as `815309db057489e402db8061a9ec9fd7bab92db0` (post-merge CI `39801330979` SUCCESS); M04-T06 DONE / integrated; PR #13 MERGED as 6908ec30650ab9c8eca90a6909958d8adbb31f5d (post-merge CI 39811484800 SUCCESS); M04-T07 DONE / integrated via PR #14 MERGED as d923eb4c11790c7e901d4faee67af05ffc27f165 (post-merge CI 39818569159 attempt 2 SUCCESS); M04-T08 DONE / integrated via PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` (post-merge CI `39836071361` SUCCESS); Gate A PASS; Gate 0 NOT EXECUTED
 
 V0.1 Forward Planning
-ACCEPTED / INTEGRATED — merge `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` = SUCCESS. M05–M09 forward plans remain PLANNED, NOT ACTIVE and implementation NOT AUTHORIZED; each requires its own Activation Review.
+ACCEPTED / INTEGRATED — merge `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` = SUCCESS. M05 Activation Review approved via PR #17; M05 ACTIVE after promotion but P01–P06 implementation not yet authorized. M06–M09 remain PLANNED / NOT AUTHORIZED.
 
 M05 Inbox / Parser / Confirmation
-⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
+ACTIVE — Review accepted on 2026-10-27 via PR #17, squash `df0a28669b59928a78a12823e4a0a408390e0800`; P01–P06 execution-ready; implementation NOT AUTHORIZED.
 
 M06 WhatsApp Integration
 ⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
@@ -850,7 +851,7 @@ These belong to Gate 0.
 
 # 39. Current allowed next actions
 
-M01, M02, M03 and M04 are DONE. M04-T01 through M04-T08 are integrated; PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef`; Gate A PASS. Verified main `d4cfb5a4b93506e4c42e11179a6999dfbd59d6d1` has post-merge CI `40514723831` SUCCESS. Accepted baseline: unit 33 files / 934 tests; PostgreSQL integration 22 files / 379 tests; M04 API/PostgreSQL E2E 10 tests. M05 Activation Review is authorized and its report plus P01–P06 contracts are proposed on the review branch; human acceptance is pending. M05–M09 remain PLANNED, NOT ACTIVE and implementation NOT AUTHORIZED. Gate 0, Gate B and Gate C remain NOT EXECUTED. Next action: human review of M05 Activation Review; then promotion and separate P01 implementation authorization.
+M01–M04 DONE; Gate A PASS. M05 Activation Review approved on 2026-10-27, PR #17 merged as `df0a28669b59928a78a12823e4a0a408390e0800` (review head `315b189265e2fa7746b82fcdc5e7428bb42ffb30`, CI `40525025472` SUCCESS). M05 ACTIVE after promotion and P01–P06 contracts available in `docs/tasks/active/`. **M05-P01 implementation requires separate explicit human authorization.** Baseline: 33 unit files/934 tests, PostgreSQL 22 files/379 tests, including 10 M04 API E2E cases. Gate 0/B/C NOT EXECUTED. Next candidate: select and authorize M05-P01.
 
 ---
 
@@ -1104,7 +1105,7 @@ KNOWN ISSUES:
 none
 
 NEXT:
-M05 Activation Review is the next candidate step, but M05 remains PLANNED / NOT ACTIVE / NOT AUTHORIZED until separately authorized.
+M05-P01 is the next candidate after activation; its implementation requires separate human authorization.
 ```
 
 ---
@@ -1202,10 +1203,7 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-M03 is DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
-M02 and M02-T01 through M02-T05 are DONE and accepted. Completed task records and milestone overview are in docs/tasks/completed/.
-M03-T01 through M03-T05 are human accepted and recorded in docs/tasks/completed/ with the completed M03 overview. M04 planning was ACCEPTED and INTEGRATED at `d369261aceb8c91a2ee3449c64be7d7b24af11ab`; post-merge CI `39661571275` = SUCCESS. M04 Activation Review was ACCEPTED and INTEGRATED at `1c7e16d45fa03df8cd2b54c28100820af8d08142`; post-merge CI `39675385219` = SUCCESS. M04 is DONE / Gate A PASS. M04-T01 is human accepted and DONE; M04-T02 is DONE / accepted; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS); M04-T03 is DONE / integrated via PR #10; exact-head CI `39773475190` = SUCCESS; squash `51b3c97880d154c6543a3c753ef6e7419ea1ea0d`; post-merge CI `39777604808` = SUCCESS; M04-T04 is DONE / integrated via PR #11; exact-head CI `39788951807` = SUCCESS; squash `5c4ef3971d411b4706265c452180185e34c84bef`; post-merge CI `39790495902` = SUCCESS; M04-T05 is DONE / integrated via PR #12; squash `815309db057489e402db8061a9ec9fd7bab92db0`; post-merge CI `39801330979` = SUCCESS; M04-T06 DONE / integrated; PR #13 MERGED as 6908ec30650ab9c8eca90a6909958d8adbb31f5d (post-merge CI 39811484800 SUCCESS); M04-T07 DONE / integrated via PR #14 MERGED as d923eb4c11790c7e901d4faee67af05ffc27f165 (post-merge CI 39818569159 attempt 2 SUCCESS); M04-T08 DONE / integrated via PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` (post-merge CI `39836071361` SUCCESS).
-Gate A PASS; Gate 0, Gate B and Gate C remain NOT EXECUTED. V0.1 Forward Planning is ACCEPTED / INTEGRATED at `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9` (CI `39672168104` SUCCESS). M05–M09 forward plans are accepted; implementation is NOT STARTED, NOT ACTIVE and NOT AUTHORIZED. M04-T02 is DONE / integrated; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS). M04-T03 is DONE / integrated via PR #10; exact-head CI `39773475190` = SUCCESS; squash `51b3c97880d154c6543a3c753ef6e7419ea1ea0d`; post-merge CI `39777604808` = SUCCESS; M04-T08 DONE / integrated via PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` (post-merge CI `39836071361` SUCCESS); do not execute any further Gate without separate explicit authorization.
+M01–M04 DONE / integrated; Gate A PASS. M05 Activation Review accepted on 2026-10-27 and PR #17 squash-merged as `df0a28669b59928a78a12823e4a0a408390e0800` (exact-head CI `40525025472` SUCCESS). M05 ACTIVE on promotion with P01–P06 under `docs/tasks/active/`; no task implementation has started or been authorized. Next candidate: M05-P01 (Ingestion authorization and Inbox persistence), subject to separate explicit human authorization and Sync Gate. M06–M09 PLANNED; Gate 0/B/C NOT EXECUTED.
 
 ---
 
@@ -1283,7 +1281,7 @@ Documentation baseline tag
 ✅ PRESENT
 
 Implementation
-M01, M02 and M03 DONE; M04 DONE / Gate A PASS; M04-T01 DONE / human accepted; PR #7 integrated as `9dabedefd9b58ef8090a1e0e8d88e63d9fdbd323` (post-merge CI `39693573292` SUCCESS); M04-T02 DONE / accepted; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS); M04-T03 DONE / integrated; PR #10 MERGED as `51b3c97880d154c6543a3c753ef6e7419ea1ea0d` (post-merge CI `39777604808` SUCCESS); M04-T04 DONE / integrated; PR #11 MERGED as `5c4ef3971d411b4706265c452180185e34c84bef` (post-merge CI `39790495902` SUCCESS); M04-T05 DONE / integrated; PR #12 MERGED as `815309db057489e402db8061a9ec9fd7bab92db0` (post-merge CI `39801330979` SUCCESS); M04-T06 DONE / integrated; PR #13 MERGED as 6908ec30650ab9c8eca90a6909958d8adbb31f5d (post-merge CI 39811484800 SUCCESS); M04-T07 DONE / integrated via PR #14 MERGED as d923eb4c11790c7e901d4faee67af05ffc27f165 (post-merge CI 39818569159 attempt 2 SUCCESS); M04-T08 DONE / integrated via PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` (post-merge CI `39836071361` SUCCESS); M05–M09 NOT STARTED / NOT ACTIVE / NOT AUTHORIZED
+M01, M02 and M03 DONE; M04 DONE / Gate A PASS; M04-T01 DONE / human accepted; PR #7 integrated as `9dabedefd9b58ef8090a1e0e8d88e63d9fdbd323` (post-merge CI `39693573292` SUCCESS); M04-T02 DONE / accepted; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS); M04-T03 DONE / integrated; PR #10 MERGED as `51b3c97880d154c6543a3c753ef6e7419ea1ea0d` (post-merge CI `39777604808` SUCCESS); M04-T04 DONE / integrated; PR #11 MERGED as `5c4ef3971d411b4706265c452180185e34c84bef` (post-merge CI `39790495902` SUCCESS); M04-T05 DONE / integrated; PR #12 MERGED as `815309db057489e402db8061a9ec9fd7bab92db0` (post-merge CI `39801330979` SUCCESS); M04-T06 DONE / integrated; PR #13 MERGED as 6908ec30650ab9c8eca90a6909958d8adbb31f5d (post-merge CI 39811484800 SUCCESS); M04-T07 DONE / integrated via PR #14 MERGED as d923eb4c11790c7e901d4faee67af05ffc27f165 (post-merge CI 39818569159 attempt 2 SUCCESS); M04-T08 DONE / integrated via PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` (post-merge CI `39836071361` SUCCESS); M05 ACTIVE — implementation NOT STARTED / NOT AUTHORIZED; M06–M09 PLANNED / NOT AUTHORIZED
 
 Gate 0
 ⬜ NOT EXECUTED
@@ -1317,6 +1315,6 @@ NONE
 
 # 63. Next action
 
-M01, M02, M03 and M04 are DONE; Gate A PASS. Verified `origin/main` is `d4cfb5a4b93506e4c42e11179a6999dfbd59d6d1`; post-merge CI `40514723831` SUCCESS. M05 Activation Review report and P01–P06 execution-ready contracts are proposed for human review. M05–M09 remain PLANNED, NOT ACTIVE and implementation NOT AUTHORIZED; Gate 0, B and C remain NOT EXECUTED. Next action: accept or correct the M05 review, then promote documents and separately authorize P01 implementation.
+**Next candidate:** explicit human selection and authorization for M05-P01, then align Windows/WSL worktrees with current `origin/main` and follow the accepted ACTIVE P01 contract. M05 activation review was accepted via PR #17 (`df0a28669b59928a78a12823e4a0a408390e0800`); M05 ACTIVE after the promotion PR merges. P01–P06 implementation NOT AUTHORIZED by promotion alone. M06–M09 remain PLANNED, Gate 0/B/C NOT EXECUTED. No VPS or live infrastructure work.
 
 ---

@@ -1,13 +1,12 @@
 # M05 — Inbox / Parser / Confirmation
 
-**Status:** PLANNED
+**Status:** ACTIVE — Activation Review accepted on 2026-10-27; task implementation requires separate authorization
 **Dependencies:** Gate A PASS
 **Blocks:** M06 activation
-**Activation Review:** [proposed report](M05-ACTIVATION-REVIEW.md) and [P01](M05-P01.md), [P02](M05-P02.md), [P03](M05-P03.md), [P04](M05-P04.md), [P05](M05-P05.md), [P06](M05-P06.md) execution-ready contracts await human acceptance. None authorizes implementation while in `planned/`.
+**Activation Review:** Accepted 2026-10-27, PR #17 squash `df0a28669b59928a78a12823e4a0a408390e0800`. [accepted review](M05-ACTIVATION-REVIEW.md) and [P01](M05-P01.md), [P02](M05-P02.md), [P03](M05-P03.md), [P04](M05-P04.md), [P05](M05-P05.md), [P06](M05-P06.md) execution-ready contracts accepted under PR #17. Activation alone does not authorize any task implementation.
 
-> **This document does NOT authorize implementation.**
-> Provisional task decomposition and scope are defined here. Execution-ready
-> contracts are finalized during Activation Review.
+> **Milestone activation does NOT itself authorize implementation.**
+> P01–P06 are execution-ready ACTIVE contracts; each requires separate human task authorization.
 
 ---
 
@@ -93,11 +92,11 @@ M05 expects to consume the following from accepted M04 planning:
 - Money value object / decimal string handling
 - Book/Account/Category/Merchant read ports for validation
 
-**ACTIVATION REVIEW REQUIRED**: Exact interface signatures, port names, and import paths must be verified against actual M04 implementation during Activation Review. Do not assume specific function names or module structures at this stage.
+**Activation Review ACCEPTED:** M04 signatures, schema and assumption deltas are verified in [M05-ACTIVATION-REVIEW.md](M05-ACTIVATION-REVIEW.md); use exact active task contracts.
 
 ---
 
-## 5. Provisional Task Decomposition
+## 5. Accepted Task Decomposition
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
@@ -108,9 +107,9 @@ M05 expects to consume the following from accepted M04 planning:
 | **M05-P05** | Inbox API/orchestration integration | Frozen `POST /api/v1/inbox/messages` (`finance:ingest`) boundary; orchestration connecting auth → inbox → interpretation → confirmation → transaction create, reply result contract |
 | **M05-P06** | M05 milestone verification | End-to-end acceptance tests, all unit/integration suites green, frozen scenario coverage |
 
-Task boundaries may be refined during Activation Review if the actual M04 implementation suggests a better separation.
+Task boundaries finalized during accepted Activation Review; subsequent changes require normal review discipline.
 
-The proposed Activation Review retains all six slices. P05 owns the narrow M04 transaction-composition extension needed to commit Inbox finalization and financial creation together, plus read-only M04 `getLast` execution for `último`. P01 owns Inbox claims; P02 partial parsing; P03 safe reference/Book-local date resolution and single eligible Book/Account fallback; P04 Confirmation; P06 acceptance evidence. See the proposed contracts for exact paths and tests. M05 remains PLANNED until human acceptance and promotion; P01 implementation requires separate authorization.
+The accepted Activation Review retains all six slices. P05 owns the narrow M04 transaction-composition extension needed to commit Inbox finalization and financial creation together, plus read-only M04 `getLast` execution for `último`. P01 owns Inbox claims; P02 partial parsing; P03 safe reference/Book-local date resolution and single eligible Book/Account fallback; P04 Confirmation; P06 acceptance evidence. See active contracts for exact paths and tests. M05 ACTIVE after promotion; P01 implementation requires separate authorization.
 
 ---
 
@@ -161,13 +160,13 @@ The proposed Activation Review retains all six slices. P05 owns the narrow M04 t
 
 ---
 
-## 8. Known Risks Deferred to Activation Review
+## 8. Activation Review evidence and implementation-sensitive surfaces
 
-- Exact M04 transaction create port signatures and error types
-- Whether M04 exposes an orchestration-friendly API or requires direct use case composition
-- Inbox table column naming conventions (must match M02 migration)
-- ConfirmationSession table structure alignment with M02 schema
-- Whether existing test infrastructure supports the required concurrent sender tests
+- M04 transaction create port signatures and errors: verified in accepted Activation Review
+- M04 financial composition: P05 needs a narrow caller-owned transaction entry for Inbox atomicity
+- Inbox physical schema: verified against M02 migration 003; adapters delegated to P01/P04/P05
+- ConfirmationSession schema/pending uniqueness: verified against migration 003
+- Real PostgreSQL/Testcontainers provides the concurrency test baseline; tasks require deterministic barriers
 
 ---
 

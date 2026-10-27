@@ -1,10 +1,10 @@
-# M06 Activation Review — technical proposal
+# M06 Activation Review — ACCEPTED
 
-**Status:** ACTIVATION REVIEW REQUIRED; M06 remains PLANNED.
+**Status:** ACCEPTED by project owner on 2026-10-27; M06 remains PLANNED until its separate promotion PR is reviewed and merged.
 **Date:** 2026-10-27
 **Forward plan:** [M06 overview](M06-OVERVIEW.md)
 **Authoritative main:** `6ac27917df7e4c2007aec01cd30f067cd4cdd338`
-**Reviewer/approver:** pending human review
+**Reviewer/approver:** project owner — explicit continuation approval following review of all three activation decisions
 
 ## 1. Upstream and Sync Gate
 
@@ -135,11 +135,11 @@ Gate A PASS. Gate 0 NOT EXECUTED and required for live integration; Gate B/C NOT
 
 ## 8. Approval and promotion
 
-- [ ] Finance-owned `reply.text` extension, safe text and presenter contract approved.
-- [ ] 401/403 sender-facing error policy explicitly approved (recommended default: no automated reply).
-- [ ] Five-command configuration/clarification prerequisites versus separately authorized M05 parser/resolver correction decided.
-- [ ] P01–P05 scope and tests approved.
-- [ ] Gate 0/VPS boundaries acknowledged.
-- [ ] M06 promotion to ACTIVE explicitly authorized.
+- [x] Finance-owned bounded Portuguese `reply.text` approved as the general mechanism for replies to supported financial operations, queries, confirmations and clarifications. The exact templates and safe information fields must be reviewed during P03; future M07/M08 operations receive their own templates when implemented.
+- [x] `401/403` policy approved: no automatic WhatsApp reply for service-authentication or sender-authorization failures; log/handle safely as operational failures.
+- [x] Five-command acceptance interpretation approved: use the M05 parser as accepted, with explicit field syntax, configured classification rules/defaults or safe user clarification. Do not pretend trailing names such as `nubank`/`inter` are explicit fields, do not infer in n8n, and do not change M05 parser/resolver without a separately scoped authorization.
+- [x] Proposed P01–P05 boundaries, security invariants, tests and staged task contracts approved for promotion planning; each implementation requires its own explicit authorization.
+- [x] Gate 0/VPS separation acknowledged: Gate 0/B/C remain NOT EXECUTED, no live access, credential use or deployment is authorized.
+- [x] M06 documentation promotion to ACTIVE authorized through a separately reviewed promotion PR; no task implementation authorized by this decision.
 
-**Current decision:** M06 Activation Review REQUIRED; implementation authorization **NO**. Do not move tasks to ACTIVE, implement transport, execute Gate 0, merge, or touch live infrastructure.
+**Current decision:** M06 Activation Review ACCEPTED. Merge this review after exact-head CI SUCCESS, then prepare a separate promotion PR to move M06 planning and the five bounded task contracts to ACTIVE. M06 remains PLANNED until that promotion is reviewed and merged. **P01–P05 implementation authorization: NO.** Gate 0/B/C remain NOT EXECUTED. No VPS/Lab/Production access, live Evolution/n8n integration, infrastructure changes or transport implementation is authorized.

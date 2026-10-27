@@ -57,6 +57,7 @@ M05 is local/domain work. It does NOT include Evolution/n8n transport (that is M
 - Deterministic aliases/mapping if supported by frozen scope
 - AI optional fallback only — never required for acceptance
 - One financial command per message
+- Typed partial create candidate and `query_last` intent; P03 resolves references and Book-local dates before a complete M04 create input
 - Unknown intent: generates `needs_confirmation` or appropriate error state
 
 ### ConfirmationSession
@@ -109,7 +110,7 @@ M05 expects to consume the following from accepted M04 planning:
 
 Task boundaries may be refined during Activation Review if the actual M04 implementation suggests a better separation.
 
-The proposed Activation Review retains all six slices. P05 owns the narrow M04 transaction-composition extension needed to commit Inbox finalization and financial creation together. P01 owns Inbox claims; P02 parsing; P03 reference resolution; P04 Confirmation; P06 acceptance evidence. See the proposed contracts for exact paths and tests. M05 remains PLANNED until human acceptance and promotion; P01 implementation requires separate authorization.
+The proposed Activation Review retains all six slices. P05 owns the narrow M04 transaction-composition extension needed to commit Inbox finalization and financial creation together, plus read-only M04 `getLast` execution for `último`. P01 owns Inbox claims; P02 partial parsing; P03 safe reference/Book-local date resolution and single eligible Book/Account fallback; P04 Confirmation; P06 acceptance evidence. See the proposed contracts for exact paths and tests. M05 remains PLANNED until human acceptance and promotion; P01 implementation requires separate authorization.
 
 ---
 
@@ -145,6 +146,7 @@ The proposed Activation Review retains all six slices. P05 owns the narrow M04 t
 - New command supersedes pending Confirmation without executing old action
 - Expired Confirmation produces no action
 - Deterministic parser works without AI provider
+- `último` and `último empresa` return Book-scoped posted Last results without financial writes; `resumo` remains M08
 
 ---
 

@@ -317,6 +317,16 @@ export type {
   ConfirmationSessionRepository,
 } from './application/ports/confirmation-ports.js';
 export { resolveInterpretation } from './application/inbox/resolve-interpretation.js';
+export {
+  processInboxMessage,
+  StaleInboxClaimError,
+  type ProcessMessageDependencies,
+  type InboxProcessingResult,
+} from './application/inbox/process-message.js';
+export type {
+  InboxProcessingContext,
+  InboxProcessingPort,
+} from './application/ports/financial-transaction-port.js';
 export type {
   Interpretation,
   CreateCandidate,

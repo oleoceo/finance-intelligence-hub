@@ -5,8 +5,7 @@
  * No persistence implementation here — Database adapter owns that.
  *
  * M04 action: TRANSACTION_CREATED
- * Source: direct_api (for generic create)
- * actor_reference: null for direct API orchestration
+ * Source and actor are derived from the trusted direct or Inbox context.
  */
 
 export const AUDIT_ACTIONS = ['TRANSACTION_CREATED'] as const;
@@ -15,7 +14,7 @@ export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 export const AUDIT_ENTITY_TYPES = ['transaction'] as const;
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
 
-export const AUDIT_SOURCES = ['direct_api'] as const;
+export const AUDIT_SOURCES = ['direct_api', 'whatsapp'] as const;
 export type AuditSource = (typeof AUDIT_SOURCES)[number];
 
 /**
@@ -30,7 +29,7 @@ export interface WriteAuditEventInput {
   action: AuditAction;
   source: AuditSource;
   /** Actor reference. Null for server-controlled direct API operations. Never raw credentials. */
-  actorReference: null;
+  actorReference: string | null;
   /** Previous state snapshot (serialized JSON). Null for creation events. */
   oldData: null;
   /** New state snapshot (serialized JSON). */

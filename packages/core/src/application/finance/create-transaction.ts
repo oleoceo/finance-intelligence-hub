@@ -79,6 +79,22 @@ export class GenericCreateTransaction {
     idempotencyKey: unknown,
     requestContext: FinancialRequestContext,
   ): Promise<TransactionRecord> {
+    if (!input || !['expense', 'income', 'transfer'].includes(input.type))
+      throw new FinancialValidationError('Invalid Transaction type', 'type');
+    validateIdempotencyKey(idempotencyKey);
+    return this.financialTransactions.runInTransaction((ctx) =>
+      this.executeInContext(input, idempotencyKey, requestContext, ctx),
+    );
+  }
+
+  /** Caller-owned PostgreSQL transaction for trusted Inbox processing. */
+  async executeInContext(
+    input: CreateTransactionInput,
+    idempotencyKey: unknown,
+    requestContext: FinancialRequestContext,
+    ctx: FinancialTransactionContext,
+    provenance?: { inboxMessageId: string; sourceReference: string; senderReference: string },
+  ): Promise<TransactionRecord> {
     if (!input || !['expense', 'income', 'transfer'].includes(input.type)) {
       throw new FinancialValidationError('Invalid Transaction type', 'type');
     }
@@ -86,7 +102,7 @@ export class GenericCreateTransaction {
     const scope = resolveTransactionCreateScope();
     const fingerprint = fingerprintTransactionCreate(input);
 
-    return this.financialTransactions.runInTransaction(async (ctx) => {
+    return (async () => {
       const claim = await ctx.idempotencyKeys.create({
         id: (this.deps.generateIdempotencyId ?? uuidv7)(),
         idempotencyKey: key,
@@ -117,6 +133,8 @@ export class GenericCreateTransaction {
         humanRefGenerator: this.deps.humanRefGenerator,
         now: this.deps.now(),
         generateId: this.deps.generateTransactionId ?? uuidv7,
+        provenance,
+        configurationLocksHeld: !!provenance,
       };
       const record = await this.dispatch(input, ctx, executorDeps);
       const snapshot = transactionSnapshot(record);
@@ -126,8 +144,8 @@ export class GenericCreateTransaction {
         entityType: 'transaction',
         entityId: record.id,
         action: 'TRANSACTION_CREATED',
-        source: 'direct_api',
-        actorReference: null,
+        source: provenance ? 'whatsapp' : 'direct_api',
+        actorReference: provenance?.senderReference ?? null,
         oldData: null,
         newData: snapshot,
         correlationId: requestContext.correlationId,
@@ -141,13 +159,19 @@ export class GenericCreateTransaction {
         completedAt: this.deps.now(),
       });
       return record;
-    });
+    })();
   }
 
   private dispatch(
     input: CreateTransactionInput,
     ctx: FinancialTransactionContext,
-    deps: { humanRefGenerator: HumanRefGenerator; now: Date; generateId: () => string },
+    deps: {
+      humanRefGenerator: HumanRefGenerator;
+      now: Date;
+      generateId: () => string;
+      provenance?: { inboxMessageId: string; sourceReference: string; senderReference: string };
+      configurationLocksHeld?: boolean;
+    },
   ): Promise<TransactionRecord> {
     switch (input.type) {
       case 'expense':

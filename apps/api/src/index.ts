@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { checkPostgreSQLReadiness, createConfigurationStore } from '@finance-hub/database';
 import type { ConfigurationOptions } from './routes/admin/shared.js';
-import { adminAuthentication, type Credentials } from './middleware/auth.js';
+import { adminAuthentication, ingestAuthentication, type Credentials } from './middleware/auth.js';
 import { ApiError, installErrorHandler } from './middleware/errors.js';
 import { registerBooks } from './routes/admin/books.js';
 import { registerAccounts } from './routes/admin/accounts.js';
@@ -17,9 +17,13 @@ import {
   type FinancialTransactionPort,
   type HumanRefGenerator,
   type TransactionReadPort,
+  type InboxTransactionPort,
+  type InboxProcessingPort,
+  type ProcessMessageDependencies,
 } from '@finance-hub/core';
 import { strict } from './schemas/configuration.js';
 import { registerTransactions, type TransactionRouteOptions } from './routes/transactions.js';
+import { registerInbox } from './routes/inbox.js';
 
 const ALLOWED_CORRELATION_CHARS = /^[A-Za-z0-9._:-]+$/;
 const MAX_CORRELATION_LENGTH = 128;
@@ -42,6 +46,8 @@ export interface AppOptions extends Credentials {
   financialTransactions?: FinancialTransactionPort;
   transactionReads?: TransactionReadPort;
   genericCreate?: TransactionRouteOptions['genericCreate'];
+  inboxTransactions?: InboxTransactionPort;
+  inboxProcessing?: InboxProcessingPort;
   humanRefGenerator?: HumanRefGenerator;
   now?: () => Date;
 }
@@ -92,6 +98,10 @@ function buildApp(options: AppOptions = {}) {
 
   installErrorHandler(app);
   const authenticate = adminAuthentication({
+    adminToken: options.adminToken ?? process.env.FINANCE_ADMIN_TOKEN,
+    ingestToken: options.ingestToken ?? process.env.FINANCE_INGEST_TOKEN,
+  });
+  const authenticateIngest = ingestAuthentication({
     adminToken: options.adminToken ?? process.env.FINANCE_ADMIN_TOKEN,
     ingestToken: options.ingestToken ?? process.env.FINANCE_INGEST_TOKEN,
   });
@@ -207,6 +217,22 @@ function buildApp(options: AppOptions = {}) {
     registerClassificationRules(admin, configuration);
     registerAuthorizedSenders(admin, configuration);
     registerTransactions(admin, { genericCreate, transactionReads });
+  });
+
+  app.register(async (ingest) => {
+    ingest.addHook('onRequest', authenticateIngest);
+    const deps: ProcessMessageDependencies = {
+      inboxTransactions: options.inboxTransactions ??
+        store?.inboxTransactions ?? { runInTransaction: unavailable },
+      processing: options.inboxProcessing ??
+        store?.financialTransactions ?? { runInboxTransaction: unavailable },
+      genericCreate:
+        'executeInContext' in genericCreate
+          ? (genericCreate as ProcessMessageDependencies['genericCreate'])
+          : { executeInContext: unavailable },
+      now: options.now ?? (() => new Date()),
+    };
+    registerInbox(ingest, deps);
   });
 
   // Health endpoint - independent of external dependencies

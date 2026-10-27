@@ -41,6 +41,8 @@ export interface CreateIncomeDependencies {
   humanRefGenerator: HumanRefGenerator;
   now: Date;
   generateId?: () => string;
+  provenance?: { inboxMessageId: string; sourceReference: string };
+  configurationLocksHeld?: boolean;
 }
 
 /** Maximum human_ref collision retries within one financial transaction. */
@@ -105,12 +107,13 @@ export async function createOrdinaryIncome(
   const lockMerchants = merchantId ? [merchantId] : [];
 
   // ── 3. Acquire locks in deterministic order ─────────────────────────
-  await ctx.locks.acquireLocks({
-    books: lockBooks,
-    accounts: lockAccounts,
-    categories: lockCategories,
-    merchants: lockMerchants,
-  });
+  if (!deps.configurationLocksHeld)
+    await ctx.locks.acquireLocks({
+      books: lockBooks,
+      accounts: lockAccounts,
+      categories: lockCategories,
+      merchants: lockMerchants,
+    });
 
   // ── 4. Re-read authoritative state under locks ──────────────────────
   const book = await ctx.books.findById(bookId);
@@ -198,8 +201,9 @@ export async function createOrdinaryIncome(
       description: input.description,
       notes: input.notes ?? null,
       transactionDate: input.transactionDate,
-      sourceReference: input.sourceReference ?? null,
-      source: 'direct_api',
+      sourceReference: deps.provenance?.sourceReference ?? input.sourceReference ?? null,
+      source: deps.provenance ? 'whatsapp' : 'direct_api',
+      inboxMessageId: deps.provenance?.inboxMessageId ?? null,
     });
 
     if (record) {

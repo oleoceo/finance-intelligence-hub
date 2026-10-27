@@ -23,3 +23,15 @@ export function adminAuthentication(credentials: Credentials) {
     throw new ApiError(401, 'UNAUTHORIZED');
   };
 }
+
+export function ingestAuthentication(credentials: Credentials) {
+  if (credentials.adminToken && credentials.adminToken === credentials.ingestToken)
+    throw new Error('Administrative and ingest credentials must be distinct');
+  return async (request: FastifyRequest) => {
+    const match = /^Bearer ([^\s]+)$/i.exec(request.headers.authorization ?? '');
+    if (!match) throw new ApiError(401, 'UNAUTHORIZED');
+    if (matches(match[1], credentials.ingestToken)) return;
+    if (matches(match[1], credentials.adminToken)) throw new ApiError(403, 'INSUFFICIENT_SCOPE');
+    throw new ApiError(401, 'UNAUTHORIZED');
+  };
+}

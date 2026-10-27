@@ -43,6 +43,8 @@ export interface CreateTransferDependencies {
   humanRefGenerator: HumanRefGenerator;
   now: Date;
   generateId?: () => string;
+  provenance?: { inboxMessageId: string; sourceReference: string };
+  configurationLocksHeld?: boolean;
 }
 
 /** Maximum human_ref collision retries within one financial transaction. */
@@ -110,10 +112,11 @@ export async function createTransfer(
   const lockAccounts = accountIds;
 
   // ── 3. Acquire locks in deterministic order ─────────────────────────
-  await ctx.locks.acquireLocks({
-    books: lockBooks,
-    accounts: lockAccounts,
-  });
+  if (!deps.configurationLocksHeld)
+    await ctx.locks.acquireLocks({
+      books: lockBooks,
+      accounts: lockAccounts,
+    });
 
   // ── 4. Re-read authoritative state under locks ──────────────────────
   const book = await ctx.books.findById(bookId);
@@ -200,8 +203,9 @@ export async function createTransfer(
       description: input.description,
       notes: input.notes ?? null,
       transactionDate: input.transactionDate,
-      sourceReference: input.sourceReference ?? null,
-      source: 'direct_api',
+      sourceReference: deps.provenance?.sourceReference ?? input.sourceReference ?? null,
+      source: deps.provenance ? 'whatsapp' : 'direct_api',
+      inboxMessageId: deps.provenance?.inboxMessageId ?? null,
     });
 
     if (record) {

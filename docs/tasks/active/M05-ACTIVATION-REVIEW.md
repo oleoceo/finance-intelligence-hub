@@ -49,7 +49,7 @@ No frozen-schema or architectural blocker was found. The M04 transaction ownersh
 | [P01](M05-P01.md) | Pre-persistence authorization, Inbox repository/claim/retry; M04 + Gate A | Core unit; real PostgreSQL unique/failed/stale/authorization races |
 | [P02](M05-P02.md) | Pure partial interpretation model/parser, including `query_last`; P01 contract | Determinism, one intent, explicit provenance, unknown/ambiguous, Money/date-expression and `último`/`último empresa` unit tests |
 | [P03](M05-P03.md) | Rule/default/alias and single eligible Book/Account fallback; P02 | Core priority, Book-local date, `query_last` context and compatibility unit; PostgreSQL configuration race tests |
-| [P04](M05-P04.md) | Confirmation repository/state machine; P01–P03 | TTL, short reply, supersede, original Inbox finalization, two-connection races |
+| [P04](../completed/M05-P04.md) | Confirmation repository/state machine; P01–P03 | TTL, short reply, supersede, original Inbox finalization, two-connection races |
 | [P05](M05-P05.md) | API, shared financial transaction and read-only `getLast` orchestration; P01–P04 | ingest/admin isolation, ordered-lock/revoke, Inbox-to-financial-effect and rollback PostgreSQL tests; `último`/`último empresa` read tests |
 | [P06](M05-P06.md) | Milestone verification only; P01–P05 | full CI-equivalent suite and M05 API/PostgreSQL E2E, including unique fallback and Last reads |
 

@@ -27,6 +27,19 @@ import type { FinancialUsageReader } from './master-data-ports.js';
 import type { TransactionRepository } from './transaction-ports.js';
 import type { IdempotencyKeyRepository } from './idempotency-ports.js';
 import type { AuditWriter } from './audit-ports.js';
+import type {
+  ClassificationRuleRepository,
+  AuthorizedSenderRepository,
+  SenderDefaultReferenceReader,
+} from './master-data-ports.js';
+import type { InboxRepository } from './inbox-ports.js';
+import type {
+  ConfirmationSessionRepository,
+  ConfirmationOwner,
+  ConfirmationSession,
+} from './confirmation-ports.js';
+import type { TransactionReadPort } from './transaction-ports.js';
+import type { Interpretation } from './interpretation-ports.js';
 
 /**
  * Extended transaction context for M04 financial writes.
@@ -67,4 +80,32 @@ export interface FinancialTransactionPort {
    * Commit happens when the callback resolves; rollback on rejection.
    */
   runInTransaction<T>(fn: (ctx: FinancialTransactionContext) => Promise<T>): Promise<T>;
+}
+
+export interface InboxProcessingContext extends FinancialTransactionContext {
+  classificationRules: ClassificationRuleRepository;
+  authorizedSenders: AuthorizedSenderRepository;
+  senderDefaults: SenderDefaultReferenceReader;
+  inbox: InboxRepository;
+  confirmations: ConfirmationSessionRepository;
+  reads: TransactionReadPort;
+  interpretations: {
+    create(input: {
+      id: string;
+      inboxMessageId: string;
+      attemptNumber: number;
+      interpretation: Interpretation;
+      now: Date;
+    }): Promise<void>;
+  };
+  previewPending(
+    owner: ConfirmationOwner,
+  ): Promise<Pick<
+    ConfirmationSession,
+    'id' | 'inboxMessageId' | 'payload' | 'action' | 'expiresAt'
+  > | null>;
+}
+
+export interface InboxProcessingPort {
+  runInboxTransaction<T>(fn: (ctx: InboxProcessingContext) => Promise<T>): Promise<T>;
 }

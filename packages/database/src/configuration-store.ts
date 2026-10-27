@@ -4,6 +4,7 @@ import type { DB } from './db-types.js';
 import { KyselyTransactionPort } from './transaction/configuration-transaction.js';
 import { KyselyFinancialTransactionPort } from './transaction/financial-transaction.js';
 import { KyselyTransactionReadRepository } from './repositories/transaction-read-repository.js';
+import { KyselyInboxTransactionPort } from './transaction/inbox-transaction.js';
 
 export function createConfigurationStore(connectionString: string) {
   const db = new Kysely<DB>({
@@ -14,6 +15,7 @@ export function createConfigurationStore(connectionString: string) {
   return {
     transactions: new KyselyTransactionPort(db),
     financialTransactions: new KyselyFinancialTransactionPort(db),
+    inboxTransactions: new KyselyInboxTransactionPort(db),
     transactionReads: new KyselyTransactionReadRepository(db),
     close: () => db.destroy(),
   };

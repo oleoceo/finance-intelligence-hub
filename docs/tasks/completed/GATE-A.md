@@ -1,12 +1,14 @@
 # Gate A — Core Independence
 
-**Status:** PLANNED
+**Status:** DONE — PASS
 **Type:** Gate (functional proof)
 **Dependencies:** Accepted M04 implementation
-**Blocks:** M05 activation, M06 activation
+**Blocks:** Cleared for M05 Activation Review. M06 still also depends on Gate 0 for live acceptance.
 
-> **This document does NOT authorize execution.**
-> Gate A occurs only after accepted M04 implementation.
+> **Execution authorized:** 2026-10-22 by explicit human instruction.
+> **Authoritative main tested:** `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef`
+> **CI evidence:** GitHub Actions run `39836071361` = SUCCESS.
+> **Reviewer acknowledgment:** Gate evidence independently reviewed against the frozen Gate A contract.
 
 ---
 
@@ -135,3 +137,51 @@ Per AGENTS.md §6 (M04 routing applies since Gate A validates M04 output):
 - `04-DATABASE.md`
 - `05-API-CONTRACTS.md`
 - `09-ROADMAP-TESTS.md`
+
+---
+
+## 11. Execution Evidence — 2026-10-22
+
+**Determination:** PASS
+
+### Preconditions
+
+- M04-T01 through M04-T08 are integrated in `main`.
+- PR #15 was squash-merged as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef`.
+- Post-merge CI `39836071361` = SUCCESS.
+- Full unit suite: **33 files / 934 tests PASS**.
+- Full PostgreSQL integration suite: **22 files / 379 tests PASS**.
+- Finance API/PostgreSQL E2E: **10 tests PASS**.
+
+### Environment isolation
+
+The official GitHub Actions workflow for the tested SHA provisions only Node.js 24, pnpm, the repository and PostgreSQL via Testcontainers. It does not provision or configure Evolution, n8n, any AI provider, Firefly or Metabase.
+
+Repository/package inspection on the tested SHA found no runtime dependency or source reference to Evolution, n8n, AI providers, Firefly or Metabase in the Finance API/Core/Database implementation.
+
+### Required capabilities
+
+| Gate A capability | Evidence | Result |
+| --- | --- | --- |
+| Create Expense | real Finance API/PostgreSQL E2E POST `/api/v1/transactions`, posted result, Idempotency-Key | PASS |
+| Create Income | E2E successful create for `income`; ordinary Income persisted without refund relation | PASS |
+| Create Transfer | E2E successful create for `transfer`; destination Account persisted | PASS |
+| Query Transaction | E2E GET by ID plus List query paths | PASS |
+| Get Last | E2E `/api/v1/transactions/last?book_id=...` including posted/ordering semantics | PASS |
+
+### Negative dependency checks
+
+- Evolution: no runtime dependency/reference required by Finance API/Core/Database.
+- n8n: no runtime dependency/reference required by Finance API/Core/Database.
+- AI: no provider/model runtime dependency required by M04.
+- Firefly: no runtime adapter/dependency required by M04.
+- Metabase: no runtime dependency required by M04.
+- WhatsApp ingestion is not involved in any Gate A create/query path.
+
+### Gate result
+
+All five mandatory capabilities work through Finance API/Core on the isolated CI environment while the external integration stack is absent.
+
+**GATE A = PASS**
+
+This PASS clears the Gate A prerequisite for M05/M06. It does not activate M05 or M06 automatically. M05 remains PLANNED / NOT ACTIVE / NOT AUTHORIZED until its Activation Review is separately authorized. Gate 0 remains NOT EXECUTED.

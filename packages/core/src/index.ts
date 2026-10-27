@@ -300,11 +300,13 @@ export type {
 } from './application/ports/inbox-ports.js';
 export { InboxIdentityConflictError } from './application/ports/inbox-ports.js';
 export { interpretMessage } from './application/inbox/interpret-message.js';
+export { resolveInterpretation } from './application/inbox/resolve-interpretation.js';
 export type {
   Interpretation,
   CreateCandidate,
   DateExpression,
   ExplicitValue,
+  ResolutionResult,
 } from './application/ports/interpretation-ports.js';
 export {
   claimInboxMessage,

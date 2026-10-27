@@ -22,6 +22,7 @@ export { KyselyClassificationRuleRepository } from './repositories/classificatio
 export { KyselyAuthorizedSenderRepository } from './repositories/authorized-sender-repository.js';
 export { KyselyFinancialUsageReader } from './readers/financial-usage-reader.js';
 export { KyselySenderDefaultReferenceReader } from './readers/sender-default-reference-reader.js';
+export { KyselyInboxConfigurationReader } from './readers/inbox-configuration-reader.js';
 export {
   KyselyTransactionPort,
   KyselyConfigurationLockPort,

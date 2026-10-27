@@ -1,3 +1,5 @@
+import type { CreateTransactionInput } from './transaction-ports.js';
+
 export interface ExplicitValue<T> {
   value: T;
   provenance: 'explicit_input' | 'deterministic_grammar';
@@ -29,4 +31,27 @@ export type Interpretation =
       kind: 'ambiguous';
       reason:
         'multiple_commands' | 'multiple_amounts' | 'conflicting_fields' | 'incomplete_transfer';
+    };
+
+/** P03 returns a command only after configuration has been checked under ordered locks. */
+export type ResolutionResult =
+  | {
+      kind: 'create';
+      input: CreateTransactionInput;
+      dateProvenance: 'explicit_input' | 'received_local_date';
+    }
+  | { kind: 'query_last'; bookId: string }
+  | {
+      kind: 'clarification';
+      field:
+        | 'book'
+        | 'account'
+        | 'destinationAccount'
+        | 'category'
+        | 'merchant'
+        | 'date'
+        | 'amount'
+        | 'description'
+        | 'intent';
+      reason: 'missing' | 'ambiguous' | 'invalid' | 'future';
     };

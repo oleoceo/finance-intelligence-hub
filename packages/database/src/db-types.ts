@@ -6,6 +6,27 @@
  */
 
 export interface DB {
+  inbox_messages: {
+    id: string;
+    source: string;
+    source_instance: string;
+    source_message_id: string;
+    sender_reference: string;
+    authorized_sender_id: string;
+    raw_text: string;
+    raw_payload: Record<string, unknown> | null;
+    received_at: Date;
+    processing_status: string;
+    attempt_count: number;
+    processing_started_at: Date | null;
+    last_attempt_at: Date | null;
+    processed_at: Date | null;
+    correlation_id: string;
+    failure_code: string | null;
+    failure_message: string | null;
+    created_at: Date;
+    updated_at: Date;
+  };
   audit_events: {
     id: string;
     entity_type: string;

@@ -271,7 +271,11 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
     const resolverRow = await this.lockInbox(input.resolverInboxMessageId, input);
     if (!this.matchesClaim(resolverRow, input))
       throw new Error('Confirmation resolver claim is stale');
-    if (row.action === 'create_transaction') {
+    const payload = row.payload as { interpretation?: { kind?: string } } | null;
+    if (
+      row.action === 'create_transaction' ||
+      payload?.interpretation?.kind === 'create_transaction'
+    ) {
       const effect = await this.db
         .selectFrom('transactions')
         .select('id')

@@ -93,7 +93,11 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     return id;
   }
 
-  async function open(o: Awaited<ReturnType<typeof owner>>, at = now) {
+  async function open(
+    o: Awaited<ReturnType<typeof owner>>,
+    at = now,
+    action: 'create_transaction' | 'select_account' | 'select_book' = 'create_transaction',
+  ) {
     const inboxMessageId = await inbox(o, 'needs_confirmation');
     const id = randomUUID();
     const session = await first.transaction().execute((tx) =>
@@ -101,8 +105,11 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
         ...o,
         id,
         inboxMessageId,
-        action: 'create_transaction',
-        payload: { amount: '10.00' },
+        action,
+        payload:
+          action === 'create_transaction'
+            ? { amount: '10.00' }
+            : { interpretation: { kind: 'create_transaction' } },
         now: at,
       }),
     );
@@ -524,6 +531,48 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
       )?.processing_status,
     ).toBe('processing');
   });
+
+  it.each(['select_account', 'select_book'] as const)(
+    'rejects %s finalization without a linked posted financial effect',
+    async (action) => {
+      const o = await owner();
+      const { session, inboxMessageId } = await open(o, now, action);
+      const resolverInboxMessageId = await inbox(o, 'processing');
+      const claim = {
+        ...o,
+        resolverInboxMessageId,
+        attemptCount: 1,
+        processingStartedAt: now,
+        now: later(1000),
+      };
+      await expect(
+        first.transaction().execute((tx) =>
+          new KyselyConfirmationSessionRepository(tx).finalizeConfirmed({
+            ...claim,
+            sessionId: session.id,
+          }),
+        ),
+      ).rejects.toThrow('financial effect is missing');
+      expect(
+        (
+          await first
+            .selectFrom('confirmation_sessions')
+            .select('status')
+            .where('id', '=', session.id)
+            .executeTakeFirstOrThrow()
+        ).status,
+      ).toBe('pending');
+      expect(
+        (
+          await first
+            .selectFrom('inbox_messages')
+            .select('processing_status')
+            .where('id', '=', inboxMessageId)
+            .executeTakeFirstOrThrow()
+        ).processing_status,
+      ).toBe('needs_confirmation');
+    },
+  );
 
   it.each(['yes', 'no'] as const)('rejects stale attempt before %s resolution', async (reply) => {
     const o = await owner();

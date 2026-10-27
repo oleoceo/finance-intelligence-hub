@@ -93,7 +93,11 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     return id;
   }
 
-  async function open(o: Awaited<ReturnType<typeof owner>>, at = now) {
+  async function open(
+    o: Awaited<ReturnType<typeof owner>>,
+    at = now,
+    action: 'create_transaction' | 'select_account' | 'select_book' = 'create_transaction',
+  ) {
     const inboxMessageId = await inbox(o, 'needs_confirmation');
     const id = randomUUID();
     const session = await first.transaction().execute((tx) =>
@@ -101,8 +105,11 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
         ...o,
         id,
         inboxMessageId,
-        action: 'create_transaction',
-        payload: { amount: '10.00' },
+        action,
+        payload:
+          action === 'create_transaction'
+            ? { amount: '10.00' }
+            : { interpretation: { kind: 'create_transaction' } },
         now: at,
       }),
     );
@@ -525,6 +532,48 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     ).toBe('processing');
   });
 
+  it.each(['select_account', 'select_book'] as const)(
+    'rejects %s finalization without a linked posted financial effect',
+    async (action) => {
+      const o = await owner();
+      const { session, inboxMessageId } = await open(o, now, action);
+      const resolverInboxMessageId = await inbox(o, 'processing');
+      const claim = {
+        ...o,
+        resolverInboxMessageId,
+        attemptCount: 1,
+        processingStartedAt: now,
+        now: later(1000),
+      };
+      await expect(
+        first.transaction().execute((tx) =>
+          new KyselyConfirmationSessionRepository(tx).finalizeConfirmed({
+            ...claim,
+            sessionId: session.id,
+          }),
+        ),
+      ).rejects.toThrow('financial effect is missing');
+      expect(
+        (
+          await first
+            .selectFrom('confirmation_sessions')
+            .select('status')
+            .where('id', '=', session.id)
+            .executeTakeFirstOrThrow()
+        ).status,
+      ).toBe('pending');
+      expect(
+        (
+          await first
+            .selectFrom('inbox_messages')
+            .select('processing_status')
+            .where('id', '=', inboxMessageId)
+            .executeTakeFirstOrThrow()
+        ).processing_status,
+      ).toBe('needs_confirmation');
+    },
+  );
+
   it.each(['yes', 'no'] as const)('rejects stale attempt before %s resolution', async (reply) => {
     const o = await owner();
     const { session } = await open(o);
@@ -833,6 +882,157 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
       ),
     ).rejects.toThrow();
   });
+
+  it('serializes an advancing choice against a competing reply on independent connections', async () => {
+    const o = await owner();
+    const { session, inboxMessageId } = await open(o, now, 'select_book');
+    const firstReply = await inbox(o, 'processing');
+    const competingReply = await inbox(o, 'processing');
+    const nextPayload = {
+      interpretation: { kind: 'create_transaction', book: { value: randomUUID() } },
+      resolution: { kind: 'clarification', field: 'account', reason: 'ambiguous' },
+      options: [{ number: '1', id: randomUUID(), name: 'Account' }],
+    };
+    let entered!: () => void;
+    let release!: () => void;
+    const atAdvance = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const winner = first.transaction().execute(async (tx) => {
+      const repo = new KyselyConfirmationSessionRepository(tx);
+      expect(
+        await repo.resolveReply({
+          ...o,
+          resolverInboxMessageId: firstReply,
+          attemptCount: 1,
+          processingStartedAt: now,
+          reply: '1',
+          now: later(1000),
+        }),
+      ).toMatchObject({ kind: 'choice' });
+      const advanced = await repo.advanceChoice({
+        ...o,
+        sessionId: session.id,
+        resolverInboxMessageId: firstReply,
+        attemptCount: 1,
+        processingStartedAt: now,
+        action: 'select_account',
+        payload: nextPayload,
+        now: later(1000),
+      });
+      entered();
+      await held;
+      return advanced;
+    });
+    await atAdvance;
+    let started!: (pid: number) => void;
+    const backend = new Promise<number>((resolve) => {
+      started = resolve;
+    });
+    const competitor = second.transaction().execute(async (tx) => {
+      const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(tx);
+      started(pid.rows[0]!.pid);
+      return new KyselyConfirmationSessionRepository(tx).resolveReply({
+        ...o,
+        resolverInboxMessageId: competingReply,
+        attemptCount: 1,
+        processingStartedAt: now,
+        reply: '1',
+        now: later(1000),
+      });
+    });
+    await observeBlockedBackend(await backend);
+    release();
+    expect(await winner).toMatchObject({ action: 'select_account', payload: nextPayload });
+    expect(await competitor).toMatchObject({
+      kind: 'choice',
+      session: { action: 'select_account', payload: nextPayload },
+    });
+    expect(
+      (
+        await first
+          .selectFrom('inbox_messages')
+          .select('processing_status')
+          .where('id', '=', inboxMessageId)
+          .executeTakeFirstOrThrow()
+      ).processing_status,
+    ).toBe('needs_confirmation');
+    expect(
+      (
+        await first
+          .selectFrom('inbox_messages')
+          .select('processing_status')
+          .where('id', '=', firstReply)
+          .executeTakeFirstOrThrow()
+      ).processing_status,
+    ).toBe('processed');
+    expect(
+      await first
+        .selectFrom('confirmation_sessions')
+        .select('id')
+        .where('sender_reference', '=', o.senderReference)
+        .where('status', '=', 'pending')
+        .execute(),
+    ).toHaveLength(1);
+  });
+
+  it.each(['expire', 'supersede'] as const)(
+    'finalizes an advanced choice on %s',
+    async (operation) => {
+      const o = await owner();
+      const { session, inboxMessageId } = await open(o, now, 'select_book');
+      const resolverInboxMessageId = await inbox(o, 'processing');
+      await first.transaction().execute((tx) =>
+        new KyselyConfirmationSessionRepository(tx).advanceChoice({
+          ...o,
+          sessionId: session.id,
+          resolverInboxMessageId,
+          attemptCount: 1,
+          processingStartedAt: now,
+          action: 'select_account',
+          payload: {
+            interpretation: { kind: 'create_transaction', book: { value: randomUUID() } },
+          },
+          now: later(1000),
+        }),
+      );
+      const result = await first.transaction().execute((tx) =>
+        new KyselyConfirmationSessionRepository(tx)[operation]({
+          ...o,
+          now: later(operation === 'expire' ? 900000 : 2000),
+        }),
+      );
+      expect(result).toMatchObject({ kind: operation === 'expire' ? 'expired' : 'cancelled' });
+      expect(
+        (
+          await first
+            .selectFrom('inbox_messages')
+            .select('processing_status')
+            .where('id', '=', inboxMessageId)
+            .executeTakeFirstOrThrow()
+        ).processing_status,
+      ).toBe('ignored');
+      expect(
+        (
+          await first
+            .selectFrom('inbox_messages')
+            .select('processing_status')
+            .where('id', '=', resolverInboxMessageId)
+            .executeTakeFirstOrThrow()
+        ).processing_status,
+      ).toBe('processed');
+      expect(
+        await first
+          .selectFrom('transactions')
+          .select('id')
+          .where('inbox_message_id', '=', inboxMessageId)
+          .execute(),
+      ).toEqual([]);
+    },
+  );
 
   it.each(['expire', 'supersede'] as const)(
     'serializes confirm against %s across connections',

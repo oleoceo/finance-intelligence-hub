@@ -279,8 +279,27 @@ export async function processInboxMessage(
           return { type: 'ignored', inboxMessageId: message.id, status: 'ignored' };
         if (reply.kind === 'expired' || reply.kind === 'cancelled')
           return { type: reply.kind, inboxMessageId: message.id, status: 'processed' };
+        if (reply.session.id !== preview?.id || !original) throw new StaleInboxClaimError();
+        // A competing reply may have advanced this same session after preview.
+        // Its reply belongs to the old stage, never the new options.
+        if (
+          reply.session.action !== preview.action ||
+          JSON.stringify(reply.session.payload) !== JSON.stringify(preview.payload)
+        ) {
+          await finish(ctx, claim, 'processed', now);
+          return {
+            type: 'confirmation_required',
+            inboxMessageId: original.id,
+            status: 'needs_confirmation',
+            confirmation: {
+              id: reply.session.id,
+              action: reply.session.action,
+              expiresAt: reply.session.expiresAt,
+              options: (reply.session.payload.options ?? []) as ChoiceOption[],
+            },
+          };
+        }
         if (reply.kind === 'choice') {
-          if (reply.session.id !== preview?.id || !original) throw new StaleInboxClaimError();
           if (selected && resolution?.kind === 'create') {
             const transaction = await deps.genericCreate.executeInContext(
               resolution.input,
@@ -323,6 +342,38 @@ export async function processInboxMessage(
               inboxMessageId: message.id,
               status: 'processed',
               transaction,
+            };
+          }
+          if (
+            selected &&
+            replyInterpretation &&
+            resolution?.kind === 'clarification' &&
+            pendingResolution?.kind === 'clarification' &&
+            pendingResolution.field === 'book'
+          ) {
+            const options = await offeredOptions(
+              ctx,
+              replyInterpretation,
+              resolution,
+              message.senderReference,
+            );
+            const action =
+              options.length === 2 ? `select_${resolution.field}` : `clarify_${resolution.field}`;
+            const advanced = await ctx.confirmations.advanceChoice({
+              ...owner,
+              sessionId: reply.session.id,
+              resolverInboxMessageId: message.id,
+              attemptCount: token.attemptCount,
+              processingStartedAt: token.processingStartedAt,
+              action,
+              payload: { interpretation: replyInterpretation, resolution, options },
+              now,
+            });
+            return {
+              type: 'confirmation_required',
+              inboxMessageId: original.id,
+              status: 'needs_confirmation',
+              confirmation: { id: advanced.id, action, expiresAt: advanced.expiresAt, options },
             };
           }
           await finish(ctx, claim, 'processed', now);

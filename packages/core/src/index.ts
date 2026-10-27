@@ -300,6 +300,22 @@ export type {
 } from './application/ports/inbox-ports.js';
 export { InboxIdentityConflictError } from './application/ports/inbox-ports.js';
 export { interpretMessage } from './application/inbox/interpret-message.js';
+export {
+  DEFAULT_CONFIRMATION_TTL_MS,
+  confirmationExpiry,
+  isConfirmationExpired,
+  confirmationReplyOutcome,
+} from './domain/inbox/confirmation-session.js';
+export type { ConfirmationStatus, ConfirmationReply } from './domain/inbox/confirmation-session.js';
+export { openConfirmation, resolveContextualReply } from './application/inbox/confirmation.js';
+export type {
+  ConfirmationSession,
+  ConfirmationOwner,
+  ConfirmationResolverClaim,
+  NewConfirmationSession,
+  ConfirmationResolution,
+  ConfirmationSessionRepository,
+} from './application/ports/confirmation-ports.js';
 export { resolveInterpretation } from './application/inbox/resolve-interpretation.js';
 export type {
   Interpretation,

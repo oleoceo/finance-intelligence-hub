@@ -6,6 +6,24 @@
  */
 
 export interface DB {
+  confirmation_sessions: {
+    id: string;
+    channel: string;
+    sender_reference: string;
+    authorized_sender_id: string;
+    inbox_message_id: string;
+    resolved_by_inbox_message_id: string | null;
+    action: string;
+    target_entity_type: string | null;
+    target_entity_id: string | null;
+    target_version: number | null;
+    payload: Record<string, unknown>;
+    status: string;
+    resolution_reason: string | null;
+    expires_at: Date;
+    created_at: Date;
+    resolved_at: Date | null;
+  };
   inbox_messages: {
     id: string;
     source: string;

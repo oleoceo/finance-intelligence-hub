@@ -39,7 +39,7 @@ export async function claimInboxMessage(
   if (envelope.isGroup || envelope.fromMe) return null;
   const senderReference = normalizeSenderReference(envelope.senderReference);
   if (
-    !envelope.source ||
+    envelope.source !== 'whatsapp' ||
     !envelope.sourceInstance ||
     !envelope.sourceMessageId ||
     !Number.isFinite(envelope.receivedAt.getTime()) ||

@@ -298,6 +298,7 @@ export type {
   InboxTransactionContext,
   InboxTransactionPort,
 } from './application/ports/inbox-ports.js';
+export { InboxIdentityConflictError } from './application/ports/inbox-ports.js';
 export {
   claimInboxMessage,
   normalizeSenderReference,

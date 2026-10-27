@@ -6,6 +6,7 @@ import type {
   InboxStatus,
   NewInboxMessage,
 } from '@finance-hub/core';
+import { InboxIdentityConflictError } from '@finance-hub/core';
 import type { DB } from '../db-types.js';
 
 type Row = DB['inbox_messages'];
@@ -77,7 +78,26 @@ export class KyselyInboxMessageRepository implements InboxRepository {
       .executeTakeFirst();
     if (row) return this.result(row, true);
 
-    // Atomic conditional update serializes duplicate contenders on the unique row.
+    // Lock the existing identity before inspecting ownership or changing its state.
+    // The transaction holds this lock until claim commits, including after a concurrent insert.
+    const existing = await this.db
+      .selectFrom('inbox_messages')
+      .selectAll()
+      .where('source', '=', input.source)
+      .where('source_instance', '=', input.sourceInstance)
+      .where('source_message_id', '=', input.sourceMessageId)
+      .forUpdate()
+      .executeTakeFirstOrThrow();
+    if (
+      existing.authorized_sender_id !== input.authorizedSenderId ||
+      existing.sender_reference !== input.senderReference ||
+      existing.raw_text !== input.rawText
+    ) {
+      throw new InboxIdentityConflictError();
+    }
+
+    // Original content is immutable. Changed text for the same identity is a conflict,
+    // including after failure; raw payload changes alone are ignored.
     // attempt_count fences an old claimant even when timestamps have equal precision.
     const reclaimed = await this.db
       .updateTable('inbox_messages')
@@ -91,9 +111,7 @@ export class KyselyInboxMessageRepository implements InboxRepository {
         failure_message: null,
         updated_at: input.now,
       }))
-      .where('source', '=', input.source)
-      .where('source_instance', '=', input.sourceInstance)
-      .where('source_message_id', '=', input.sourceMessageId)
+      .where('id', '=', existing.id)
       .where((eb) =>
         eb.or([
           eb('processing_status', '=', 'failed'),
@@ -108,13 +126,6 @@ export class KyselyInboxMessageRepository implements InboxRepository {
       .executeTakeFirst();
     if (reclaimed) return this.result(reclaimed, true);
 
-    const existing = await this.db
-      .selectFrom('inbox_messages')
-      .selectAll()
-      .where('source', '=', input.source)
-      .where('source_instance', '=', input.sourceInstance)
-      .where('source_message_id', '=', input.sourceMessageId)
-      .executeTakeFirstOrThrow();
     return this.result(existing, false);
   }
 

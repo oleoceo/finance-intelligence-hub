@@ -177,6 +177,77 @@ describe('Inbox PostgreSQL persistence', { timeout: 30000 }, () => {
     });
   });
 
+  it.each(['processing', 'processed', 'failed', 'stale'] as const)(
+    'rejects a second sender colliding with a %s Inbox without disclosure or mutation',
+    async (state) => {
+      const owner = await sender();
+      const other = await sender();
+      const message = input(owner);
+      message.rawText = 'owner private secret';
+      const port = new KyselyInboxTransactionPort(db);
+      const first = (await claimInboxMessage(message, port, options()))!;
+      const repo = new KyselyInboxMessageRepository(db);
+      if (state === 'processed' || state === 'failed') {
+        await repo.transition({
+          id: first.message.id,
+          attemptCount: first.attemptCount,
+          processingStartedAt: first.processingStartedAt!,
+          status: state,
+          now: now(),
+        });
+      }
+      const before = await repo.findById(first.message.id);
+      const attempted = { ...message, senderReference: other, rawText: 'attacker text' };
+      let thrown: unknown;
+      try {
+        await claimInboxMessage(
+          attempted,
+          port,
+          state === 'stale'
+            ? { ...options(), now: new Date(first.processingStartedAt!.getTime() + 61_000) }
+            : options(),
+        );
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toMatchObject({ code: 'INBOX_IDENTITY_CONFLICT', statusCode: 409 });
+      expect(JSON.stringify(thrown)).not.toContain(message.rawText);
+      expect(JSON.stringify(thrown)).not.toContain(owner);
+      expect(JSON.stringify(thrown)).not.toContain(first.message.id);
+      expect((thrown as Error).message).toBe('Inbox identity conflict');
+      expect(await repo.findById(first.message.id)).toEqual(before);
+      expect(
+        await db
+          .selectFrom('inbox_messages')
+          .select('id')
+          .where('source_message_id', '=', message.sourceMessageId)
+          .execute(),
+      ).toHaveLength(1);
+    },
+  );
+
+  it('rejects changed text for the same sender and preserves failed retry content', async () => {
+    const message = input(await sender());
+    const port = new KyselyInboxTransactionPort(db);
+    const first = (await claimInboxMessage(message, port, options()))!;
+    const repo = new KyselyInboxMessageRepository(db);
+    await repo.transition({
+      id: first.message.id,
+      attemptCount: first.attemptCount,
+      processingStartedAt: first.processingStartedAt!,
+      status: 'failed',
+      now: now(),
+    });
+    const before = await repo.findById(first.message.id);
+    await expect(
+      claimInboxMessage({ ...message, rawText: 'edited text' }, port, options()),
+    ).rejects.toMatchObject({ code: 'INBOX_IDENTITY_CONFLICT' });
+    expect(await repo.findById(first.message.id)).toEqual(before);
+    const retry = await claimInboxMessage(message, port, options());
+    expect(retry).toMatchObject({ claimed: true, attemptCount: 2 });
+    expect(retry!.message.rawText).toBe(message.rawText);
+  });
+
   it('rejects unstructured failure text so raw content cannot enter failure metadata', async () => {
     const message = input(await sender());
     const first = await claimInboxMessage(message, new KyselyInboxTransactionPort(db), options());
@@ -256,6 +327,76 @@ describe('Inbox PostgreSQL persistence', { timeout: 30000 }, () => {
         .where('source_message_id', '=', message.sourceMessageId)
         .execute();
       expect(rows).toHaveLength(1);
+    } finally {
+      release();
+      await firstDb.destroy();
+      await secondDb.destroy();
+    }
+  });
+
+  it('rejects a cross-sender collision waiting on an uncommitted claim', async () => {
+    const message = input(await sender());
+    const other = await sender();
+    const firstPool = new Pool({ connectionString, max: 1 });
+    const secondPool = new Pool({ connectionString, max: 1 });
+    const firstDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: firstPool }) });
+    const secondDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: secondPool }) });
+    let signalHeld!: () => void;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      signalHeld = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    try {
+      const pid1 = (await firstPool.query('select pg_backend_pid() as pid')).rows[0].pid as number;
+      const pid2 = (await secondPool.query('select pg_backend_pid() as pid')).rows[0].pid as number;
+      expect(pid1).not.toBe(pid2);
+      const first = new KyselyInboxTransactionPort(firstDb).runInTransaction(async (ctx) => {
+        const candidate = await ctx.senders.findByChannelAndReference(
+          'whatsapp',
+          message.senderReference,
+        );
+        await ctx.locks.acquireLocks({ authorizedSenders: [candidate!.id] });
+        const o = options();
+        const claim = await ctx.inbox.claim(
+          {
+            id: o.id,
+            source: message.source,
+            sourceInstance: message.sourceInstance,
+            sourceMessageId: message.sourceMessageId,
+            senderReference: message.senderReference,
+            authorizedSenderId: candidate!.id,
+            rawText: message.rawText,
+            receivedAt: message.receivedAt,
+            correlationId: o.correlationId,
+            now: o.now,
+          },
+          new Date(o.now.getTime() - o.staleTimeoutMs),
+        );
+        signalHeld();
+        await gate;
+        return claim;
+      });
+      await held;
+      const collision = claimInboxMessage(
+        { ...message, senderReference: other, rawText: 'other private text' },
+        new KyselyInboxTransactionPort(secondDb),
+        options(),
+      );
+      await expectBlocker(pid2, pid1);
+      release();
+      const ownerClaim = await first;
+      await expect(collision).rejects.toMatchObject({ code: 'INBOX_IDENTITY_CONFLICT' });
+      expect(
+        await new KyselyInboxMessageRepository(db).findById(ownerClaim.message.id),
+      ).toMatchObject({
+        attemptCount: 1,
+        status: 'processing',
+        rawText: message.rawText,
+        senderReference: message.senderReference,
+      });
     } finally {
       release();
       await firstDb.destroy();

@@ -33,6 +33,15 @@ describe('Inbox claim policy', () => {
     expect(() => normalizeSenderReference('user@example.com')).toThrow('Invalid sender reference');
   });
 
+  it('rejects sources outside the authenticated WhatsApp channel before persistence', async () => {
+    const runInTransaction = vi.fn();
+    const port = { runInTransaction } as unknown as InboxTransactionPort;
+    await expect(
+      claimInboxMessage({ ...envelope, source: 'system' }, port, options),
+    ).rejects.toMatchObject({ code: 'INVALID_INBOX_ENVELOPE' });
+    expect(runInTransaction).not.toHaveBeenCalled();
+  });
+
   it('does not call Inbox persistence for an absent or inactive sender', async () => {
     const claim = vi.fn();
     const sender = { id: 'sender-id', active: false };

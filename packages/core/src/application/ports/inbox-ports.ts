@@ -47,6 +47,16 @@ export interface InboxClaim {
   processingStartedAt: Date | null;
 }
 
+// Deliberately contains no identity, sender, or stored message data.
+export class InboxIdentityConflictError extends Error {
+  readonly code = 'INBOX_IDENTITY_CONFLICT';
+  readonly statusCode = 409;
+
+  constructor() {
+    super('Inbox identity conflict');
+  }
+}
+
 export interface InboxRepository {
   claim(input: NewInboxMessage, staleBefore: Date): Promise<InboxClaim>;
   findById(id: string): Promise<InboxMessage | null>;

@@ -5,7 +5,11 @@ import type {
   InboxProcessingPort,
 } from '../ports/financial-transaction-port.js';
 import type { InboxClaim, InboxTransactionPort, InboxMessage } from '../ports/inbox-ports.js';
-import type { Interpretation, ResolutionResult } from '../ports/interpretation-ports.js';
+import type {
+  CreateCandidate,
+  Interpretation,
+  ResolutionResult,
+} from '../ports/interpretation-ports.js';
 import type { TransactionReadRecord, TransactionRecord } from '../ports/transaction-ports.js';
 import {
   claimInboxMessage,
@@ -44,8 +48,73 @@ export type InboxProcessingResult =
       type: 'confirmation_required';
       inboxMessageId: string;
       status: 'needs_confirmation';
-      confirmation: { id: string; action: string; expiresAt: Date };
+      confirmation: { id: string; action: string; expiresAt: Date; options?: ChoiceOption[] };
     };
+
+type ChoiceOption = { number: '1' | '2'; id: string; name: string };
+
+function offeredOptions(
+  ctx: InboxProcessingContext,
+  interpretation: Interpretation,
+  resolution: ResolutionResult | null,
+  senderReference: string,
+): Promise<ChoiceOption[]> {
+  if (
+    !resolution ||
+    resolution.kind !== 'clarification' ||
+    (interpretation.kind === 'create_transaction' &&
+      (!interpretation.amount || !interpretation.description)) ||
+    (resolution.field !== 'book' && resolution.field !== 'account')
+  )
+    return Promise.resolve([]);
+  return (async () => {
+    const books = (await ctx.books.find()).filter((book) => book.active);
+    const explicitBook =
+      interpretation.kind === 'create_transaction' ? interpretation.book?.value : undefined;
+    const sender = await ctx.authorizedSenders.findByChannelAndReference(
+      'whatsapp',
+      senderReference,
+    );
+    const effectiveBook = explicitBook
+      ? books.find(
+          (book) =>
+            book.id === explicitBook ||
+            book.normalizedName === explicitBook.toLocaleLowerCase('pt-BR'),
+        )
+      : (books.find((book) => book.id === sender?.defaultBookId) ??
+        (books.length === 1 ? books[0] : undefined));
+    const rows =
+      resolution.field === 'book'
+        ? books
+        : (await ctx.accounts.find()).filter(
+            (account) =>
+              account.active &&
+              account.bookId === effectiveBook?.id &&
+              account.currency === effectiveBook?.currency,
+          );
+    if (rows.length !== 2) return [];
+    return rows
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((row, index) => ({
+        number: index === 0 ? '1' : '2',
+        id: row.id,
+        name: row.name,
+      }));
+  })();
+}
+
+function selectedInterpretation(
+  interpretation: Interpretation,
+  field: string,
+  option: ChoiceOption,
+): Interpretation | null {
+  const value = { value: option.id, raw: option.name, provenance: 'explicit_input' as const };
+  if (field === 'book' && interpretation.kind === 'query_last')
+    return { ...interpretation, book: value };
+  if (interpretation.kind !== 'create_transaction') return null;
+  if (field !== 'book' && field !== 'account') return null;
+  return { ...interpretation, [field]: value } as CreateCandidate;
+}
 
 export interface ProcessMessageDependencies {
   inboxTransactions: InboxTransactionPort;
@@ -156,9 +225,19 @@ export async function processInboxMessage(
         authorizedSenderId: message.authorizedSenderId,
       };
       const token = claimToken(claim);
-      const preview = parsed.kind === 'reply' ? await ctx.previewPending(owner) : null;
+      const preview = await ctx.previewPending(owner);
       const original = preview ? await ctx.inbox.findById(preview.inboxMessageId) : null;
       const pendingInterpretation = preview?.payload.interpretation as Interpretation | undefined;
+      const pendingResolution = preview?.payload.resolution as ResolutionResult | undefined;
+      const pendingOptions = (preview?.payload.options ?? []) as ChoiceOption[];
+      const selected =
+        parsed.kind === 'reply' && (parsed.response === '1' || parsed.response === '2')
+          ? pendingOptions.find((option) => option.number === parsed.response)
+          : undefined;
+      const replyInterpretation =
+        selected && pendingInterpretation && pendingResolution?.kind === 'clarification'
+          ? selectedInterpretation(pendingInterpretation, pendingResolution.field, selected)
+          : pendingInterpretation;
       let resolution: ResolutionResult | null = null;
 
       // P03 discovers, locks and re-reads the complete M03 configuration set.
@@ -169,11 +248,11 @@ export async function processInboxMessage(
         parsed.kind === 'reply' &&
         preview &&
         original &&
-        pendingInterpretation &&
-        (pendingInterpretation.kind === 'create_transaction' ||
-          pendingInterpretation.kind === 'query_last')
+        replyInterpretation &&
+        (replyInterpretation.kind === 'create_transaction' ||
+          replyInterpretation.kind === 'query_last')
       )
-        resolution = await resolveInContext(ctx, pendingInterpretation, original, now);
+        resolution = await resolveInContext(ctx, replyInterpretation, original, now);
       else await ctx.locks.acquireLocks({ authorizedSenders: [message.authorizedSenderId] });
 
       await authorized(ctx, message);
@@ -201,8 +280,63 @@ export async function processInboxMessage(
         if (reply.kind === 'expired' || reply.kind === 'cancelled')
           return { type: reply.kind, inboxMessageId: message.id, status: 'processed' };
         if (reply.kind === 'choice') {
+          if (reply.session.id !== preview?.id || !original) throw new StaleInboxClaimError();
+          if (selected && resolution?.kind === 'create') {
+            const transaction = await deps.genericCreate.executeInContext(
+              resolution.input,
+              `inbox:${original.id}`,
+              { correlationId },
+              ctx,
+              {
+                inboxMessageId: original.id,
+                sourceReference: original.sourceMessageId,
+                senderReference: original.senderReference,
+              },
+            );
+            await ctx.confirmations.finalizeConfirmed({
+              ...owner,
+              sessionId: reply.session.id,
+              resolverInboxMessageId: message.id,
+              attemptCount: token.attemptCount,
+              processingStartedAt: token.processingStartedAt,
+              now,
+            });
+            return {
+              type: 'transaction_created',
+              inboxMessageId: message.id,
+              status: 'processed',
+              transaction,
+            };
+          }
+          if (selected && resolution?.kind === 'query_last') {
+            const transaction = await ctx.reads.getLast({ bookId: resolution.bookId });
+            await ctx.confirmations.finalizeConfirmed({
+              ...owner,
+              sessionId: reply.session.id,
+              resolverInboxMessageId: message.id,
+              attemptCount: token.attemptCount,
+              processingStartedAt: token.processingStartedAt,
+              now,
+            });
+            return {
+              type: 'query_last',
+              inboxMessageId: message.id,
+              status: 'processed',
+              transaction,
+            };
+          }
           await finish(ctx, claim, 'processed', now);
-          return { type: 'choice', inboxMessageId: message.id, status: 'processed' };
+          return {
+            type: 'confirmation_required',
+            inboxMessageId: original.id,
+            status: 'needs_confirmation',
+            confirmation: {
+              id: reply.session.id,
+              action: reply.session.action,
+              expiresAt: reply.session.expiresAt,
+              options: pendingOptions,
+            },
+          };
         }
         if (reply.session.id !== preview?.id || !original) throw new StaleInboxClaimError();
         if (resolution?.kind !== 'create') {
@@ -215,6 +349,7 @@ export async function processInboxMessage(
               id: reply.session.id,
               action: reply.session.action,
               expiresAt: reply.session.expiresAt,
+              options: pendingOptions,
             },
           };
         }
@@ -267,27 +402,43 @@ export async function processInboxMessage(
         };
       }
       if (resolution?.kind === 'query_last') {
+        // A complete read command replaces prior intent, while an unresolved read preserves it.
+        await ctx.confirmations.supersede({ ...owner, now });
         const transaction = await ctx.reads.getLast({ bookId: resolution.bookId });
         await finish(ctx, claim, 'processed', now);
         return { type: 'query_last', inboxMessageId: message.id, status: 'processed', transaction };
       }
-      await ctx.confirmations.supersede({ ...owner, now });
+      if (preview) {
+        await finish(ctx, claim, 'processed', now);
+        return {
+          type: 'confirmation_required',
+          inboxMessageId: preview.inboxMessageId,
+          status: 'needs_confirmation',
+          confirmation: {
+            id: preview.id,
+            action: preview.action,
+            expiresAt: preview.expiresAt,
+            options: pendingOptions,
+          },
+        };
+      }
       await finish(ctx, claim, 'needs_confirmation', now);
       const action =
         resolution?.kind === 'clarification' ? `select_${resolution.field}` : 'clarify_intent';
+      const options = await offeredOptions(ctx, parsed, resolution, message.senderReference);
       const confirmation = await ctx.confirmations.create({
         ...owner,
         id: id(),
         inboxMessageId: message.id,
         action,
-        payload: { interpretation: parsed, resolution },
+        payload: { interpretation: parsed, resolution, options },
         now,
       });
       return {
         type: 'confirmation_required',
         inboxMessageId: message.id,
         status: 'needs_confirmation',
-        confirmation: { id: confirmation.id, action, expiresAt: confirmation.expiresAt },
+        confirmation: { id: confirmation.id, action, expiresAt: confirmation.expiresAt, options },
       };
     });
   } catch (error) {

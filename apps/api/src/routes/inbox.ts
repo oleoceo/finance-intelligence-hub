@@ -47,6 +47,10 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
               id: result.confirmation.id,
               action: result.confirmation.action,
               expires_at: result.confirmation.expiresAt.toISOString(),
+              options: result.confirmation.options?.map((option) => ({
+                number: option.number,
+                name: option.name,
+              })),
             },
           },
           reply: { should_send: true },

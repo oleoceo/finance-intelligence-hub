@@ -61,6 +61,37 @@ describe('deterministic Inbox interpretation', () => {
       expect(parse(value)).toEqual({ kind: 'unknown', reason: 'invalid_amount' });
     },
   );
+  it.each([
+    'paguei -35 almoço',
+    'paguei -R$35 almoço',
+    'paguei R$ -35 café',
+    'paguei R$ - 35 café',
+    'paguei (35) café',
+    'paguei (+35) café',
+    'recebi -50 salário',
+    'recebi R$ - 50,90 salário',
+    'recebi (R$ 50,90) salário',
+    'transferi -100 nubank para inter',
+    'transferi - R$ 100 nubank para inter',
+    'transferi R$ -100 nubank para inter',
+    'transferi (100) nubank para inter',
+    'transferi +100 nubank para inter',
+  ])('rejects explicitly signed or accounting-negative amount %s', (value) => {
+    expect(parse(value)).toEqual({ kind: 'unknown', reason: 'invalid_amount' });
+  });
+  it.each([
+    ['paguei 35 café', '35.00'],
+    ['paguei 35,90 café', '35.90'],
+    ['paguei R$ 35,90 café', '35.90'],
+    ['paguei 1.250,90 café', '1250.90'],
+    ['recebi R$ 1.250,90 salário', '1250.90'],
+    ['transferi R$ 35,90 nubank para inter', '35.90'],
+  ])('preserves positive amount %s as exact decimal string', (value, expected) => {
+    expect(parse(value)).toMatchObject({
+      kind: 'create_transaction',
+      amount: { value: expected, provenance: 'explicit_input' },
+    });
+  });
   it('preserves explicit fields over unresolved defaults', () => {
     expect(
       parse('paguei 35 café livro: empresa conta: inter categoria: alimentação'),

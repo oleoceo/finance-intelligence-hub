@@ -16,6 +16,10 @@ const command =
   /\b(?:recebi|receber|ganhei|entrada|transferi|transferir|transferência|gastei|paguei|despesa|gasto|último|ultimo|resumo|corrige|cancela|apaga|reembolso)\b/giu;
 const amount =
   /(?<![\p{L}\p{N}/])(?:R\$\s*)?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:[,.]\d{1,3})?(?![\p{L}\p{N}/])/gu;
+const signedAmount =
+  /(?:[+-]\s*(?:R\$\s*)?|R\$\s*[+-]\s*)(?:\d{1,3}(?:\.\d{3})+|\d+)(?:[,.]\d{1,3})?(?![\p{L}\p{N}/])/u;
+const accountingAmount =
+  /\(\s*[+-]?\s*(?:R\$\s*)?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:[,.]\d{1,3})?\s*\)/u;
 const date = /\b(?:hoje|ontem|anteontem|\d{2}\/\d{2}(?:\/\d{4})?)\b/iu;
 const labels =
   /\b(livro|contexto|conta|categoria|estabelecimento|lojista|destino)\s*:\s*([^,;]+?)(?=\s+\b(?:livro|contexto|conta|categoria|estabelecimento|lojista|destino)\s*:|$)/giu;
@@ -112,6 +116,8 @@ export function interpretMessage(message: Pick<InboxMessage, 'rawText'>): Interp
     body = body.replace(field[0], ' ');
   }
 
+  if (signedAmount.test(body) || accountingAmount.test(body))
+    return { kind: 'unknown', reason: 'invalid_amount' };
   const amounts = [...body.matchAll(amount)];
   if (amounts.length > 1) return { kind: 'ambiguous', reason: 'multiple_amounts' };
   if (!amounts.length) return { kind: 'unknown', reason: 'missing_amount' };

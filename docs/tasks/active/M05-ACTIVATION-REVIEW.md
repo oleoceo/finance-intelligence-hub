@@ -1,12 +1,12 @@
-# M05 Activation Review — proposed for human acceptance
+# M05 Activation Review — ACCEPTED
 
-**Status:** REVIEW REQUIRED; documentation proposal only. M05 remains PLANNED on `main` and M05-P01–P06 implementation is NOT AUTHORIZED.
+**Status:** ACCEPTED — PASS on 2026-10-27. M05 ACTIVE after promotion; M05-P01–P06 implementation is NOT AUTHORIZED.
 **Forward plan:** [M05-OVERVIEW.md](M05-OVERVIEW.md)
 
 **Authoritative main:** `d4cfb5a4b93506e4c42e11179a6999dfbd59d6d1`
 
 **Date:** 2026-10-27
-**Reviewer:** pending human review
+**Reviewer:** human-approved on 2026-10-27; PR #17 reviewed head `315b189265e2fa7746b82fcdc5e7428bb42ffb30`, exact-head CI `40525025472` SUCCESS, squash `df0a28669b59928a78a12823e4a0a408390e0800`.
 
 ## 1. Upstream completion
 
@@ -65,8 +65,8 @@ M04 Money, currency, Book timezone date, source of truth, transaction type and v
 
 No migration, external dependency, lockfile or frozen-document change is planned. No Evolution/n8n transport, M07 correction/void/refund, M08 reporting, M09 recovery, VPS/Lab/Production or gate execution. Gate A is PASS; Gate 0/B/C are NOT EXECUTED and do not gate local M05.
 
-- [ ] Human accepts assumption deltas and P01–P06 contracts.
-- [ ] Human approves promotion to `docs/tasks/active/`.
+- [x] Human accepts assumption deltas and P01–P06 contracts.
+- [x] Human approves promotion to `docs/tasks/active/`.
 - [ ] Human separately authorizes M05-P01 implementation.
 
-**Decision pending:** On acceptance, promote this overview and six contracts from `planned/` to `active/`, update `PROJECT_STATE.md`, and record the accepted review SHA. Until then M05 is PLANNED and no implementation task is authorized.
+**Decision:** Review and promotion accepted on 2026-10-27. Overview, review record and six task contracts move to `docs/tasks/active/` in the promotion PR. M05 ACTIVE upon integration; P01 is the next candidate. **Implementation of P01–P06 remains NOT AUTHORIZED pending explicit task selection.** Gate 0/B/C NOT EXECUTED.

@@ -32,3 +32,5 @@ export { KyselyIdempotencyKeyRepository } from './repositories/idempotency-key-r
 export { KyselyTransactionReadRepository } from './repositories/transaction-read-repository.js';
 export { createConfigurationStore } from './configuration-store.js';
 export { KyselyAuditWriter } from './repositories/audit-writer.js';
+export { KyselyInboxMessageRepository } from './repositories/inbox-message-repository.js';
+export { KyselyInboxTransactionPort } from './transaction/inbox-transaction.js';

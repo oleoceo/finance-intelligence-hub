@@ -288,3 +288,20 @@ export {
   type GenericCreateDependencies,
   type FinancialRequestContext,
 } from './application/finance/create-transaction.js';
+export type {
+  InboxStatus,
+  InboxIdentity,
+  InboxMessage,
+  NewInboxMessage,
+  InboxClaim,
+  InboxRepository,
+  InboxTransactionContext,
+  InboxTransactionPort,
+} from './application/ports/inbox-ports.js';
+export {
+  claimInboxMessage,
+  normalizeSenderReference,
+  SenderNotAuthorizedError,
+  InvalidInboxEnvelopeError,
+  type IngestionEnvelope,
+} from './application/inbox/claim-inbox-message.js';

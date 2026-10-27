@@ -215,6 +215,45 @@ describe('P03 PostgreSQL configuration races', { timeout: 60000 }, () => {
     });
     expect(await fixture.db.selectFrom('transactions').select('id').execute()).toHaveLength(0);
   });
+  it.each(['expense', 'income'] as const)(
+    'resolves a persisted both Category for %s explicitly and through a rule',
+    async (transactionType) => {
+      const { id, reference } = await seed();
+      await fixture.db
+        .updateTable('categories')
+        .set({ type: 'both', updated_at: new Date() })
+        .where('id', '=', id.category)
+        .execute();
+      const reader = new KyselyInboxConfigurationReader(fixture.db);
+      for (const fields of [{ category: value(id.category) }, {}]) {
+        expect(
+          await reader.resolve(
+            request(candidate({ transactionType: value(transactionType), ...fields }), reference),
+          ),
+        ).toMatchObject({
+          kind: 'create',
+          input: { type: transactionType, categoryId: id.category },
+        });
+      }
+      expect(await fixture.db.selectFrom('transactions').select('id').execute()).toHaveLength(0);
+    },
+  );
+  it('rejects a persisted incompatible Category for Income', async () => {
+    const { id, reference } = await seed();
+    const reader = new KyselyInboxConfigurationReader(fixture.db);
+    expect(
+      await reader.resolve(
+        request(
+          candidate({ transactionType: value('income'), category: value(id.category) }),
+          reference,
+        ),
+      ),
+    ).toEqual({ kind: 'clarification', field: 'category', reason: 'invalid' });
+    expect(
+      await reader.resolve(request(candidate({ transactionType: value('income') }), reference)),
+    ).toMatchObject({ kind: 'create', input: { categoryId: null } });
+    expect(await fixture.db.selectFrom('transactions').select('id').execute()).toHaveLength(0);
+  });
   it('rereads sender default changes from an independent connection', async () => {
     const { id, reference } = await seed();
     const result = await race(candidate(), reference, async (db) => {

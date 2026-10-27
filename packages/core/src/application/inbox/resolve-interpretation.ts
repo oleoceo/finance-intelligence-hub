@@ -119,7 +119,8 @@ function matchingRules(candidate: CreateCandidate, state: Snapshot): Classificat
             (row) =>
               row.id === rule.targetCategoryId &&
               row.active &&
-              row.type === candidate.transactionType.value,
+              (row.type === candidate.transactionType.value ||
+                (row.type === 'both' && candidate.transactionType.value !== 'transfer')),
           )
         : undefined;
       const merchant = rule.targetMerchantId
@@ -224,7 +225,9 @@ function resolveCreate(
   const explicitBook = reference(state.books, candidate.book, 'book');
   if (isResult(explicitBook)) return explicitBook;
   const rules = matchingRules(candidate, state);
-  const ruleBook = ruleTarget(rules, 'targetBookId', activeBooks, 'book');
+  const ruleBook = explicitBook
+    ? undefined
+    : ruleTarget(rules, 'targetBookId', activeBooks, 'book');
   if (isResult(ruleBook)) return ruleBook;
   const senderBook = activeBooks.find((b) => b.id === state.sender?.defaultBookId);
   const book = explicitBook ?? ruleBook ?? senderBook ?? chooseOne(activeBooks, 'book');
@@ -245,7 +248,9 @@ function resolveCreate(
   if (isResult(explicitAccount)) return explicitAccount;
   if (explicitAccount && !eligibleAccounts.some((a) => a.id === explicitAccount.id))
     return clarification('account', 'invalid');
-  const ruleAccount = ruleTarget(bookRules, 'targetAccountId', eligibleAccounts, 'account');
+  const ruleAccount = explicitAccount
+    ? undefined
+    : ruleTarget(bookRules, 'targetAccountId', eligibleAccounts, 'account');
   if (isResult(ruleAccount)) return ruleAccount;
   const senderAccount = eligibleAccounts.find((a) => a.id === state.sender?.defaultAccountId);
   const account =
@@ -272,20 +277,27 @@ function resolveCreate(
   }
 
   const eligibleCategories = state.categories.filter(
-    (c) => c.active && c.bookId === book.id && c.type === candidate.transactionType.value,
+    (c) =>
+      c.active &&
+      c.bookId === book.id &&
+      (c.type === candidate.transactionType.value || c.type === 'both'),
   );
   const explicitCategory = reference(eligibleCategories, candidate.category, 'category');
   if (isResult(explicitCategory)) return explicitCategory;
   if (explicitCategory && !eligibleCategories.some((c) => c.id === explicitCategory.id))
     return clarification('category', 'invalid');
-  const ruleCategory = ruleTarget(bookRules, 'targetCategoryId', eligibleCategories, 'category');
+  const ruleCategory = explicitCategory
+    ? undefined
+    : ruleTarget(bookRules, 'targetCategoryId', eligibleCategories, 'category');
   if (isResult(ruleCategory)) return ruleCategory;
   const category = explicitCategory ?? ruleCategory;
 
   const activeMerchants = state.merchants.filter((m) => m.active);
   const explicitMerchant = reference(state.merchants, candidate.merchant, 'merchant');
   if (isResult(explicitMerchant)) return explicitMerchant;
-  const ruleMerchant = ruleTarget(bookRules, 'targetMerchantId', activeMerchants, 'merchant');
+  const ruleMerchant = explicitMerchant
+    ? undefined
+    : ruleTarget(bookRules, 'targetMerchantId', activeMerchants, 'merchant');
   if (isResult(ruleMerchant)) return ruleMerchant;
   const merchant = explicitMerchant ?? ruleMerchant;
 

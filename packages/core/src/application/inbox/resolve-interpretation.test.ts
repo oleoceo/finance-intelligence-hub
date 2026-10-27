@@ -103,7 +103,7 @@ const sender = (
 });
 const create = (
   fields: Partial<Extract<Interpretation, { kind: 'create_transaction' }>> = {},
-): Interpretation => ({
+): Extract<Interpretation, { kind: 'create_transaction' }> => ({
   kind: 'create_transaction',
   transactionType: value('expense'),
   amount: value('10.00'),
@@ -258,6 +258,136 @@ describe('P03 configuration resolution', () => {
       kind: 'clarification',
       field: 'book',
       reason: 'ambiguous',
+    });
+  });
+  it('honors an explicit Book despite tied conflicting Book rules', async () => {
+    const state = base();
+    state.rules.push(
+      rule('r1', 1, { targetBookId: 'pessoal' }),
+      rule('r2', 1, { targetBookId: 'empresa' }),
+    );
+    expect(await resolve(create({ book: value('empresa') }), state)).toMatchObject({
+      kind: 'create',
+      input: { bookId: 'empresa', accountId: 'corporate' },
+    });
+    expect(await resolve(create({ book: value('unknown') }), state)).toEqual({
+      kind: 'clarification',
+      field: 'book',
+      reason: 'invalid',
+    });
+  });
+  it('honors an explicit Account despite tied conflicting Account rules', async () => {
+    const state = base();
+    state.rules.push(
+      rule('r1', 1, { targetAccountId: 'cash' }),
+      rule('r2', 1, { targetAccountId: 'bank' }),
+    );
+    expect(await resolve(create(), state)).toEqual({
+      kind: 'clarification',
+      field: 'account',
+      reason: 'ambiguous',
+    });
+    expect(await resolve(create({ account: value('bank') }), state)).toMatchObject({
+      kind: 'create',
+      input: { accountId: 'bank' },
+    });
+  });
+  it('honors an explicit Category despite tied conflicting Category rules', async () => {
+    const state = base();
+    state.categories.push(category('food', 'pessoal'), category('travel', 'pessoal'));
+    state.rules.push(
+      rule('r1', 1, { targetCategoryId: 'food' }),
+      rule('r2', 1, { targetCategoryId: 'travel' }),
+    );
+    expect(await resolve(create(), state)).toEqual({
+      kind: 'clarification',
+      field: 'category',
+      reason: 'ambiguous',
+    });
+    expect(await resolve(create({ category: value('travel') }), state)).toMatchObject({
+      kind: 'create',
+      input: { categoryId: 'travel' },
+    });
+  });
+  it('honors an explicit Merchant despite tied conflicting Merchant rules', async () => {
+    const state = base();
+    state.merchants.push(merchant('first'), merchant('second'));
+    state.rules.push(
+      rule('r1', 1, { targetMerchantId: 'first' }),
+      rule('r2', 1, { targetMerchantId: 'second' }),
+    );
+    expect(await resolve(create(), state)).toEqual({
+      kind: 'clarification',
+      field: 'merchant',
+      reason: 'ambiguous',
+    });
+    expect(await resolve(create({ merchant: value('second') }), state)).toMatchObject({
+      kind: 'create',
+      input: { merchantId: 'second' },
+    });
+  });
+  it.each(['expense', 'income'] as const)(
+    'accepts a both Category for %s explicitly and through a rule',
+    async (transactionType) => {
+      const state = base();
+      state.categories.push(category('shared', 'pessoal', 'both'));
+      expect(
+        await resolve(
+          create({ transactionType: value(transactionType), category: value('shared') }),
+          state,
+        ),
+      ).toMatchObject({
+        kind: 'create',
+        input: { type: transactionType, categoryId: 'shared' },
+      });
+      state.rules.push(rule('r', 1, { targetCategoryId: 'shared' }));
+      expect(
+        await resolve(create({ transactionType: value(transactionType) }), state),
+      ).toMatchObject({
+        kind: 'create',
+        input: { type: transactionType, categoryId: 'shared' },
+      });
+    },
+  );
+  it('rejects incompatible Category types and Books for explicit and rule targets', async () => {
+    const state = base();
+    state.categories.push(
+      category('income-only', 'pessoal', 'income'),
+      category('elsewhere', 'empresa', 'both'),
+    );
+    expect(await resolve(create({ category: value('income-only') }), state)).toEqual({
+      kind: 'clarification',
+      field: 'category',
+      reason: 'invalid',
+    });
+    expect(await resolve(create({ category: value('elsewhere') }), state)).toEqual({
+      kind: 'clarification',
+      field: 'category',
+      reason: 'invalid',
+    });
+    state.rules.push(rule('r', 1, { targetCategoryId: 'income-only' }));
+    expect(await resolve(create(), state)).toMatchObject({
+      kind: 'create',
+      input: { categoryId: null },
+    });
+  });
+  it('never assigns a both Category to a Transfer', async () => {
+    const state = base();
+    state.categories.push(category('shared', 'pessoal', 'both'));
+    state.rules.push(rule('r', 1, { targetCategoryId: 'shared' }));
+    const transfer = create({
+      transactionType: value('transfer'),
+      account: value('cash'),
+      destinationAccount: value('bank'),
+    });
+    expect(await resolve(transfer, state)).toMatchObject({
+      kind: 'create',
+      input: { type: 'transfer', destinationAccountId: 'bank' },
+    });
+    expect(await resolve({ ...transfer, category: value('shared') }, state)).toEqual({
+      kind: 'clarification',
+      field: 'category',
+      reason: 'invalid',
     });
   });
   it('skips a rule when any target is inactive or incompatible', async () => {

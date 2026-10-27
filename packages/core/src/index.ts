@@ -299,6 +299,13 @@ export type {
   InboxTransactionPort,
 } from './application/ports/inbox-ports.js';
 export { InboxIdentityConflictError } from './application/ports/inbox-ports.js';
+export { interpretMessage } from './application/inbox/interpret-message.js';
+export type {
+  Interpretation,
+  CreateCandidate,
+  DateExpression,
+  ExplicitValue,
+} from './application/ports/interpretation-ports.js';
 export {
   claimInboxMessage,
   normalizeSenderReference,

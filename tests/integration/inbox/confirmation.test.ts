@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Kysely, PostgresDialect } from 'kysely';
+import { Kysely, PostgresDialect, sql } from 'kysely';
 import { Pool } from 'pg';
 import { GenericContainer, Wait, type StartedTestContainer } from 'testcontainers';
 import { KyselyConfirmationSessionRepository, migrateUp } from '@finance-hub/database';
@@ -96,19 +96,29 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
   async function open(o: Awaited<ReturnType<typeof owner>>, at = now) {
     const inboxMessageId = await inbox(o, 'needs_confirmation');
     const id = randomUUID();
-    const session = await first
-      .transaction()
-      .execute((tx) =>
-        new KyselyConfirmationSessionRepository(tx).create({
-          ...o,
-          id,
-          inboxMessageId,
-          action: 'create_transaction',
-          payload: { amount: '10.00' },
-          now: at,
-        }),
-      );
+    const session = await first.transaction().execute((tx) =>
+      new KyselyConfirmationSessionRepository(tx).create({
+        ...o,
+        id,
+        inboxMessageId,
+        action: 'create_transaction',
+        payload: { amount: '10.00' },
+        now: at,
+      }),
+    );
     return { session, inboxMessageId };
+  }
+
+  async function observeBlockedBackend(pid: number) {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      const state = await sql<{
+        wait_event_type: string | null;
+      }>`select wait_event_type from pg_stat_activity where pid = ${pid}`.execute(first);
+      if (state.rows[0]?.wait_event_type === 'Lock') return;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    throw new Error('Competing PostgreSQL backend did not wait on a lock');
   }
 
   it('persists origin, payload and 15-minute TTL; rejects a second pending row', async () => {
@@ -118,18 +128,16 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     expect(session.payload).toEqual({ amount: '10.00' });
     const other = await inbox(o, 'needs_confirmation');
     await expect(
-      first
-        .transaction()
-        .execute((tx) =>
-          new KyselyConfirmationSessionRepository(tx).create({
-            ...o,
-            id: randomUUID(),
-            inboxMessageId: other,
-            action: 'create_transaction',
-            payload: {},
-            now,
-          }),
-        ),
+      first.transaction().execute((tx) =>
+        new KyselyConfirmationSessionRepository(tx).create({
+          ...o,
+          id: randomUUID(),
+          inboxMessageId: other,
+          action: 'create_transaction',
+          payload: {},
+          now,
+        }),
+      ),
     ).rejects.toThrow();
     await expect(
       first
@@ -160,16 +168,14 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     const o = await owner();
     const { session, inboxMessageId } = await open(o);
     const resolverInboxMessageId = await inbox(o, 'processing');
-    const result = await first
-      .transaction()
-      .execute((tx) =>
-        new KyselyConfirmationSessionRepository(tx).resolveReply({
-          ...o,
-          reply: 'no',
-          resolverInboxMessageId,
-          now: later(1000),
-        }),
-      );
+    const result = await first.transaction().execute((tx) =>
+      new KyselyConfirmationSessionRepository(tx).resolveReply({
+        ...o,
+        reply: 'no',
+        resolverInboxMessageId,
+        now: later(1000),
+      }),
+    );
     expect(result).toMatchObject({
       kind: 'cancelled',
       session: { id: session.id, inboxMessageId, resolvedByInboxMessageId: resolverInboxMessageId },
@@ -187,16 +193,14 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     );
     const lateResolverId = await inbox(o, 'processing');
     expect(
-      await first
-        .transaction()
-        .execute((tx) =>
-          new KyselyConfirmationSessionRepository(tx).resolveReply({
-            ...o,
-            reply: 'yes',
-            resolverInboxMessageId: lateResolverId,
-            now: later(2000),
-          }),
-        ),
+      await first.transaction().execute((tx) =>
+        new KyselyConfirmationSessionRepository(tx).resolveReply({
+          ...o,
+          reply: 'yes',
+          resolverInboxMessageId: lateResolverId,
+          now: later(2000),
+        }),
+      ),
     ).toEqual({ kind: 'none' });
   });
 
@@ -204,16 +208,14 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     const o = await owner();
     const { inboxMessageId } = await open(o);
     const resolverInboxMessageId = await inbox(o, 'processing');
-    const result = await first
-      .transaction()
-      .execute((tx) =>
-        new KyselyConfirmationSessionRepository(tx).resolveReply({
-          ...o,
-          reply: 'yes',
-          resolverInboxMessageId,
-          now: later(1000),
-        }),
-      );
+    const result = await first.transaction().execute((tx) =>
+      new KyselyConfirmationSessionRepository(tx).resolveReply({
+        ...o,
+        reply: 'yes',
+        resolverInboxMessageId,
+        now: later(1000),
+      }),
+    );
     expect(result).toMatchObject({
       kind: 'confirmed',
       session: { inboxMessageId, resolvedByInboxMessageId: resolverInboxMessageId },
@@ -310,16 +312,14 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     ).toBe('ignored');
     const lateResolverId = await inbox(o, 'processing');
     expect(
-      await first
-        .transaction()
-        .execute((tx) =>
-          new KyselyConfirmationSessionRepository(tx).resolveReply({
-            ...o,
-            reply: 'yes',
-            resolverInboxMessageId: lateResolverId,
-            now: later(900001),
-          }),
-        ),
+      await first.transaction().execute((tx) =>
+        new KyselyConfirmationSessionRepository(tx).resolveReply({
+          ...o,
+          reply: 'yes',
+          resolverInboxMessageId: lateResolverId,
+          now: later(900001),
+        }),
+      ),
     ).toEqual({ kind: 'none' });
     void repo;
   });
@@ -348,16 +348,14 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     ).toBe('ignored');
     const lateResolverId = await inbox(o, 'processing');
     expect(
-      await first
-        .transaction()
-        .execute((tx) =>
-          new KyselyConfirmationSessionRepository(tx).resolveReply({
-            ...o,
-            reply: 'yes',
-            resolverInboxMessageId: lateResolverId,
-            now: later(2000),
-          }),
-        ),
+      await first.transaction().execute((tx) =>
+        new KyselyConfirmationSessionRepository(tx).resolveReply({
+          ...o,
+          reply: 'yes',
+          resolverInboxMessageId: lateResolverId,
+          now: later(2000),
+        }),
+      ),
     ).toEqual({ kind: 'none' });
   });
 
@@ -386,16 +384,21 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
       return result;
     });
     await locked;
-    const loser = second
-      .transaction()
-      .execute((tx) =>
-        new KyselyConfirmationSessionRepository(tx).resolveReply({
-          ...o,
-          reply: 'yes',
-          resolverInboxMessageId: yesId,
-          now: later(1000),
-        }),
-      );
+    let started!: (pid: number) => void;
+    const backend = new Promise<number>((resolve) => {
+      started = resolve;
+    });
+    const loser = second.transaction().execute(async (tx) => {
+      const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(tx);
+      started(pid.rows[0]!.pid);
+      return new KyselyConfirmationSessionRepository(tx).resolveReply({
+        ...o,
+        reply: 'yes',
+        resolverInboxMessageId: yesId,
+        now: later(1000),
+      });
+    });
+    await observeBlockedBackend(await backend);
     release();
     expect(await winner).toMatchObject({ kind: 'cancelled' });
     expect(await loser).toEqual({ kind: 'none' });
@@ -407,16 +410,14 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
     const { session } = await open(o);
     const intruderReply = await inbox(intruder, 'processing');
     expect(
-      await first
-        .transaction()
-        .execute((tx) =>
-          new KyselyConfirmationSessionRepository(tx).resolveReply({
-            ...intruder,
-            reply: 'yes',
-            resolverInboxMessageId: intruderReply,
-            now: later(1000),
-          }),
-        ),
+      await first.transaction().execute((tx) =>
+        new KyselyConfirmationSessionRepository(tx).resolveReply({
+          ...intruder,
+          reply: 'yes',
+          resolverInboxMessageId: intruderReply,
+          now: later(1000),
+        }),
+      ),
     ).toEqual({ kind: 'none' });
     expect(
       (
@@ -428,16 +429,14 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
       )?.status,
     ).toBe('pending');
     await expect(
-      first
-        .transaction()
-        .execute((tx) =>
-          new KyselyConfirmationSessionRepository(tx).resolveReply({
-            ...o,
-            reply: 'yes',
-            resolverInboxMessageId: intruderReply,
-            now: later(1000),
-          }),
-        ),
+      first.transaction().execute((tx) =>
+        new KyselyConfirmationSessionRepository(tx).resolveReply({
+          ...o,
+          reply: 'yes',
+          resolverInboxMessageId: intruderReply,
+          now: later(1000),
+        }),
+      ),
     ).rejects.toThrow();
   });
 
@@ -466,16 +465,21 @@ describe('Confirmation PostgreSQL lifecycle', { timeout: 30000 }, () => {
         return result;
       });
       await locked;
-      const confirmation = second
-        .transaction()
-        .execute((tx) =>
-          new KyselyConfirmationSessionRepository(tx).resolveReply({
-            ...o,
-            reply: 'yes',
-            resolverInboxMessageId,
-            now: later(1000),
-          }),
-        );
+      let started!: (pid: number) => void;
+      const backend = new Promise<number>((resolve) => {
+        started = resolve;
+      });
+      const confirmation = second.transaction().execute(async (tx) => {
+        const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(tx);
+        started(pid.rows[0]!.pid);
+        return new KyselyConfirmationSessionRepository(tx).resolveReply({
+          ...o,
+          reply: 'yes',
+          resolverInboxMessageId,
+          now: later(1000),
+        });
+      });
+      await observeBlockedBackend(await backend);
       release();
       expect(await terminal).toMatchObject({
         kind: operation === 'expire' ? 'expired' : 'cancelled',

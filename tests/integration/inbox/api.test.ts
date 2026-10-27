@@ -16,6 +16,8 @@ const now = new Date('2026-10-21T12:00:00Z');
 const senderReference = '5511998877665';
 let app: ReturnType<typeof buildApp>;
 let bookId: string;
+let secondBookId: string;
+let secondAccountId: string;
 let accountId: string;
 let destinationId: string;
 let senderId: string;
@@ -71,6 +73,8 @@ async function count(
 
 beforeAll(async () => {
   bookId = randomUUID();
+  secondBookId = randomUUID();
+  secondAccountId = randomUUID();
   accountId = randomUUID();
   destinationId = randomUUID();
   senderId = randomUUID();
@@ -81,6 +85,31 @@ beforeAll(async () => {
       normalizedName: 'empresa',
       currency: 'BRL',
       timezone: 'America/Sao_Paulo',
+      active: true,
+      archivedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ctx.books.create({
+      id: secondBookId,
+      name: 'Pessoal',
+      normalizedName: 'pessoal',
+      currency: 'BRL',
+      timezone: 'America/Sao_Paulo',
+      active: true,
+      archivedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ctx.accounts.create({
+      id: secondAccountId,
+      bookId: secondBookId,
+      name: 'Pessoal',
+      normalizedName: 'pessoal',
+      type: 'checking',
+      currency: 'BRL',
+      institutionName: null,
+      notes: null,
       active: true,
       archivedAt: null,
       createdAt: now,
@@ -573,6 +602,11 @@ describe('P05 Inbox API with PostgreSQL', () => {
       expect(result.statusCode, result.body).toBe(200);
       expect(result.json().data.result.type).toBe('transaction_created');
       expect(lockAttempts).toBe(2);
+      await fixture.db
+        .updateTable('books')
+        .set({ active: false, archived_at: now, updated_at: now })
+        .where('id', '=', addedId)
+        .execute();
     } finally {
       release();
       await paused.close();
@@ -978,43 +1012,16 @@ describe('P05 Inbox API with PostgreSQL', () => {
   });
 
   it('returns a safe empty result for a different default Book without financial writes', async () => {
-    const secondBook = randomUUID();
-    const secondAccount = randomUUID();
     const secondSender = randomUUID();
     const secondReference = '5511777666555';
     await fixture.run(async (ctx) => {
-      await ctx.books.create({
-        id: secondBook,
-        name: 'Pessoal',
-        normalizedName: 'pessoal',
-        currency: 'BRL',
-        timezone: 'America/Sao_Paulo',
-        active: true,
-        archivedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await ctx.accounts.create({
-        id: secondAccount,
-        bookId: secondBook,
-        name: 'Pessoal',
-        normalizedName: 'pessoal',
-        type: 'checking',
-        currency: 'BRL',
-        institutionName: null,
-        notes: null,
-        active: true,
-        archivedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
       await ctx.authorizedSenders.create({
         id: secondSender,
         channel: 'whatsapp',
         senderReference: secondReference,
         name: 'Other sender',
-        defaultBookId: secondBook,
-        defaultAccountId: secondAccount,
+        defaultBookId: secondBookId,
+        defaultAccountId: secondAccountId,
         active: true,
         createdAt: now,
         updatedAt: now,
@@ -1069,4 +1076,335 @@ describe('P05 Inbox API with PostgreSQL', () => {
     expect(await count('audit_events')).toBe(before.audits);
     expect(await count('idempotency_keys')).toBe(before.keys);
   });
+
+  it('advances Book choice to Account choice and posts the original expense once', async () => {
+    const reference = '5511444333222';
+    await fixture.run((ctx) =>
+      ctx.authorizedSenders.create({
+        id: randomUUID(),
+        channel: 'whatsapp',
+        senderReference: reference,
+        name: 'Two-step sender',
+        defaultBookId: null,
+        defaultAccountId: null,
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+    const request = (text: string, sourceMessageId = randomUUID()) => ({
+      ...body(text, sourceMessageId),
+      sender_reference: reference,
+    });
+    const before = {
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    expect(
+      await fixture.db.selectFrom('books').select('id').where('active', '=', true).execute(),
+    ).toHaveLength(2);
+    expect(
+      await fixture.db
+        .selectFrom('accounts')
+        .select('id')
+        .where('book_id', '=', bookId)
+        .where('active', '=', true)
+        .execute(),
+    ).toHaveLength(2);
+    const original = await post(request('gastei 18 café'));
+    expect(original.statusCode, original.body).toBe(200);
+    const originalId = original.json().data.inbox_message.id as string;
+    const firstConfirmation = original.json().data.result.confirmation;
+    expect(firstConfirmation.action).toBe('select_book');
+    expect(firstConfirmation.options).toHaveLength(2);
+    const bookChoice = firstConfirmation.options.find(
+      (option: { name: string }) => option.name === 'Empresa',
+    );
+    expect(bookChoice).toBeDefined();
+    let entered!: () => void;
+    let release!: () => void;
+    const atLock = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const proceed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const real = new KyselyFinancialTransactionPort(fixture.db);
+    const paused = buildForConnection({
+      inboxProcessing: {
+        runInboxTransaction: (fn) =>
+          real.runInboxTransaction((ctx) =>
+            fn({
+              ...ctx,
+              locks: {
+                acquireLocks: async (spec) => {
+                  entered();
+                  await proceed;
+                  await ctx.locks.acquireLocks(spec);
+                },
+              },
+            }),
+          ),
+      },
+    });
+    await paused.ready();
+    const otherChoice = firstConfirmation.options.find(
+      (option: { name: string }) => option.name === 'Pessoal',
+    );
+    let intermediate!: Awaited<ReturnType<typeof post>>;
+    const competingRequest = request(otherChoice.number);
+    const intermediateRequest = request(bookChoice.number);
+    try {
+      const competing = paused.inject({
+        method: 'POST',
+        url: '/api/v1/inbox/messages',
+        headers: { authorization: 'Bearer integration-ingest' },
+        payload: competingRequest,
+      });
+      await atLock;
+      intermediate = await post(intermediateRequest);
+      release();
+      const stale = await competing;
+      expect(stale.statusCode, stale.body).toBe(200);
+      expect(stale.json().data.result.confirmation.action).toBe('select_account');
+      expect(await count('transactions')).toBe(before.transactions);
+    } finally {
+      release();
+      await paused.close();
+    }
+    expect(intermediate.statusCode, intermediate.body).toBe(200);
+    const secondConfirmation = intermediate.json().data.result.confirmation;
+    expect(secondConfirmation.action).toBe('select_account');
+    expect(secondConfirmation.id).toBe(firstConfirmation.id);
+    expect(
+      secondConfirmation.options.map((option: { name: string }) => option.name).sort(),
+    ).toEqual(['Caixa', 'Nubank']);
+    expect(await count('transactions')).toBe(before.transactions);
+    expect(await count('audit_events')).toBe(before.audits);
+    expect(await count('idempotency_keys')).toBe(before.keys);
+    const session = await fixture.db
+      .selectFrom('confirmation_sessions')
+      .selectAll()
+      .where('id', '=', firstConfirmation.id)
+      .executeTakeFirstOrThrow();
+    expect(session.status).toBe('pending');
+    expect(session.inbox_message_id).toBe(originalId);
+    const intermediateRows = await fixture.db
+      .selectFrom('inbox_messages')
+      .select(['source_message_id', 'processing_status'])
+      .where('source_message_id', 'in', [
+        intermediateRequest.source_message_id,
+        competingRequest.source_message_id,
+      ])
+      .execute();
+    expect(intermediateRows).toEqual(
+      expect.arrayContaining([
+        {
+          source_message_id: intermediateRequest.source_message_id,
+          processing_status: 'processed',
+        },
+        { source_message_id: competingRequest.source_message_id, processing_status: 'processed' },
+      ]),
+    );
+    expect(
+      (session.payload as { interpretation: { book: { value: string } } }).interpretation.book
+        .value,
+    ).toBe(bookId);
+    expect(
+      await fixture.db
+        .selectFrom('confirmation_sessions')
+        .select('id')
+        .where('sender_reference', '=', reference)
+        .where('status', '=', 'pending')
+        .execute(),
+    ).toHaveLength(1);
+    const accountChoice = secondConfirmation.options.find(
+      (option: { name: string }) => option.name === 'Caixa',
+    );
+    const finalRequest = request(accountChoice.number);
+    const final = await post(finalRequest);
+    expect(final.statusCode, final.body).toBe(200);
+    expect(final.json().data.result.type).toBe('transaction_created');
+    const financial = await fixture.db
+      .selectFrom('transactions')
+      .selectAll()
+      .where('inbox_message_id', '=', originalId)
+      .execute();
+    expect(financial).toHaveLength(1);
+    expect(financial[0]).toMatchObject({
+      type: 'expense',
+      status: 'posted',
+      book_id: bookId,
+      account_id: destinationId,
+      amount: '18.00',
+      description: 'café',
+    });
+    expect(await count('transactions')).toBe(before.transactions + 1);
+    expect(await count('audit_events')).toBe(before.audits + 1);
+    expect(await count('idempotency_keys')).toBe(before.keys + 1);
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('status')
+          .where('id', '=', firstConfirmation.id)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('confirmed');
+    const inboxes = await fixture.db
+      .selectFrom('inbox_messages')
+      .select(['id', 'processing_status'])
+      .where('id', 'in', [originalId, final.json().data.inbox_message.id])
+      .execute();
+    expect(inboxes).toEqual(
+      expect.arrayContaining([
+        { id: originalId, processing_status: 'processed' },
+        { id: final.json().data.inbox_message.id, processing_status: 'processed' },
+      ]),
+    );
+    expect((await post(finalRequest)).json().data.result.type).toBe('duplicate_message');
+    expect(await count('transactions')).toBe(before.transactions + 1);
+  });
+
+  it('asks for reformulation when a selected Book has no eligible Account', async () => {
+    const reference = '5511444333225';
+    await fixture.run((ctx) =>
+      ctx.authorizedSenders.create({
+        id: randomUUID(),
+        channel: 'whatsapp',
+        senderReference: reference,
+        name: 'Missing account sender',
+        defaultBookId: null,
+        defaultAccountId: null,
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+    const request = (text: string) => ({ ...body(text), sender_reference: reference });
+    const original = await post(request('gastei 18 café'));
+    const originalId = original.json().data.inbox_message.id as string;
+    const confirmation = original.json().data.result.confirmation;
+    const bookChoice = confirmation.options.find(
+      (option: { name: string }) => option.name === 'Empresa',
+    );
+    const before = await count('transactions');
+    await fixture.db
+      .updateTable('accounts')
+      .set({ active: false, archived_at: now, updated_at: now })
+      .where('book_id', '=', bookId)
+      .execute();
+    try {
+      const selected = await post(request(bookChoice.number));
+      expect(selected.statusCode, selected.body).toBe(200);
+      expect(selected.json().data.result.confirmation.action).toBe('clarify_account');
+      expect(selected.json().data.result.confirmation.options).toEqual([]);
+      expect(
+        (
+          await fixture.db
+            .selectFrom('confirmation_sessions')
+            .select('status')
+            .where('id', '=', confirmation.id)
+            .executeTakeFirstOrThrow()
+        ).status,
+      ).toBe('pending');
+      expect(await count('transactions')).toBe(before);
+    } finally {
+      await fixture.db
+        .updateTable('accounts')
+        .set({ active: true, archived_at: null, updated_at: now })
+        .where('book_id', '=', bookId)
+        .execute();
+    }
+    const replacement = await post(request('gastei empresa 19 café conta: Nubank'));
+    expect(replacement.statusCode, replacement.body).toBe(200);
+    expect(replacement.json().data.result.type).toBe('transaction_created');
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('resolution_reason')
+          .where('id', '=', confirmation.id)
+          .executeTakeFirstOrThrow()
+      ).resolution_reason,
+    ).toBe('superseded_by_new_command');
+    expect(
+      (
+        await fixture.db
+          .selectFrom('inbox_messages')
+          .select('processing_status')
+          .where('id', '=', originalId)
+          .executeTakeFirstOrThrow()
+      ).processing_status,
+    ).toBe('ignored');
+    expect(
+      await fixture.db
+        .selectFrom('transactions')
+        .select('id')
+        .where('inbox_message_id', '=', originalId)
+        .execute(),
+    ).toEqual([]);
+  });
+
+  it.each(['Empresa', 'Pessoal'] as const)(
+    'selects Book for read-only último in %s, including empty result',
+    async (name) => {
+      const reference = name === 'Empresa' ? '5511444333223' : '5511444333224';
+      await fixture.run((ctx) =>
+        ctx.authorizedSenders.create({
+          id: randomUUID(),
+          channel: 'whatsapp',
+          senderReference: reference,
+          name: 'Read choice sender',
+          defaultBookId: null,
+          defaultAccountId: null,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        }),
+      );
+      const request = (text: string) => ({ ...body(text), sender_reference: reference });
+      const before = {
+        transactions: await count('transactions'),
+        audits: await count('audit_events'),
+        keys: await count('idempotency_keys'),
+      };
+      const original = await post(request('último'));
+      expect(original.statusCode, original.body).toBe(200);
+      const originalId = original.json().data.inbox_message.id as string;
+      const confirmation = original.json().data.result.confirmation;
+      expect(confirmation.action).toBe('select_book');
+      expect(confirmation.options).toHaveLength(2);
+      const choice = confirmation.options.find((option: { name: string }) => option.name === name);
+      const selected = await post(request(choice.number));
+      expect(selected.statusCode, selected.body).toBe(200);
+      expect(selected.json().data.result.type).toBe('query_last');
+      if (name === 'Pessoal') expect(selected.json().data.result.transaction).toBeNull();
+      else expect(selected.json().data.result.transaction.book_id).toBe(bookId);
+      expect(
+        (
+          await fixture.db
+            .selectFrom('confirmation_sessions')
+            .select('status')
+            .where('id', '=', confirmation.id)
+            .executeTakeFirstOrThrow()
+        ).status,
+      ).toBe('confirmed');
+      const rows = await fixture.db
+        .selectFrom('inbox_messages')
+        .select(['id', 'processing_status'])
+        .where('id', 'in', [originalId, selected.json().data.inbox_message.id])
+        .execute();
+      expect(rows).toEqual(
+        expect.arrayContaining([
+          { id: originalId, processing_status: 'processed' },
+          { id: selected.json().data.inbox_message.id, processing_status: 'processed' },
+        ]),
+      );
+      expect(await count('transactions')).toBe(before.transactions);
+      expect(await count('audit_events')).toBe(before.audits);
+      expect(await count('idempotency_keys')).toBe(before.keys);
+    },
+  );
 });

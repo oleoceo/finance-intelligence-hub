@@ -203,6 +203,51 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
     return map(row);
   }
 
+  async advanceChoice(
+    input: ConfirmationOwner &
+      ConfirmationResolverClaim & {
+        sessionId: string;
+        action: string;
+        payload: Record<string, unknown>;
+        now: Date;
+      },
+  ): Promise<ConfirmationSession> {
+    if (!(await this.lockOwner(input))) throw new Error('Confirmation sender unavailable');
+    const row = await this.pending(input);
+    if (!row || row.id !== input.sessionId || isConfirmationExpired(row.expires_at, input.now))
+      throw new Error('Confirmation is not pending');
+    const original = await this.lockInbox(row.inbox_message_id, input);
+    if (original.processing_status !== 'needs_confirmation')
+      throw new Error('Confirmation original Inbox is not pending');
+    const resolver = await this.lockInbox(input.resolverInboxMessageId, input);
+    if (!this.matchesClaim(resolver, input))
+      throw new Error('Confirmation resolver claim is stale');
+    const updated = await this.db
+      .updateTable('confirmation_sessions')
+      .set({ action: input.action, payload: input.payload })
+      .where('id', '=', row.id)
+      .where('status', '=', 'pending')
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const finished = await this.db
+      .updateTable('inbox_messages')
+      .set({
+        processing_status: 'processed',
+        processed_at: input.now,
+        updated_at: input.now,
+        failure_code: null,
+        failure_message: null,
+      })
+      .where('id', '=', resolver.id)
+      .where('processing_status', '=', 'processing')
+      .where('attempt_count', '=', input.attemptCount)
+      .where('processing_started_at', '=', input.processingStartedAt)
+      .returning('id')
+      .executeTakeFirst();
+    if (!finished) throw new Error('Confirmation resolver Inbox is not processing');
+    return map(updated);
+  }
+
   async resolveReply(
     input: ConfirmationOwner & {
       reply: ConfirmationReply;

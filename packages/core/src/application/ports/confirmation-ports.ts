@@ -62,6 +62,15 @@ export interface ConfirmationResolverClaim {
  */
 export interface ConfirmationSessionRepository {
   create(input: NewConfirmationSession): Promise<ConfirmationSession>;
+  advanceChoice(
+    input: ConfirmationOwner &
+      ConfirmationResolverClaim & {
+        sessionId: string;
+        action: string;
+        payload: Record<string, unknown>;
+        now: Date;
+      },
+  ): Promise<ConfirmationSession>;
   resolveReply(
     input: ConfirmationOwner &
       ConfirmationResolverClaim & {

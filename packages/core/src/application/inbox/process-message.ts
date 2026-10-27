@@ -1,0 +1,308 @@
+import { v7 as uuidv7 } from 'uuid';
+import type { GenericCreateTransaction } from '../finance/create-transaction.js';
+import type {
+  InboxProcessingContext,
+  InboxProcessingPort,
+} from '../ports/financial-transaction-port.js';
+import type { InboxClaim, InboxTransactionPort, InboxMessage } from '../ports/inbox-ports.js';
+import type { Interpretation, ResolutionResult } from '../ports/interpretation-ports.js';
+import type { TransactionReadRecord, TransactionRecord } from '../ports/transaction-ports.js';
+import {
+  claimInboxMessage,
+  SenderNotAuthorizedError,
+  type IngestionEnvelope,
+} from './claim-inbox-message.js';
+import { interpretMessage } from './interpret-message.js';
+import { resolveInterpretation } from './resolve-interpretation.js';
+
+export type InboxProcessingResult =
+  | {
+      type:
+        | 'ignored'
+        | 'duplicate_message'
+        | 'processing'
+        | 'stale_claim'
+        | 'cancelled'
+        | 'expired'
+        | 'choice';
+      inboxMessageId?: string;
+      status?: string;
+    }
+  | {
+      type: 'transaction_created';
+      inboxMessageId: string;
+      status: 'processed';
+      transaction: TransactionRecord;
+    }
+  | {
+      type: 'query_last';
+      inboxMessageId: string;
+      status: 'processed';
+      transaction: TransactionReadRecord | null;
+    }
+  | {
+      type: 'confirmation_required';
+      inboxMessageId: string;
+      status: 'needs_confirmation';
+      confirmation: { id: string; action: string; expiresAt: Date };
+    };
+
+export interface ProcessMessageDependencies {
+  inboxTransactions: InboxTransactionPort;
+  processing: InboxProcessingPort;
+  genericCreate: Pick<GenericCreateTransaction, 'executeInContext'>;
+  now: () => Date;
+  id?: () => string;
+  staleTimeoutMs?: number;
+}
+
+function claimToken(claim: InboxClaim): {
+  id: string;
+  attemptCount: number;
+  processingStartedAt: Date;
+} {
+  if (!claim.processingStartedAt) throw new Error('Inbox claim has no processing timestamp');
+  return {
+    id: claim.message.id,
+    attemptCount: claim.attemptCount,
+    processingStartedAt: claim.processingStartedAt,
+  };
+}
+
+async function assertClaim(ctx: InboxProcessingContext, claim: InboxClaim): Promise<void> {
+  const current = await ctx.inbox.findById(claim.message.id);
+  if (
+    !current ||
+    current.status !== 'processing' ||
+    current.attemptCount !== claim.attemptCount ||
+    current.processingStartedAt?.getTime() !== claim.processingStartedAt?.getTime()
+  )
+    throw new StaleInboxClaimError();
+}
+
+export class StaleInboxClaimError extends Error {}
+
+async function resolveInContext(
+  ctx: InboxProcessingContext,
+  interpretation: Interpretation,
+  message: InboxMessage,
+  now: Date,
+): Promise<ResolutionResult> {
+  return resolveInterpretation(
+    {
+      interpretation,
+      channel: 'whatsapp',
+      senderReference: message.senderReference,
+      receivedAt: message.receivedAt,
+      now,
+    },
+    { runInTransaction: async (fn) => fn(ctx) },
+  );
+}
+
+async function authorized(ctx: InboxProcessingContext, message: InboxMessage): Promise<void> {
+  const sender = await ctx.authorizedSenders.findByChannelAndReference(
+    'whatsapp',
+    message.senderReference,
+  );
+  if (!sender || !sender.active || sender.id !== message.authorizedSenderId)
+    throw new SenderNotAuthorizedError();
+}
+
+async function finish(
+  ctx: InboxProcessingContext,
+  claim: InboxClaim,
+  status: 'processed' | 'ignored' | 'needs_confirmation',
+  now: Date,
+): Promise<void> {
+  const row = await ctx.inbox.transition({ ...claimToken(claim), status, now });
+  if (!row) throw new StaleInboxClaimError();
+}
+
+/** P01 claim is committed first; every subsequent effect shares one outer transaction. */
+export async function processInboxMessage(
+  envelope: IngestionEnvelope,
+  correlationId: string,
+  deps: ProcessMessageDependencies,
+): Promise<InboxProcessingResult> {
+  const now = deps.now();
+  const id = deps.id ?? uuidv7;
+  const claim = await claimInboxMessage(envelope, deps.inboxTransactions, {
+    id: id(),
+    correlationId,
+    now,
+    staleTimeoutMs: deps.staleTimeoutMs ?? 60_000,
+  });
+  if (!claim) return { type: 'ignored' };
+  if (!claim.claimed)
+    return {
+      type:
+        claim.message.status === 'processed' ||
+        claim.message.status === 'ignored' ||
+        claim.message.status === 'needs_confirmation'
+          ? 'duplicate_message'
+          : 'processing',
+      inboxMessageId: claim.message.id,
+      status: claim.message.status,
+    };
+
+  try {
+    return await deps.processing.runInboxTransaction(async (ctx) => {
+      const message = claim.message;
+      const parsed = interpretMessage(message);
+      const owner = {
+        channel: 'whatsapp',
+        senderReference: message.senderReference,
+        authorizedSenderId: message.authorizedSenderId,
+      };
+      const token = claimToken(claim);
+      const preview = parsed.kind === 'reply' ? await ctx.previewPending(owner) : null;
+      const original = preview ? await ctx.inbox.findById(preview.inboxMessageId) : null;
+      const pendingInterpretation = preview?.payload.interpretation as Interpretation | undefined;
+      let resolution: ResolutionResult | null = null;
+
+      // P03 discovers, locks and re-reads the complete M03 configuration set.
+      // A reply resolves the original candidate before P04 locks Inbox rows.
+      if (parsed.kind === 'create_transaction' || parsed.kind === 'query_last')
+        resolution = await resolveInContext(ctx, parsed, message, now);
+      else if (
+        parsed.kind === 'reply' &&
+        preview &&
+        original &&
+        pendingInterpretation &&
+        (pendingInterpretation.kind === 'create_transaction' ||
+          pendingInterpretation.kind === 'query_last')
+      )
+        resolution = await resolveInContext(ctx, pendingInterpretation, original, now);
+      else await ctx.locks.acquireLocks({ authorizedSenders: [message.authorizedSenderId] });
+
+      await authorized(ctx, message);
+      await assertClaim(ctx, claim);
+      await ctx.interpretations.create({
+        id: id(),
+        inboxMessageId: message.id,
+        attemptNumber: claim.attemptCount,
+        interpretation: parsed,
+        now,
+      });
+
+      if (parsed.kind === 'reply') {
+        const reply = await ctx.confirmations.resolveReply({
+          ...owner,
+          resolverInboxMessageId: message.id,
+          attemptCount: token.attemptCount,
+          processingStartedAt: token.processingStartedAt,
+          reply: parsed.response,
+          now,
+        });
+        if (reply.kind === 'stale_claim') throw new StaleInboxClaimError();
+        if (reply.kind === 'none')
+          return { type: 'ignored', inboxMessageId: message.id, status: 'ignored' };
+        if (reply.kind === 'expired' || reply.kind === 'cancelled')
+          return { type: reply.kind, inboxMessageId: message.id, status: 'processed' };
+        if (reply.kind === 'choice') {
+          await finish(ctx, claim, 'processed', now);
+          return { type: 'choice', inboxMessageId: message.id, status: 'processed' };
+        }
+        if (reply.session.id !== preview?.id || !original) throw new StaleInboxClaimError();
+        if (resolution?.kind !== 'create') {
+          await finish(ctx, claim, 'processed', now);
+          return {
+            type: 'confirmation_required',
+            inboxMessageId: original.id,
+            status: 'needs_confirmation',
+            confirmation: {
+              id: reply.session.id,
+              action: reply.session.action,
+              expiresAt: reply.session.expiresAt,
+            },
+          };
+        }
+        const transaction = await deps.genericCreate.executeInContext(
+          resolution.input,
+          `inbox:${original.id}`,
+          { correlationId },
+          ctx,
+          {
+            inboxMessageId: original.id,
+            sourceReference: original.sourceMessageId,
+            senderReference: original.senderReference,
+          },
+        );
+        await ctx.confirmations.finalizeConfirmed({
+          ...owner,
+          sessionId: reply.session.id,
+          resolverInboxMessageId: message.id,
+          attemptCount: token.attemptCount,
+          processingStartedAt: token.processingStartedAt,
+          now,
+        });
+        return {
+          type: 'transaction_created',
+          inboxMessageId: message.id,
+          status: 'processed',
+          transaction,
+        };
+      }
+
+      if (resolution?.kind === 'create') {
+        await ctx.confirmations.supersede({ ...owner, now });
+        const transaction = await deps.genericCreate.executeInContext(
+          resolution.input,
+          `inbox:${message.id}`,
+          { correlationId },
+          ctx,
+          {
+            inboxMessageId: message.id,
+            sourceReference: message.sourceMessageId,
+            senderReference: message.senderReference,
+          },
+        );
+        await finish(ctx, claim, 'processed', now);
+        return {
+          type: 'transaction_created',
+          inboxMessageId: message.id,
+          status: 'processed',
+          transaction,
+        };
+      }
+      if (resolution?.kind === 'query_last') {
+        const transaction = await ctx.reads.getLast({ bookId: resolution.bookId });
+        await finish(ctx, claim, 'processed', now);
+        return { type: 'query_last', inboxMessageId: message.id, status: 'processed', transaction };
+      }
+      await ctx.confirmations.supersede({ ...owner, now });
+      await finish(ctx, claim, 'needs_confirmation', now);
+      const action =
+        resolution?.kind === 'clarification' ? `select_${resolution.field}` : 'clarify_intent';
+      const confirmation = await ctx.confirmations.create({
+        ...owner,
+        id: id(),
+        inboxMessageId: message.id,
+        action,
+        payload: { interpretation: parsed, resolution },
+        now,
+      });
+      return {
+        type: 'confirmation_required',
+        inboxMessageId: message.id,
+        status: 'needs_confirmation',
+        confirmation: { id: confirmation.id, action, expiresAt: confirmation.expiresAt },
+      };
+    });
+  } catch (error) {
+    if (error instanceof StaleInboxClaimError)
+      return { type: 'stale_claim', inboxMessageId: claim.message.id };
+    // The financial transaction rolled back. A separate fenced transition makes
+    // this same Inbox row eligible for a future retry without recording a false effect.
+    await deps.inboxTransactions.runInTransaction(async ({ inbox }) => {
+      await inbox.transition({
+        ...claimToken(claim),
+        status: 'failed',
+        now: deps.now(),
+        failureCode: 'PROCESSING_FAILED',
+      });
+    });
+    throw error;
+  }
+}

@@ -120,8 +120,8 @@ describe('Transaction statuses', () => {
 
 describe('Transaction create sources', () => {
   describe('TRANSACTION_CREATE_SOURCES', () => {
-    it('contains exactly direct_api', () => {
-      expect(TRANSACTION_CREATE_SOURCES).toEqual(['direct_api']);
+    it('contains the server-controlled direct and Inbox sources', () => {
+      expect(TRANSACTION_CREATE_SOURCES).toEqual(['direct_api', 'whatsapp']);
     });
   });
 
@@ -130,8 +130,8 @@ describe('Transaction create sources', () => {
       expect(isValidTransactionCreateSource('direct_api')).toBe(true);
     });
 
-    it('rejects whatsapp', () => {
-      expect(isValidTransactionCreateSource('whatsapp')).toBe(false);
+    it('accepts whatsapp', () => {
+      expect(isValidTransactionCreateSource('whatsapp')).toBe(true);
     });
 
     it('rejects non-string', () => {

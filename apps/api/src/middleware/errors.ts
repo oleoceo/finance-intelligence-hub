@@ -6,6 +6,9 @@ import {
   DependencyError,
   ConcurrencyError,
   FinancialError,
+  SenderNotAuthorizedError,
+  InboxIdentityConflictError,
+  InvalidInboxEnvelopeError,
 } from '@finance-hub/core';
 import { meta } from '../routes/admin/shared.js';
 
@@ -56,6 +59,10 @@ for (const constraint of [
 
 export function mapError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
+  if (error instanceof SenderNotAuthorizedError) return new ApiError(403, 'SENDER_NOT_AUTHORIZED');
+  if (error instanceof InboxIdentityConflictError)
+    return new ApiError(409, 'VALIDATION_ERROR', 'inbox_identity_conflict');
+  if (error instanceof InvalidInboxEnvelopeError) return validation('invalid_request');
   if (error instanceof ValidationError && error.cause) return mapError(error.cause);
   const e = error as {
     code?: string;

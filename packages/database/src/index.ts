@@ -36,3 +36,4 @@ export { KyselyAuditWriter } from './repositories/audit-writer.js';
 export { KyselyInboxMessageRepository } from './repositories/inbox-message-repository.js';
 export { KyselyConfirmationSessionRepository } from './repositories/confirmation-session-repository.js';
 export { KyselyInboxTransactionPort } from './transaction/inbox-transaction.js';
+export { KyselyInterpretationRepository } from './repositories/interpretation-repository.js';

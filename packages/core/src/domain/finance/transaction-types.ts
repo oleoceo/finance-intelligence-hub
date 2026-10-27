@@ -11,12 +11,8 @@ export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 export const TRANSACTION_STATUSES = ['posted', 'voided'] as const;
 export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 
-/**
- * M04 creation source. Only direct_api is supported in V0.1 generic create.
- * WhatsApp ingestion flows through InboxMessage → ConfirmationSession → posted Transaction,
- * but the resulting Transaction.source remains server-controlled.
- */
-export const TRANSACTION_CREATE_SOURCES = ['direct_api'] as const;
+/** Server-controlled creation source. The direct route cannot choose WhatsApp provenance. */
+export const TRANSACTION_CREATE_SOURCES = ['direct_api', 'whatsapp'] as const;
 export type TransactionCreateSource = (typeof TRANSACTION_CREATE_SOURCES)[number];
 
 export function isValidTransactionType(value: unknown): value is TransactionType {

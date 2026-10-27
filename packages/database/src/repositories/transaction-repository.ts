@@ -32,6 +32,7 @@ export class KyselyTransactionRepository implements TransactionRepository {
       id: string;
       humanRef: string;
       source: TransactionCreateSource;
+      inboxMessageId?: string | null;
       currency: string;
     },
   ): Promise<TransactionRecord | null> {
@@ -63,7 +64,7 @@ export class KyselyTransactionRepository implements TransactionRepository {
         transaction_date: input.transactionDate,
         source: input.source,
         source_reference: input.sourceReference ?? null,
-        inbox_message_id: null,
+        inbox_message_id: input.inboxMessageId ?? null,
         refund_of_transaction_id: null,
         version: 1,
         voided_at: null,

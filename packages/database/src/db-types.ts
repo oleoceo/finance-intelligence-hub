@@ -6,6 +6,21 @@
  */
 
 export interface DB {
+  interpretations: {
+    id: string;
+    inbox_message_id: string;
+    attempt_number: number;
+    intent: string;
+    confidence: string | null;
+    parsed_data: Record<string, unknown>;
+    parser_type: string;
+    parser_version: string | null;
+    ai_provider: string | null;
+    ai_model: string | null;
+    prompt_version: string | null;
+    status: string;
+    created_at: Date;
+  };
   confirmation_sessions: {
     id: string;
     channel: string;

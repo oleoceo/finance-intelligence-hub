@@ -143,6 +143,7 @@ export interface TransactionRepository {
       id: string;
       humanRef: string;
       source: TransactionCreateSource;
+      inboxMessageId?: string | null;
       currency: string; // derived from the locked Book, not client input
     },
   ): Promise<TransactionRecord | null>;

@@ -194,7 +194,7 @@ describe('validateTransactionCreateSource', () => {
   });
 
   it('throws FinancialValidationError for invalid source', () => {
-    expect(() => validateTransactionCreateSource('whatsapp')).toThrow(FinancialValidationError);
+    expect(() => validateTransactionCreateSource('manual')).toThrow(FinancialValidationError);
   });
 });
 

@@ -42,21 +42,37 @@ export interface NewConfirmationSession extends ConfirmationOwner {
 
 export type ConfirmationResolution =
   | { kind: 'none' }
+  | { kind: 'stale_claim' }
   | { kind: 'expired' | 'cancelled'; session: ConfirmationSession }
-  | { kind: 'confirmed'; session: ConfirmationSession };
+  | { kind: 'ready'; session: ConfirmationSession }
+  | { kind: 'choice'; session: ConfirmationSession; selection: '1' | '2' };
 
-/** Every method runs on the caller's PostgreSQL transaction. */
+export interface ConfirmationResolverClaim {
+  resolverInboxMessageId: string;
+  attemptCount: number;
+  processingStartedAt: Date;
+}
+
+/**
+ * Every method runs on the caller's PostgreSQL transaction. Before confirmed
+ * financial execution, P05 must acquire the complete M03 configuration lock set
+ * in rank order: Book, Account, Category, Merchant, Rule, Authorized Sender;
+ * UUIDs ascend within each rank. Then resolve, write the financial effect,
+ * Audit and idempotency, and finalize in that same transaction.
+ */
 export interface ConfirmationSessionRepository {
   create(input: NewConfirmationSession): Promise<ConfirmationSession>;
   resolveReply(
-    input: ConfirmationOwner & {
-      reply: ConfirmationReply;
-      resolverInboxMessageId: string;
-      now: Date;
-    },
+    input: ConfirmationOwner &
+      ConfirmationResolverClaim & {
+        reply: ConfirmationReply;
+        now: Date;
+      },
   ): Promise<ConfirmationResolution>;
   expire(input: ConfirmationOwner & { now: Date }): Promise<ConfirmationResolution>;
   supersede(input: ConfirmationOwner & { now: Date }): Promise<ConfirmationResolution>;
-  /** Call only after financial create succeeds in the same outer transaction as resolveReply. */
-  finalizeConfirmed(input: { sessionId: string; now: Date }): Promise<void>;
+  /** After the financial effect and Audit/idempotency writes, in the same caller-owned transaction. */
+  finalizeConfirmed(
+    input: ConfirmationOwner & ConfirmationResolverClaim & { sessionId: string; now: Date },
+  ): Promise<void>;
 }

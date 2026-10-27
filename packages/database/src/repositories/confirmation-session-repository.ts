@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely';
 import type {
   ConfirmationOwner,
   ConfirmationReply,
+  ConfirmationResolverClaim,
   ConfirmationResolution,
   ConfirmationSession,
   ConfirmationSessionRepository,
@@ -39,9 +40,11 @@ function map(row: Row): ConfirmationSession {
 
 /**
  * Transaction-scoped only. Lock order: authorized sender -> pending session -> original
- * Inbox -> resolver Inbox -> conditional session update. The caller must not prelock
- * an Inbox row before invoking this adapter. P05 commits confirmation and financial
- * effect in its own outer transaction; this class never starts or commits one.
+ * Inbox -> resolver Inbox -> conditional session update. P05 must acquire the entire
+ * M03 configuration lock set (Book, Account, Category, Merchant, Rule, Sender; UUIDs
+ * ascending within each kind) before calling this adapter or its financial writer.
+ * No Inbox row may be prelocked. The caller owns one PostgreSQL transaction containing
+ * prepare, financial effect, Audit, idempotency and finalizeConfirmed.
  */
 export class KyselyConfirmationSessionRepository implements ConfirmationSessionRepository {
   constructor(private readonly db: Kysely<DB>) {}
@@ -90,8 +93,8 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
     return row;
   }
 
-  private async finishInbox(id: string, now: Date, status: 'processed' | 'ignored') {
-    const row = await this.db
+  private async finishInbox(row: DB['inbox_messages'], now: Date, status: 'processed' | 'ignored') {
+    const updated = await this.db
       .updateTable('inbox_messages')
       .set({
         processing_status: status,
@@ -100,11 +103,13 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
         failure_message: null,
         updated_at: now,
       })
-      .where('id', '=', id)
+      .where('id', '=', row.id)
       .where('processing_status', '=', 'needs_confirmation')
+      .where('attempt_count', '=', row.attempt_count)
+      .where('processing_started_at', '=', row.processing_started_at!)
       .returning('id')
       .executeTakeFirst();
-    if (!row) throw new Error('Confirmation original Inbox is not pending');
+    if (!updated) throw new Error('Confirmation original Inbox is not pending');
   }
 
   private async terminal(
@@ -113,13 +118,15 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
     status: 'cancelled' | 'expired',
     now: Date,
     reason: string,
-    resolverInboxMessageId?: string,
+    resolverClaim?: ConfirmationResolverClaim,
   ): Promise<ConfirmationResolution> {
-    await this.lockInbox(row.inbox_message_id, owner);
-    if (resolverInboxMessageId && resolverInboxMessageId !== row.inbox_message_id)
-      await this.lockInbox(resolverInboxMessageId, owner);
-    await this.finishInbox(row.inbox_message_id, now, 'ignored');
-    if (resolverInboxMessageId) {
+    const original = await this.lockInbox(row.inbox_message_id, owner);
+    if (resolverClaim) {
+      const resolverRow = await this.lockInbox(resolverClaim.resolverInboxMessageId, owner);
+      if (!this.matchesClaim(resolverRow, resolverClaim)) return { kind: 'stale_claim' };
+    }
+    await this.finishInbox(original, now, 'ignored');
+    if (resolverClaim) {
       const resolver = await this.db
         .updateTable('inbox_messages')
         .set({
@@ -129,8 +136,10 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
           failure_code: null,
           failure_message: null,
         })
-        .where('id', '=', resolverInboxMessageId)
+        .where('id', '=', resolverClaim.resolverInboxMessageId)
         .where('processing_status', '=', 'processing')
+        .where('attempt_count', '=', resolverClaim.attemptCount)
+        .where('processing_started_at', '=', resolverClaim.processingStartedAt)
         .returning('id')
         .executeTakeFirst();
       if (!resolver) throw new Error('Confirmation resolver Inbox is not processing');
@@ -141,13 +150,21 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
         status,
         resolution_reason: reason,
         resolved_at: now,
-        resolved_by_inbox_message_id: resolverInboxMessageId ?? null,
+        resolved_by_inbox_message_id: resolverClaim?.resolverInboxMessageId ?? null,
       })
       .where('id', '=', row.id)
       .where('status', '=', 'pending')
       .returningAll()
       .executeTakeFirstOrThrow();
     return { kind: status, session: map(updated) };
+  }
+
+  private matchesClaim(row: DB['inbox_messages'], claim: ConfirmationResolverClaim): boolean {
+    return (
+      row.processing_status === 'processing' &&
+      row.attempt_count === claim.attemptCount &&
+      row.processing_started_at?.getTime() === claim.processingStartedAt.getTime()
+    );
   }
 
   async create(input: NewConfirmationSession): Promise<ConfirmationSession> {
@@ -190,55 +207,41 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
     input: ConfirmationOwner & {
       reply: ConfirmationReply;
       resolverInboxMessageId: string;
+      attemptCount: number;
+      processingStartedAt: Date;
       now: Date;
     },
   ): Promise<ConfirmationResolution> {
     if (!(await this.lockOwner(input))) return { kind: 'none' };
     const row = await this.pending(input);
     if (!row) {
-      await this.lockInbox(input.resolverInboxMessageId, input);
-      await this.db
+      const resolverRow = await this.lockInbox(input.resolverInboxMessageId, input);
+      if (!this.matchesClaim(resolverRow, input)) return { kind: 'stale_claim' };
+      const ignored = await this.db
         .updateTable('inbox_messages')
         .set({ processing_status: 'ignored', processed_at: input.now, updated_at: input.now })
         .where('id', '=', input.resolverInboxMessageId)
         .where('processing_status', '=', 'processing')
-        .execute();
+        .where('attempt_count', '=', input.attemptCount)
+        .where('processing_started_at', '=', input.processingStartedAt)
+        .returning('id')
+        .executeTakeFirst();
+      if (!ignored) return { kind: 'stale_claim' };
       return { kind: 'none' };
     }
     if (isConfirmationExpired(row.expires_at, input.now))
-      return this.terminal(
-        row,
-        input,
-        'expired',
-        input.now,
-        'expired',
-        input.resolverInboxMessageId,
-      );
-    if (confirmationReplyOutcome(input.reply) === 'cancelled')
-      return this.terminal(
-        row,
-        input,
-        'cancelled',
-        input.now,
-        'sender_cancelled',
-        input.resolverInboxMessageId,
-      );
+      return this.terminal(row, input, 'expired', input.now, 'expired', input);
+    const outcome = confirmationReplyOutcome(input.reply);
+    if (outcome === 'cancelled')
+      return this.terminal(row, input, 'cancelled', input.now, 'sender_cancelled', input);
     await this.lockInbox(row.inbox_message_id, input);
-    await this.lockInbox(input.resolverInboxMessageId, input);
-    const updated = await this.db
-      .updateTable('confirmation_sessions')
-      .set({
-        status: 'confirmed',
-        resolution_reason: 'sender_confirmed',
-        resolved_at: input.now,
-        resolved_by_inbox_message_id: input.resolverInboxMessageId,
-      })
-      .where('id', '=', row.id)
-      .where('status', '=', 'pending')
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    // Original and resolver remain pending for P05's shared financial commit.
-    return { kind: 'confirmed', session: map(updated) };
+    const resolver = await this.lockInbox(input.resolverInboxMessageId, input);
+    if (!this.matchesClaim(resolver, input)) return { kind: 'stale_claim' };
+    if (outcome === 'choice')
+      return { kind: 'choice', session: map(row), selection: input.reply as '1' | '2' };
+    // Preparation is read-only. The caller must write the financial effect before
+    // finalizeConfirmed in this same transaction; a bare reply cannot durably confirm.
+    return { kind: 'ready', session: map(row) };
   }
 
   async expire(input: ConfirmationOwner & { now: Date }): Promise<ConfirmationResolution> {
@@ -257,17 +260,27 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
     return this.terminal(row, input, 'cancelled', input.now, 'superseded_by_new_command');
   }
 
-  async finalizeConfirmed(input: { sessionId: string; now: Date }): Promise<void> {
-    // resolveReply has already locked sender, session, original and resolver in this transaction.
-    const row = await this.db
-      .selectFrom('confirmation_sessions')
-      .selectAll()
-      .where('id', '=', input.sessionId)
-      .where('status', '=', 'confirmed')
-      .forUpdate()
-      .executeTakeFirst();
-    if (!row?.resolved_by_inbox_message_id) throw new Error('Confirmation is not confirmed');
-    await this.finishInbox(row.inbox_message_id, input.now, 'processed');
+  async finalizeConfirmed(
+    input: ConfirmationOwner & ConfirmationResolverClaim & { sessionId: string; now: Date },
+  ): Promise<void> {
+    if (!(await this.lockOwner(input))) throw new Error('Confirmation sender unavailable');
+    const row = await this.pending(input);
+    if (!row || row.id !== input.sessionId || isConfirmationExpired(row.expires_at, input.now))
+      throw new Error('Confirmation is not pending');
+    const original = await this.lockInbox(row.inbox_message_id, input);
+    const resolverRow = await this.lockInbox(input.resolverInboxMessageId, input);
+    if (!this.matchesClaim(resolverRow, input))
+      throw new Error('Confirmation resolver claim is stale');
+    if (row.action === 'create_transaction') {
+      const effect = await this.db
+        .selectFrom('transactions')
+        .select('id')
+        .where('inbox_message_id', '=', row.inbox_message_id)
+        .where('status', '=', 'posted')
+        .executeTakeFirst();
+      if (!effect) throw new Error('Confirmation financial effect is missing');
+    }
+    await this.finishInbox(original, input.now, 'processed');
     const resolver = await this.db
       .updateTable('inbox_messages')
       .set({
@@ -277,10 +290,25 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
         failure_code: null,
         failure_message: null,
       })
-      .where('id', '=', row.resolved_by_inbox_message_id)
+      .where('id', '=', input.resolverInboxMessageId)
       .where('processing_status', '=', 'processing')
+      .where('attempt_count', '=', input.attemptCount)
+      .where('processing_started_at', '=', input.processingStartedAt)
       .returning('id')
       .executeTakeFirst();
     if (!resolver) throw new Error('Confirmation resolver Inbox is not processing');
+    const confirmed = await this.db
+      .updateTable('confirmation_sessions')
+      .set({
+        status: 'confirmed',
+        resolution_reason: 'sender_confirmed',
+        resolved_at: input.now,
+        resolved_by_inbox_message_id: input.resolverInboxMessageId,
+      })
+      .where('id', '=', row.id)
+      .where('status', '=', 'pending')
+      .returning('id')
+      .executeTakeFirst();
+    if (!confirmed) throw new Error('Confirmation is not pending');
   }
 }

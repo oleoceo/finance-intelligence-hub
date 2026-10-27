@@ -12,6 +12,10 @@ export function isConfirmationExpired(expiresAt: Date, now: Date): boolean {
   return now.getTime() >= expiresAt.getTime();
 }
 
-export function confirmationReplyOutcome(reply: ConfirmationReply): 'confirmed' | 'cancelled' {
-  return reply === 'yes' || reply === '1' ? 'confirmed' : 'cancelled';
+export function confirmationReplyOutcome(
+  reply: ConfirmationReply,
+): 'confirmed' | 'cancelled' | 'choice' {
+  if (reply === 'yes') return 'confirmed';
+  if (reply === 'no') return 'cancelled';
+  return 'choice';
 }

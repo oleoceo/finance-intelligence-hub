@@ -311,6 +311,7 @@ export { openConfirmation, resolveContextualReply } from './application/inbox/co
 export type {
   ConfirmationSession,
   ConfirmationOwner,
+  ConfirmationResolverClaim,
   NewConfirmationSession,
   ConfirmationResolution,
   ConfirmationSessionRepository,

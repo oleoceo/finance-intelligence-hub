@@ -25,9 +25,9 @@ describe('Confirmation policy', () => {
   it('rejects invalid TTL and maps contextual choices', () => {
     expect(() => confirmationExpiry(now, 0)).toThrow();
     expect(confirmationReplyOutcome('yes')).toBe('confirmed');
-    expect(confirmationReplyOutcome('1')).toBe('confirmed');
+    expect(confirmationReplyOutcome('1')).toBe('choice');
     expect(confirmationReplyOutcome('no')).toBe('cancelled');
-    expect(confirmationReplyOutcome('2')).toBe('cancelled');
+    expect(confirmationReplyOutcome('2')).toBe('choice');
   });
 
   it.each([
@@ -42,12 +42,16 @@ describe('Confirmation policy', () => {
       ...owner,
       rawText,
       resolverInboxMessageId: 'resolver',
+      attemptCount: 1,
+      processingStartedAt: now,
       now,
     });
     expect(resolveReply).toHaveBeenCalledWith({
       ...owner,
       reply,
       resolverInboxMessageId: 'resolver',
+      attemptCount: 1,
+      processingStartedAt: now,
       now,
     });
   });
@@ -60,6 +64,8 @@ describe('Confirmation policy', () => {
         ...owner,
         rawText: 'gastei 10',
         resolverInboxMessageId: 'resolver',
+        attemptCount: 1,
+        processingStartedAt: now,
         now,
       }),
     ).toEqual({ kind: 'none' });

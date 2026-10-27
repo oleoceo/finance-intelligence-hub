@@ -1,12 +1,11 @@
 # M05 — Inbox / Parser / Confirmation
 
-**Status:** ACTIVE — Activation Review accepted on 2026-10-27; M05-P01/P02 DONE / integrated via PRs #19/#20; P03 DONE / integrated via PR #21; P04 DONE / integrated via PR #22; P05 DONE / integrated via PR #23; P06 ACTIVE / acceptance verification
+**Status:** DONE — human technical acceptance on 2026-10-27; M05-P01–P06 accepted and integrated via PRs #19–#24. P06 exact-head CI `40595431256` and post-merge CI `40596736837` SUCCESS.
 **Dependencies:** Gate A PASS
-**Blocks:** M06 activation
-**Activation Review:** Accepted 2026-10-27, PR #17 squash `df0a28669b59928a78a12823e4a0a408390e0800`. [accepted review](M05-ACTIVATION-REVIEW.md) and [P01](../completed/M05-P01.md), [P02](../completed/M05-P02.md), [P03](../completed/M05-P03.md), [P04](../completed/M05-P04.md), [P05](../completed/M05-P05.md), [P06](M05-P06.md) execution-ready contracts accepted under PR #17. Activation alone does not authorize any task implementation.
+**Next boundary:** M06 remains PLANNED; activation and scope require separate review and authorization.
+**Activation Review:** Accepted 2026-10-27, PR #17 squash `df0a28669b59928a78a12823e4a0a408390e0800`. [accepted review](M05-ACTIVATION-REVIEW.md) and [P01](M05-P01.md), [P02](M05-P02.md), [P03](M05-P03.md), [P04](M05-P04.md), [P05](M05-P05.md), [P06](M05-P06.md) execution-ready contracts were accepted under PR #17.
 
-> **Milestone activation does NOT itself authorize implementation.**
-> P01–P06 are execution-ready ACTIVE contracts; each requires separate human task authorization.
+> Each P01–P06 implementation was separately authorized and is now accepted. M06 requires its own Activation Review and authorization.
 
 ---
 
@@ -92,7 +91,7 @@ M05 expects to consume the following from accepted M04 planning:
 - Money value object / decimal string handling
 - Book/Account/Category/Merchant read ports for validation
 
-**Activation Review ACCEPTED:** M04 signatures, schema and assumption deltas are verified in [M05-ACTIVATION-REVIEW.md](M05-ACTIVATION-REVIEW.md); use exact active task contracts.
+**Activation Review ACCEPTED:** M04 signatures, schema and assumption deltas were verified in [M05-ACTIVATION-REVIEW.md](M05-ACTIVATION-REVIEW.md); the accepted task contracts are retained in this completed directory.
 
 ---
 
@@ -109,7 +108,7 @@ M05 expects to consume the following from accepted M04 planning:
 
 Task boundaries finalized during accepted Activation Review; subsequent changes require normal review discipline.
 
-The accepted Activation Review retains all six slices. P05 owns the narrow M04 transaction-composition extension needed to commit Inbox finalization and financial creation together, plus read-only M04 `getLast` execution for `último`. P01 owns Inbox claims; P02 partial parsing; P03 safe reference/Book-local date resolution and single eligible Book/Account fallback; P04 Confirmation; P06 acceptance evidence. See task contracts for exact paths and tests. M05 is ACTIVE; P01 is DONE / integrated via PR #19 (post-merge CI `40547402474` SUCCESS). P02 is DONE / integrated via PR #20; accepted head `e912db1dbea829278ffca0f1eaff00f0f9a60ac1`, exact-head CI `40552304349` SUCCESS, squash `2f13c06c2ac1b662eaf3654bfacbadc71c53e3de`, post-merge CI `40553060708` SUCCESS. P03 DONE / integrated via PR #21; P04 DONE / integrated via PR #22; P05 DONE / integrated via PR #23; P06 ACTIVE / acceptance verification.
+The accepted Activation Review retained all six slices. P05 delivered the narrow M04 transaction-composition extension to commit Inbox finalization and financial creation together, plus read-only M04 `getLast` execution for `último`. P01 delivered Inbox claims; P02 partial parsing; P03 safe reference/Book-local date resolution and single eligible Book/Account fallback; P04 Confirmation; P06 acceptance evidence. All are DONE and integrated. P06 was reviewed at `6476c3e9b0f15c07eee74fe4d48472f5148d525e`, exact-head CI `40595431256` SUCCESS, PR #24 squash `ca3527514df52d302746de2c779934099a98b473`, post-merge CI `40596736837` SUCCESS. Final suite: 38 unit files / 1,015 tests and 26 PostgreSQL integration files / 451 tests; focused API/Confirmation 46 PASS. The unchanged M03 Book-lock timing observation remains non-blocking.
 
 ---
 

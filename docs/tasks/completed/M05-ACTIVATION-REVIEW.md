@@ -1,6 +1,6 @@
 # M05 Activation Review — ACCEPTED
 
-**Status:** ACCEPTED — PASS on 2026-10-27. M05 ACTIVE after promotion; M05-P01–P06 implementation is NOT AUTHORIZED.
+**Status:** ACCEPTED — PASS on 2026-10-27. Historical activation record; M05-P01–P06 were subsequently authorized, accepted and integrated, and M05 is DONE.
 **Forward plan:** [M05-OVERVIEW.md](M05-OVERVIEW.md)
 
 **Authoritative main:** `d4cfb5a4b93506e4c42e11179a6999dfbd59d6d1`
@@ -13,7 +13,7 @@
 | Prerequisite | Evidence | Result |
 | --- | --- | --- |
 | M04-T01–T08 | PR #15 merged as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef`; 33 unit files / 934 tests, 22 PostgreSQL files / 379 tests, 10 API E2E tests | DONE |
-| Gate A | [closure](../completed/GATE-A.md), PASS on M04 main; PR #16 merged; main CI `40514723831` SUCCESS at review baseline | PASS |
+| Gate A | [closure](GATE-A.md), PASS on M04 main; PR #16 merged; main CI `40514723831` SUCCESS at review baseline | PASS |
 | Gate 0, B, C | No M05 local dependency | NOT EXECUTED |
 
 ## 2. Forward assumptions and implementation evidence
@@ -49,7 +49,7 @@ No frozen-schema or architectural blocker was found. The M04 transaction ownersh
 | [P01](M05-P01.md) | Pre-persistence authorization, Inbox repository/claim/retry; M04 + Gate A | Core unit; real PostgreSQL unique/failed/stale/authorization races |
 | [P02](M05-P02.md) | Pure partial interpretation model/parser, including `query_last`; P01 contract | Determinism, one intent, explicit provenance, unknown/ambiguous, Money/date-expression and `último`/`último empresa` unit tests |
 | [P03](M05-P03.md) | Rule/default/alias and single eligible Book/Account fallback; P02 | Core priority, Book-local date, `query_last` context and compatibility unit; PostgreSQL configuration race tests |
-| [P04](../completed/M05-P04.md) | Confirmation repository/state machine; P01–P03 | TTL, short reply, supersede, original Inbox finalization, two-connection races |
+| [P04](M05-P04.md) | Confirmation repository/state machine; P01–P03 | TTL, short reply, supersede, original Inbox finalization, two-connection races |
 | [P05](M05-P05.md) | API, shared financial transaction and read-only `getLast` orchestration; P01–P04 | ingest/admin isolation, ordered-lock/revoke, Inbox-to-financial-effect and rollback PostgreSQL tests; `último`/`último empresa` read tests |
 | [P06](M05-P06.md) | Milestone verification only; P01–P05 | full CI-equivalent suite and M05 API/PostgreSQL E2E, including unique fallback and Last reads |
 
@@ -69,4 +69,4 @@ No migration, external dependency, lockfile or frozen-document change is planned
 - [x] Human approves promotion to `docs/tasks/active/`.
 - [ ] Human separately authorizes M05-P01 implementation.
 
-**Decision:** Review and promotion accepted on 2026-10-27. Overview, review record and six task contracts move to `docs/tasks/active/` in the promotion PR. M05 ACTIVE upon integration; P01 is the next candidate. **Implementation of P01–P06 remains NOT AUTHORIZED pending explicit task selection.** Gate 0/B/C NOT EXECUTED.
+**Decision at activation:** Review and promotion accepted on 2026-10-27. The overview, review record and six task contracts moved to `docs/tasks/active/` in the promotion PR. M05 became ACTIVE upon integration, with P01 as the next candidate. Each P01–P06 implementation required explicit task selection. All six were later accepted and integrated; M05 is DONE. Gate 0/B/C remain NOT EXECUTED.

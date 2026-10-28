@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { sql } from 'kysely';
+import { Kysely, PostgresDialect, sql } from 'kysely';
+import { Pool } from 'pg';
 import { buildApp } from '../../../apps/api/src/index.js';
 import { claimInboxMessage, interpretMessage } from '@finance-hub/core';
 import {
@@ -10,6 +11,7 @@ import {
   KyselyInboxTransactionPort,
 } from '@finance-hub/database';
 import { t02Database } from '../repositories/t02-fixtures.js';
+import type { DB } from '../../../packages/database/src/db-types.js';
 
 const fixture = t02Database();
 const now = new Date('2026-10-21T12:00:00Z');
@@ -258,6 +260,142 @@ describe('P05 Inbox API with PostgreSQL', () => {
     expect(await count('audit_events')).toBe(before.audits + 1);
     expect(await count('idempotency_keys')).toBe(before.keys + 1);
   });
+
+  it('overlaps same-identity financial processing on independent PostgreSQL connections without another effect', async () => {
+    const firstPool = new Pool({ connectionString: fixture.connectionString, max: 1 });
+    const secondPool = new Pool({ connectionString: fixture.connectionString, max: 1 });
+    const firstDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: firstPool }) });
+    const secondDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: secondPool }) });
+    let entered!: () => void;
+    let release!: () => void;
+    const atFinancialBoundary = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const firstPort = new KyselyFinancialTransactionPort(firstDb);
+    const firstApp = buildForConnection({
+      inboxTransactions: new KyselyInboxTransactionPort(firstDb),
+      financialTransactions: firstPort,
+      inboxProcessing: {
+        runInboxTransaction: (fn) =>
+          firstPort.runInboxTransaction(async (ctx) => {
+            entered();
+            await gate;
+            return fn(ctx);
+          }),
+      },
+    });
+    const secondApp = buildForConnection({
+      inboxTransactions: new KyselyInboxTransactionPort(secondDb),
+      financialTransactions: new KyselyFinancialTransactionPort(secondDb),
+    });
+    const request = body('gastei 35 almoco');
+    const before = {
+      inbox: await count('inbox_messages'),
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    const postWith = (target: typeof firstApp) =>
+      target.inject({
+        method: 'POST',
+        url: '/api/v1/inbox/messages',
+        headers: { authorization: 'Bearer integration-ingest' },
+        payload: request,
+      });
+    try {
+      await Promise.all([firstApp.ready(), secondApp.ready()]);
+      const pid1 = (await firstPool.query('select pg_backend_pid() as pid')).rows[0].pid as number;
+      const pid2 = (await secondPool.query('select pg_backend_pid() as pid')).rows[0].pid as number;
+      expect(pid1).not.toBe(pid2);
+      const first = postWith(firstApp);
+      await atFinancialBoundary;
+      const competing = await postWith(secondApp);
+      expect(competing.statusCode, competing.body).toBe(200);
+      expect(competing.json().data.result.type).toBe('processing');
+      expect(competing.json().data.reply).toEqual({ should_send: false });
+      release();
+      const winner = await first;
+      expect(winner.statusCode, winner.body).toBe(200);
+      expect(winner.json().data.result.type).toBe('transaction_created');
+      const inboxId = winner.json().data.inbox_message.id as string;
+      const inbox = await fixture.db
+        .selectFrom('inbox_messages')
+        .selectAll()
+        .where('source', '=', request.source)
+        .where('source_instance', '=', request.source_instance)
+        .where('source_message_id', '=', request.source_message_id)
+        .execute();
+      expect(inbox).toHaveLength(1);
+      expect(inbox[0]).toMatchObject({
+        id: inboxId,
+        authorized_sender_id: senderId,
+        processing_status: 'processed',
+        attempt_count: 1,
+      });
+      const transactions = await fixture.db
+        .selectFrom('transactions')
+        .selectAll()
+        .where('inbox_message_id', '=', inboxId)
+        .execute();
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0]).toMatchObject({
+        status: 'posted',
+        source: 'whatsapp',
+        source_reference: request.source_message_id,
+      });
+      const audits = await fixture.db
+        .selectFrom('audit_events')
+        .selectAll()
+        .where('entity_type', '=', 'transaction')
+        .where('entity_id', '=', transactions[0]!.id)
+        .execute();
+      expect(audits).toHaveLength(1);
+      const keys = await fixture.db
+        .selectFrom('idempotency_keys')
+        .selectAll()
+        .where('resource_id', '=', transactions[0]!.id)
+        .execute();
+      expect(keys).toHaveLength(1);
+      expect(keys[0]?.status).toBe('completed');
+      const replay = await postWith(secondApp);
+      expect(replay.statusCode, replay.body).toBe(200);
+      expect(replay.json().data.result.type).toBe('duplicate_message');
+      expect(replay.json().data.reply).toEqual({ should_send: false });
+      expect(
+        await fixture.db
+          .selectFrom('transactions')
+          .select('id')
+          .where('inbox_message_id', '=', inboxId)
+          .execute(),
+      ).toHaveLength(1);
+      expect(
+        await fixture.db
+          .selectFrom('audit_events')
+          .select('id')
+          .where('entity_type', '=', 'transaction')
+          .where('entity_id', '=', transactions[0]!.id)
+          .execute(),
+      ).toHaveLength(1);
+      expect(
+        await fixture.db
+          .selectFrom('idempotency_keys')
+          .select('id')
+          .where('resource_id', '=', transactions[0]!.id)
+          .execute(),
+      ).toHaveLength(1);
+      expect(await count('inbox_messages')).toBe(before.inbox + 1);
+      expect(await count('transactions')).toBe(before.transactions + 1);
+      expect(await count('audit_events')).toBe(before.audits + 1);
+      expect(await count('idempotency_keys')).toBe(before.keys + 1);
+    } finally {
+      release();
+      await Promise.all([firstApp.close(), secondApp.close()]);
+      await Promise.all([firstDb.destroy(), secondDb.destroy()]);
+    }
+  }, 30000);
 
   it('executes query_last in the authorized Book with zero financial writes', async () => {
     const before = {

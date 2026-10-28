@@ -1,6 +1,6 @@
 # M06 — WhatsApp Integration (Evolution + n8n Transport)
 
-**Status:** ACTIVE — P01 DONE via PR #28; P02 DONE via PR #29; P03 REVIEW REQUIRED under the owner-approved reply baseline; P04–P05 not authorized
+**Status:** ACTIVE — P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 authorized; P05 not authorized
 **Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance
 **Blocks:** M07 activation
 
@@ -141,8 +141,8 @@ M06 expects to consume from accepted M05:
 |---|---|
 | [M06-P01](../completed/M06-P01.md) | DONE / integrated via PR #28 |
 | [M06-P02](../completed/M06-P02.md) | DONE / integrated via PR #29 |
-| [M06-P03](M06-P03.md) | REVIEW REQUIRED / exact templates and implementation in Draft PR review |
-| [M06-P04](M06-P04.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
+| [M06-P03](../completed/M06-P03.md) | DONE / integrated via PR #30 |
+| [M06-P04](M06-P04.md) | ACTIVE / implementation authorized |
 | [M06-P05](M06-P05.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
 
 ## 8. Required Test Categories

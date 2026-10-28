@@ -1,6 +1,6 @@
 # M06 Activation Review — ACCEPTED
 
-**Status:** ACCEPTED by project owner on 2026-10-27; M06 ACTIVE; P01–P02 DONE; P03 local implementation authorized with exact reply templates pending human review; P04–P05 not authorized.
+**Status:** ACCEPTED by project owner on 2026-10-27; M06 ACTIVE; P01–P02 DONE; P03 DONE / integrated via PR #30; P04 authorized; P05 not authorized.
 **Date:** 2026-10-27
 **Active milestone overview:** [M06 overview](M06-OVERVIEW.md)
 **Authoritative main:** `6ac27917df7e4c2007aec01cd30f067cd4cdd338`
@@ -142,4 +142,4 @@ Gate A PASS. Gate 0 NOT EXECUTED and required for live integration; Gate B/C NOT
 - [x] Gate 0/VPS separation acknowledged: Gate 0/B/C remain NOT EXECUTED, no live access, credential use or deployment is authorized.
 - [x] M06 documentation promotion to ACTIVE authorized through a separately reviewed promotion PR; no task implementation authorized by this decision.
 
-**Current decision:** M06 Activation Review ACCEPTED and integrated via PR #26; reviewed head `38a85db185a704d5523b54c16262c3707e24fd61`, exact-head CI `40605635355` SUCCESS, squash `17669300ab61899e672ec9659646d0650a16bc99`, post-merge CI `40606061490` SUCCESS. Documentary promotion completed via accepted PR #27; M06 is ACTIVE. P01 integrated via PR #28; P02 accepted and integrated via PR #29. **P03 local implementation authorized; exact reply templates and safe fields pending human review. P04–P05 implementation authorization: NO.** Gate 0/B/C remain NOT EXECUTED. No VPS/Lab/Production access, live Evolution/n8n integration, infrastructure changes or transport implementation is authorized.
+**Current decision:** M06 Activation Review ACCEPTED and integrated via PR #26; reviewed head `38a85db185a704d5523b54c16262c3707e24fd61`, exact-head CI `40605635355` SUCCESS, squash `17669300ab61899e672ec9659646d0650a16bc99`, post-merge CI `40606061490` SUCCESS. Documentary promotion completed via accepted PR #27; M06 is ACTIVE. P01 integrated via PR #28; P02 accepted and integrated via PR #29. **P03 accepted and integrated via PR #30. P04 local implementation authorized; P05 implementation authorization: NO.** Gate 0/B/C remain NOT EXECUTED. No VPS/Lab/Production access, live Evolution/n8n integration, infrastructure changes or transport implementation is authorized.

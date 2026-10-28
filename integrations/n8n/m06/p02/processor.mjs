@@ -104,7 +104,7 @@ export function retryDecision(status, retryAfter, attempt, now = Date.now()) {
   return { retry: false, delayMs: 0 };
 }
 
-function transportStatus(error) {
+export function transportStatus(error) {
   const status = error?.status ?? error?.statusCode ?? error?.response?.status;
   if (Number.isInteger(status) && status >= 100 && status <= 599) return status;
   const code = error?.code ?? error?.cause?.code;

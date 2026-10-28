@@ -18,8 +18,9 @@ import {
 } from './claim-inbox-message.js';
 import { interpretMessage } from './interpret-message.js';
 import { resolveInterpretation } from './resolve-interpretation.js';
+import { presentInboxReply } from './present-reply.js';
 
-export type InboxProcessingResult =
+export type InboxProcessingResult = (
   | {
       type:
         | 'ignored'
@@ -49,7 +50,8 @@ export type InboxProcessingResult =
       inboxMessageId: string;
       status: 'needs_confirmation';
       confirmation: { id: string; action: string; expiresAt: Date; options?: ChoiceOption[] };
-    };
+    }
+) & { replyText?: string | null };
 
 type ChoiceOption = { number: '1' | '2'; id: string; name: string };
 
@@ -189,7 +191,7 @@ async function finish(
 }
 
 /** P01 claim is committed first; every subsequent effect shares one outer transaction. */
-export async function processInboxMessage(
+async function processInboxMessageInternal(
   envelope: IngestionEnvelope,
   correlationId: string,
   deps: ProcessMessageDependencies,
@@ -507,4 +509,14 @@ export async function processInboxMessage(
     });
     throw error;
   }
+}
+
+export async function processInboxMessage(
+  envelope: IngestionEnvelope,
+  correlationId: string,
+  deps: ProcessMessageDependencies,
+): Promise<InboxProcessingResult> {
+  const result = await processInboxMessageInternal(envelope, correlationId, deps);
+  const replyText = presentInboxReply(result);
+  return replyText === null ? result : { ...result, replyText };
 }

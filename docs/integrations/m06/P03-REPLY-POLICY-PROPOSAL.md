@@ -1,37 +1,30 @@
-# M06-P03 exact reply policy — proposed for human review
+# M06-P03 Finance reply and local dispatch contract
 
-**Decision state:** PENDING. None of these texts is approved or implemented. The presenter and outbound dispatch remain behind this decision boundary.
+**State:** Owner-approved implementation baseline; exact templates remain subject to Draft PR review. `REPLY_TEXT_LIMIT` is 500 Unicode code points. The 15-minute confirmation TTL is unchanged.
 
-## Authoritative data and bounds
+Finance Core presents only post-commit `TransactionRecord` or persisted Last read fields. The amount is a canonical decimal string formatted for its actual `currency` with PT-BR grouping; no floating point conversion is used. Description and option names are normalized, bounded to 120 code points and rejected for control/format characters. Human references must match the canonical uppercase alphanumeric format. Missing or malformed essential fields suppress the reply. Neither n8n nor the presenter invents account, Book, category or transaction details.
 
-`processInboxMessage` returns after the Inbox processing transaction completes. For `transaction_created`, use only its returned `TransactionRecord.type`, canonical decimal-string `amount`, `transactionDate` and `humanRef`. For `query_last`, use only the returned persisted `TransactionReadRecord` when non-null. The API currently serializes these fields as `data.result.transaction.type`, `amount`, `transaction_date`, and `human_ref`. No account, Book, category, merchant or description **name** is returned. UUIDs, raw text, internal statuses and errors are forbidden in text. The presenter reads the result and performs no financial writes.
+| Result | Exact `reply.text` (`\n` is a line break) | Fields / fallback |
+|---|---|---|
+| Expense | `✅ Gasto registrado! {amount} — {description}.\nRef: {human_ref}` | Persisted type, amount, currency, description, human reference; invalid field: no send |
+| Income | `✅ Receita registrada! {amount} — {description}.\nRef: {human_ref}` | Same |
+| Transfer | `✅ Transferência registrada! {amount}.\nRef: {human_ref}` | Persisted type, amount, currency and reference; no account names |
+| Last present | `Último lançamento: {Gasto|Receita|Transferência} de {amount} em {DD/MM/YYYY}.\nRef: {human_ref}` | Persisted Last type, amount, currency, transaction date and reference; invalid field: no send |
+| Last empty | `Nenhum lançamento encontrado neste contexto.` | Null persisted read |
+| Select Book, two safe options | `Escolha o contexto:\n1. {name1}\n2. {name2}\nResponda 1 ou 2.` | Session options numbered 1 and 2; unsafe/missing options: context clarification below |
+| Select Account, two safe options | `Escolha a conta:\n1. {name1}\n2. {name2}\nResponda 1 ou 2.` | Same; unsafe/missing options: account clarification below |
+| Select Book/Account fallback | `Preciso de mais detalhes. Reenvie o comando completo com o contexto ou a conta.` | No guessed name |
+| Clarify/select amount | `Qual é o valor? Reenvie o comando completo com o valor.` | Action only |
+| Clarify intent | `Não entendi o pedido. Reenvie o comando completo para continuar.` | Action only |
+| Clarify/select category, merchant, description, date or destination account | `Preciso de mais detalhes. Reenvie o comando completo com a informação que falta.` | Action only |
+| Cancelled | `✅ Solicitação pendente cancelada.` | Terminal result |
+| Expired | `⏳ Esta confirmação expirou. Reenvie o comando completo para tentar novamente.` | Terminal result |
+| Unknown action, standalone choice, malformed result | No text; `should_send:false` | Fail closed; report unsupported result for review |
+| Ignored, duplicate, processing, stale claim | No text; `should_send:false` | No outbound send |
+| HTTP 401/403, including unauthorized sender | No automated text/send | Transport stops; no financial detail |
 
-Proposed maximum: **320 Unicode code points** for every outbound `reply.text`, including numbered choices. Amount is formatted from the canonical decimal string as `R$ 1.234,56` without binary floating point. A dynamic value that is missing, malformed, overlong or unsafe causes a safe fixed fallback only where specified below; it never exposes a partial success or silently truncates a name. No text is produced unless `should_send:true`.
+`reply.text` exists only with `should_send:true`. The existing structured result and Inbox identity remain intact. The presenter performs no writes. A safe reply may still fail delivery; that does not change the financial commit.
 
-| Result / situation | Send? | Exact proposed PT-BR text (`\n` means line break) | Permitted fields and source | Absent/unsafe field; pending state | Exact test cases |
-|---|---|---|---|---|---|
-| `transaction_created`, `expense` | Yes | `✅ Gasto registrado: R$ {amount}.\nRef: {human_ref}` | `type`, `amount`, `humanRef` from post-commit `TransactionRecord` | Required fields invalid: fail closed, no send; no confirmation pending | `expense_exact_text`, `expense_decimal_format`, `expense_invalid_field_no_send` |
-| `transaction_created`, `income` | Yes | `✅ Entrada registrada: R$ {amount}.\nRef: {human_ref}` | Same | Same | `income_exact_text`, `income_invalid_field_no_send` |
-| `transaction_created`, `transfer` | Yes | `✅ Transferência registrada: R$ {amount}.\nRef: {human_ref}` | Same; no source/destination account names | Same | `transfer_exact_text`, `transfer_no_account_invention` |
-| `query_last`, transaction present | Yes | `Última transação: {kind} de R$ {amount} em {date}.\nRef: {human_ref}` where `{kind}` is exactly `gasto`, `entrada` or `transferência`, and `{date}` is `DD/MM/YYYY` | `type`, `amount`, `transactionDate`, `humanRef` from persisted `TransactionReadRecord` | Invalid required field: fail closed, no send; no confirmation pending | `last_exact_each_type`, `last_date_format`, `last_invalid_field_no_send` |
-| `query_last`, transaction null | Yes | `Nenhuma transação encontrada.` | Null read result | No dynamic fields; no confirmation pending | `last_empty_exact_text` |
-| `confirmation_required`, `action=clarify_intent` | Yes | `Não entendi o pedido. Envie um comando completo para continuar.` | Accepted action only | Unknown action: fail closed; confirmation remains pending | `clarify_intent_exact_text`, `unknown_action_no_send` |
-| `confirmation_required`, `action=select_amount` or `clarify_amount` | Yes | `Qual é o valor? Envie um novo comando completo com o valor.` | Accepted action only | No dynamic fields; confirmation remains pending | `clarify_amount_exact_text` |
-| `confirmation_required`, `action=select_book/account/category/merchant/description/date/destinationAccount` or matching `clarify_*`, without exactly two safe options | Yes | `Preciso de mais detalhes para continuar. Envie um novo comando completo.` | Accepted action only; no names inferred | No dynamic fields; confirmation remains pending | `clarify_generic_exact_text`, `clarify_missing_options` |
-| `confirmation_required`, `action=select_book` with exactly two valid options | Yes | `Escolha o contexto:\n1. {name1}\n2. {name2}\nResponda 1 ou 2.` | Option `number` and `name` from the persisted confirmation session result; numbers must be exactly 1 and 2 | Unsafe/oversize/missing option: generic clarification text above; confirmation remains pending | `book_choices_exact_text`, `choices_unsafe_name_fallback`, `choices_bound` |
-| `confirmation_required`, `action=select_account` with exactly two valid options | Yes | `Escolha a conta:\n1. {name1}\n2. {name2}\nResponda 1 ou 2.` | Same | Same | `account_choices_exact_text`, `choices_no_ids` |
-| `cancelled` | Yes | `Confirmação cancelada. Nenhuma transação foi criada por essa resposta.` | Result type only | No dynamic fields; pending confirmation ends | `cancelled_exact_text` |
-| `expired` | Yes | `A confirmação expirou. Envie um novo comando completo.` | Result type only | No dynamic fields; pending confirmation ends | `expired_exact_text` |
-| `choice` (if ever returned without another result) | Yes | `Escolha recebida. Aguarde a próxima orientação.` | Result type only | No dynamic fields; confirmation may remain pending; inspect actual processor reachability before implementation | `choice_exact_text_or_unreachable` |
-| Safe unsupported/validation result routed to `confirmation_required` | Yes | Use the relevant clarification text above; never quote parser reason or raw input | Confirmation `action` only | Confirmation remains pending | `unsupported_clarifies`, `invalid_amount_clarifies`, `no_raw_error` |
-| `ignored`, `duplicate_message`, `processing`, `stale_claim` | No | No `reply.text` property | Result type only | No outbound send | `suppressed_each_no_text_no_send` |
-| HTTP 401/403, including missing/bad ingest token and unauthorized sender | No | No reply object or outbound text from the error response | HTTP status only for transport control | No automated WhatsApp reply, no financial detail | `auth_401_no_send`, `scope_403_no_send`, `sender_403_no_send` |
+The inactive `integrations/n8n/m06/p03/workflow.json` requires Gate 0 verified origin/sender binding, an independent `finance:ingest` credential and a separate Evolution send credential before any activation. It calls Finance at most three times with the same Inbox identity for 500/503/timeouts and capped 429 Retry-After, and never blindly retries terminal 4xx. After one successful Finance response, the outbound send loop retries independently at most three times. Outbound retry never calls Finance again. A send timeout is ambiguous and sets `possiblyDelivered`; even a later successful attempt is marked `possiblyDeliveredEarlier`. Delivery is best effort and never claimed exactly once. The workflow returns only redacted stage/status evidence.
 
-## Review decisions required
-
-1. Approve or revise **each exact text** and the 320-code-point limit.
-2. Approve use of `human_ref` in success/Last replies. It is a human-facing reference, but its release through WhatsApp still requires this explicit safe-field decision.
-3. Approve option names from the persisted confirmation result, subject to length/control-character checks; no option UUIDs are exposed.
-4. Decide whether the `choice` result should ever be sendable. The current processor appears to return a subsequent confirmation or final result instead; this row is defensive until reachability is verified.
-
-After approval, tests must also prove exact text, amount/date formatting, bound enforcement, unchanged M05 result shape, zero presenter financial writes, no secret/raw error exposure, and no send for suppressed/error states. Outbound retries must use the same Finance-authored text and verified recipient without re-ingest.
+Local verification: Core presenter unit tests cover exact templates, persisted fields, currency/date formatting, bounds and fail-closed cases; API tests cover suppressed/auth paths; P03 Node tests cover send/no-send, independent retries, 429, 5xx, terminal 4xx, ambiguous timeout and inactive generated workflow. P01/P02 Node tests and the full CI suites remain regression gates. Real provider send is P05 and requires Gate 0 plus separate authorization.

@@ -53,7 +53,9 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
               })),
             },
           },
-          reply: { should_send: true },
+          reply: result.replyText
+            ? { should_send: true, text: result.replyText }
+            : { should_send: false },
         },
         meta: responseMeta,
       };
@@ -72,7 +74,9 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
               transaction_date: result.transaction.transactionDate,
             },
           },
-          reply: { should_send: true },
+          reply: result.replyText
+            ? { should_send: true, text: result.replyText }
+            : { should_send: false },
         },
         meta: responseMeta,
       };
@@ -93,7 +97,9 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
                 }
               : null,
           },
-          reply: { should_send: true },
+          reply: result.replyText
+            ? { should_send: true, text: result.replyText }
+            : { should_send: false },
         },
         meta: responseMeta,
       };
@@ -101,7 +107,9 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
       data: {
         inbox_message: { id: result.inboxMessageId, status: result.status },
         result: { type: result.type },
-        reply: { should_send: true },
+        reply: result.replyText
+          ? { should_send: true, text: result.replyText }
+          : { should_send: false },
       },
       meta: responseMeta,
     };

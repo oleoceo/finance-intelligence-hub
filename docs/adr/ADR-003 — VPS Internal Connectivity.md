@@ -2,12 +2,17 @@
 
 **Status:** OPEN — Gate 0 evidence required  
 **Date:** 2026-09-04  
+**Owner decision recorded:** 2026-10-28 — dedicated PostgreSQL network `finance-products-db`
 **Project:** Finance Intelligence Hub  
 **Decision scope:** Internal connectivity between Finance Hub and existing VPS services
 
 ---
 
 # Context
+
+The project owner explicitly decided that `postgres-products` will use the dedicated internal Docker network `finance-products-db`. This is a bounded exception to the `apps-backend` network named for PostgreSQL provisioning in `docs/frozen/FINAL-FREEZE-DECISIONS.md` §10 and `docs/frozen/03-ARCHITECTURE.md` §27. The frozen documents remain unchanged; the owner's current decision takes precedence under `AGENTS.md` §3. The dedicated network follows the VPS isolation pattern and limits database reachability to the Finance API. It does not change the official path `/opt/apps/apps/databases/postgres-products`, the ban on public database ports, or the requirements for persistent storage and backup.
+
+This records the database-network decision only. Gate 0 must still verify actual topology and `postgres-products` existence; INFRA-T01 still needs its own authorization. The n8n-to-Finance API route remains open until Lab evidence supports a choice.
 
 The Finance Intelligence Hub will coexist with existing VPS infrastructure including components such as:
 
@@ -41,6 +46,8 @@ apps-backend
 ```
 
 rather than unnecessary public routes.
+
+This preference concerns application traffic. PostgreSQL uses `finance-products-db` under the owner's recorded decision.
 
 ---
 
@@ -242,19 +249,19 @@ No separate Finance Redis should be created casually.
 
 # PostgreSQL connectivity
 
-Expected:
+Owner-approved database route, conditional on Gate 0 and authorized provisioning:
 
 ```text
-Finance Hub
+Finance API
 ↓
-apps-backend
+finance-products-db (internal, dedicated)
 ↓
 postgres-products
 ↓
 finance_hub_lab / finance_hub_prod
 ```
 
-subject to Gate 0 proving the service exists and is correctly configured.
+The Finance API joins this private database network when deployed. n8n, Evolution, NPM and unrelated services do not join it. Network attachment and credentials require validation in Lab.
 
 ---
 
@@ -314,8 +321,11 @@ HTTP public service
 internal application communication
 → apps-backend
 
-database/cache
-→ apps-backend only
+postgres-products
+→ finance-products-db only
+
+Finance API database access
+→ finance-products-db
 ```
 
 subject to actual VPS topology.
@@ -482,8 +492,8 @@ REQUIRED EVIDENCE
 Gate 0
 
 PREFERRED DIRECTION
-internal apps-backend connectivity
+internal application connectivity; dedicated finance-products-db for PostgreSQL
 
 FINAL DECISION
-pending
+database network decided by owner; n8n-to-API route pending Gate 0
 ```

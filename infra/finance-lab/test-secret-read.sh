@@ -8,9 +8,20 @@ if [ "$uid" -eq 0 ]; then
   exit 1
 fi
 
+if [ "${FINANCE_LAB_FORCE_SUDO_DOCKER:-0}" != 1 ] && docker info >/dev/null 2>&1; then
+  docker_cli() { docker "$@"; }
+else
+  # sudo receives only numeric identity and a disposable file path; never credential values.
+  sudo docker info >/dev/null
+  docker_cli() {
+    sudo env FINANCE_LAB_UID="$FINANCE_LAB_UID" FINANCE_LAB_GID="$FINANCE_LAB_GID" SECRET_FILE="$SECRET_FILE" docker "$@"
+  }
+fi
+
 test_dir=$(mktemp -d)
+export FINANCE_LAB_UID="$uid" FINANCE_LAB_GID="$gid" SECRET_FILE="$test_dir/marker"
 cleanup() {
-  docker compose -f "$test_dir/compose.yml" down >/dev/null 2>&1 || true
+  docker_cli compose -f "$test_dir/compose.yml" down >/dev/null 2>&1 || true
   rm -rf -- "$test_dir"
 }
 trap cleanup EXIT
@@ -35,14 +46,17 @@ secrets:
     file: '${SECRET_FILE}'
 YAML
 
-export FINANCE_LAB_UID="$uid" FINANCE_LAB_GID="$gid" SECRET_FILE="$test_dir/marker"
-docker compose -f "$test_dir/compose.yml" run --rm readcheck >/dev/null
-if FINANCE_LAB_UID="$((uid + 1))" docker compose -f "$test_dir/compose.yml" run --rm readcheck >/dev/null 2>&1; then
+docker_cli compose -f "$test_dir/compose.yml" run --rm readcheck >/dev/null
+if FINANCE_LAB_UID="$((uid + 1))" docker_cli compose -f "$test_dir/compose.yml" run --rm readcheck >/dev/null 2>&1; then
   echo 'FAIL: a different non-root UID read the 0600 secret.' >&2
   exit 1
 fi
-if docker run --rm --user 0 finance-hub-api:lab api >/dev/null 2>&1; then
+if docker_cli run --rm --user 0 finance-hub-api:lab api >"$test_dir/root.stdout" 2>"$test_dir/root.stderr"; then
   echo 'FAIL: the Lab runtime accepted root.' >&2
+  exit 1
+fi
+if [[ $(<"$test_dir/root.stderr") != *'Error: Finance Lab runtime must be non-root'* ]]; then
+  echo 'FAIL: root exited for a reason other than the explicit runtime guard.' >&2
   exit 1
 fi
 echo 'PASS: owner UID read a 0600 Compose secret; another UID and root were rejected.'

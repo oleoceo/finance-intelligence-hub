@@ -62,6 +62,11 @@ jobs:
       - name: Finance Lab non-root secret mount
         run: bash infra/finance-lab/test-secret-read.sh
 
+      - name: Finance Lab sudo Docker secret mount
+        env:
+          FINANCE_LAB_FORCE_SUDO_DOCKER: '1'
+        run: bash infra/finance-lab/test-secret-read.sh
+
       - name: Unit tests
         run: pnpm test
 

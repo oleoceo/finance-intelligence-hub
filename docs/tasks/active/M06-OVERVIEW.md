@@ -1,6 +1,6 @@
 # M06 — WhatsApp Integration (Evolution + n8n Transport)
 
-**Status:** ACTIVE — promoted by accepted documentary PR #27; P01–P05 NOT AUTHORIZED FOR IMPLEMENTATION
+**Status:** ACTIVE — P01 DONE via PR #28; P02 implementation authorized; P03–P05 not authorized
 **Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance
 **Blocks:** M07 activation
 
@@ -139,8 +139,8 @@ M06 expects to consume from accepted M05:
 
 | Task | Status |
 |---|---|
-| [M06-P01](M06-P01.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
-| [M06-P02](M06-P02.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
+| [M06-P01](../completed/M06-P01.md) | DONE / integrated via PR #28 |
+| [M06-P02](M06-P02.md) | ACTIVE / implementation authorized |
 | [M06-P03](M06-P03.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
 | [M06-P04](M06-P04.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
 | [M06-P05](M06-P05.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |

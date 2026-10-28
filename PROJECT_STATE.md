@@ -771,13 +771,13 @@ M04 Transaction Core
 DONE — M04-T01 DONE / human accepted; M04-T02 DONE / accepted; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS); M04-T03 DONE / integrated; PR #10 MERGED as `51b3c97880d154c6543a3c753ef6e7419ea1ea0d` (post-merge CI `39777604808` SUCCESS); M04-T04 DONE / integrated; PR #11 MERGED as `5c4ef3971d411b4706265c452180185e34c84bef` (post-merge CI `39790495902` SUCCESS); M04-T05 DONE / integrated; PR #12 MERGED as `815309db057489e402db8061a9ec9fd7bab92db0` (post-merge CI `39801330979` SUCCESS); M04-T06 DONE / integrated; PR #13 MERGED as 6908ec30650ab9c8eca90a6909958d8adbb31f5d (post-merge CI 39811484800 SUCCESS); M04-T07 DONE / integrated via PR #14 MERGED as d923eb4c11790c7e901d4faee67af05ffc27f165 (post-merge CI 39818569159 attempt 2 SUCCESS); M04-T08 DONE / integrated via PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` (post-merge CI `39836071361` SUCCESS); Gate A PASS; Gate 0 NOT EXECUTED
 
 V0.1 Forward Planning
-ACCEPTED / INTEGRATED — merge `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` SUCCESS. M05 planning, activation and P01–P06 are completed; M06 ACTIVE following accepted documentary promotion PR #27; P01–P05 implementation NOT AUTHORIZED; M07–M09 remain PLANNED.
+ACCEPTED / INTEGRATED — merge `6cc94e14f4ad2b56e1bca65a8ba8f835902215e9`; post-merge CI `39672168104` SUCCESS. M05 planning, activation and P01–P06 are completed; M06 ACTIVE following accepted documentary promotion PR #27; P01 DONE via PR #28; P02 implementation authorized; P03–P05 not authorized; M07–M09 remain PLANNED.
 
 M05 Inbox / Parser / Confirmation
 DONE / human technical acceptance — M05-P01–P06 integrated via PRs #19–#24. P06 reviewed head `6476c3e9b0f15c07eee74fe4d48472f5148d525e`; exact-head CI `40595431256` SUCCESS; squash `ca3527514df52d302746de2c779934099a98b473`; post-merge CI `40596736837` SUCCESS.
 
 M06 WhatsApp Integration
-ACTIVE — P01–P05 implementation NOT AUTHORIZED
+ACTIVE — P01 DONE via PR #28; P02 implementation authorized; P03–P05 not authorized
 
 M07 Correction / Void / Refund
 ⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
@@ -851,7 +851,7 @@ These belong to Gate 0.
 
 # 39. Current allowed next actions
 
-M01–M05 DONE; Gate A PASS. M05-P01–P06 human technically accepted and integrated. Gate 0/B/C NOT EXECUTED. Next allowed action: separate authorization of M06-P01 implementation; P01–P05 implementation remains NOT AUTHORIZED until individually selected and approved.
+M01–M05 DONE; Gate A PASS. M05-P01–P06 human technically accepted and integrated. Gate 0/B/C NOT EXECUTED. Next allowed action: implement authorized M06-P02; P01 DONE; P02 implementation authorized; P03–P05 not authorized.
 
 ---
 
@@ -1107,7 +1107,7 @@ KNOWN ISSUES:
 none
 
 NEXT:
-M05-P01–P06 are DONE / integrated via PRs #19–#24; M05 human technically accepted. M06 Activation Review is accepted and PR #27 promotes M06 to ACTIVE; P01–P05 implementation is NOT AUTHORIZED.
+M05-P01–P06 are DONE / integrated via PRs #19–#24; M05 human technically accepted. M06 Activation Review is accepted and PR #27 promotes M06 to ACTIVE; P01 DONE; P02 implementation authorized; P03–P05 not authorized.
 ```
 
 ---
@@ -1205,7 +1205,7 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-M01–M05 DONE / integrated; Gate A PASS. M05-P01–P06 human technically accepted; PR #24 merged at `ca3527514df52d302746de2c779934099a98b473`, post-merge CI `40596736837` SUCCESS. M06 ACTIVE via documentary promotion PR #27; P01–P05 implementation NOT AUTHORIZED; M07–M09 PLANNED; Gate 0/B/C NOT EXECUTED. Next allowed action: separate authorization of M06-P01 implementation.
+M01–M05 DONE / integrated; Gate A PASS. M05-P01–P06 human technically accepted; PR #24 merged at `ca3527514df52d302746de2c779934099a98b473`, post-merge CI `40596736837` SUCCESS. M06 ACTIVE via documentary promotion PR #27; P01 DONE via PR #28; P02 implementation authorized; P03–P05 not authorized; M07–M09 PLANNED; Gate 0/B/C NOT EXECUTED. Next allowed action: implement authorized M06-P02.
 
 ---
 
@@ -1283,7 +1283,7 @@ Documentation baseline tag
 ✅ PRESENT
 
 Implementation
-M01–M05 DONE / integrated; Gate A PASS; M05-P01–P06 human technically accepted via PRs #19–#24. M06 ACTIVE via documentary promotion PR #27; P01–P05 implementation NOT AUTHORIZED; M07–M09 PLANNED.
+M01–M05 DONE / integrated; Gate A PASS; M05-P01–P06 human technically accepted via PRs #19–#24. M06 ACTIVE via documentary promotion PR #27; P01 DONE via PR #28; P02 implementation authorized; P03–P05 not authorized; M07–M09 PLANNED.
 
 Gate 0
 ⬜ NOT EXECUTED
@@ -1317,6 +1317,6 @@ NONE
 
 # 63. Next action
 
-**Next action:** Review separate authorization of M06-P01 implementation. M05-P01–P06 are DONE / integrated; M05 has human technical acceptance. M06 ACTIVE via documentary promotion PR #27; P01–P05 implementation NOT AUTHORIZED; M07–M09 remain PLANNED; Gate 0/B/C NOT EXECUTED. No VPS or live infrastructure work.
+**Next action:** Implement authorized M06-P02. M05-P01–P06 are DONE / integrated; M05 has human technical acceptance. M06 ACTIVE via documentary promotion PR #27; P01 DONE via PR #28; P02 implementation authorized; P03–P05 not authorized; M07–M09 remain PLANNED; Gate 0/B/C NOT EXECUTED. No VPS or live infrastructure work.
 
----
+M06-P01 documentary closure: DONE / integrated via PR #28; accepted head `de4291b0d68298c60e34ca66e1e32f342b01a20e`, exact-head CI `40612282461` SUCCESS, squash `19e4490c671a606e1f2e43204dbc0da5d5d97615`, post-merge CI `40613174472` SUCCESS. Synthetic native Node contract suite: 35 PASS independently; not discovered by automatic Vitest CI. M06 remains ACTIVE; only M06-P02 implementation authorized.

@@ -47,6 +47,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Finance Lab Compose validation
+        run: docker compose -f infra/finance-lab/compose.yml config --quiet
+
+      - name: Finance API image build
+        run: docker compose -f infra/finance-lab/compose.yml build api
+
       - name: Unit tests
         run: pnpm test
 

@@ -43,6 +43,8 @@ export function validTime(value) {
 export function normalize(event, verified, configuredInstance) {
   if (
     !verified ||
+    typeof verified !== 'object' ||
+    Array.isArray(verified) ||
     !event ||
     typeof event !== 'object' ||
     Array.isArray(event) ||
@@ -74,13 +76,27 @@ export function normalize(event, verified, configuredInstance) {
   };
 }
 
-export function retryDecision(status, retryAfter, attempt) {
+export function retryDecision(status, retryAfter, attempt, now = Date.now()) {
   if (attempt >= 3) return { retry: false, delayMs: 0 };
   if (status === 429) {
-    const seconds = Number(retryAfter);
+    const seconds =
+      typeof retryAfter === 'string' && /^\d+(?:\.\d+)?$/.test(retryAfter.trim())
+        ? Number(retryAfter)
+        : NaN;
+    const httpDate =
+      typeof retryAfter === 'string' &&
+      /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(
+        retryAfter,
+      );
+    const date = httpDate ? Date.parse(retryAfter) : NaN;
+    const delayMs = Number.isFinite(seconds)
+      ? seconds * 1000
+      : Number.isFinite(date)
+        ? Math.max(0, date - now)
+        : 30000;
     return {
       retry: true,
-      delayMs: Number.isFinite(seconds) && seconds >= 0 ? Math.min(seconds * 1000, 30000) : 30000,
+      delayMs: Math.min(delayMs, 30000),
     };
   }
   if (status === 500 || status === 503 || status === 'timeout')
@@ -88,23 +104,50 @@ export function retryDecision(status, retryAfter, attempt) {
   return { retry: false, delayMs: 0 };
 }
 
+function transportStatus(error) {
+  const status = error?.status ?? error?.statusCode ?? error?.response?.status;
+  if (Number.isInteger(status) && status >= 100 && status <= 599) return status;
+  const code = error?.code ?? error?.cause?.code;
+  if (
+    [
+      'ETIMEDOUT',
+      'ESOCKETTIMEDOUT',
+      'ECONNRESET',
+      'ECONNREFUSED',
+      'EHOSTUNREACH',
+      'ENETUNREACH',
+    ].includes(code)
+  )
+    return 'timeout';
+  return null;
+}
+
 export async function processEvent(
   event,
-  { verify = async () => null, configuredInstance, finance, wait = async () => {} },
+  { verify = async () => null, configuredInstance, finance, wait = async () => {}, now = Date.now },
 ) {
-  const verified = await verify(event);
+  let verified;
+  try {
+    verified = await verify(event);
+  } catch {
+    return { stage: 'rejected', reason: 'INGRESS_REJECTED' };
+  }
   const envelope = normalize(event, verified, configuredInstance);
   if (!envelope) return { stage: 'rejected', reason: 'INGRESS_REJECTED' };
   for (let attempt = 1; attempt <= 3; attempt++) {
     let response;
     try {
       response = await finance(envelope);
-    } catch {
-      response = { status: 'timeout' };
+    } catch (error) {
+      const status = transportStatus(error);
+      if (status === null) return { stage: 'failed', reason: 'FINANCE_INGEST_FAILED' };
+      response = { status };
     }
+    if (!response || typeof response !== 'object')
+      return { stage: 'failed', reason: 'FINANCE_INGEST_FAILED' };
     if (response.status >= 200 && response.status < 300)
       return { stage: 'accepted', status: response.status };
-    const decision = retryDecision(response.status, response.retryAfter, attempt);
+    const decision = retryDecision(response.status, response.retryAfter, attempt, now());
     if (!decision.retry)
       return { stage: 'failed', status: response.status, reason: 'FINANCE_INGEST_FAILED' };
     await wait(decision.delayMs);

@@ -1,12 +1,12 @@
 # M06 — WhatsApp Integration (Evolution + n8n Transport)
 
-**Status:** PLANNED
+**Status:** ACTIVE — promotion REVIEW REQUIRED; P01–P05 NOT AUTHORIZED FOR IMPLEMENTATION
 **Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance
 **Blocks:** M07 activation
 
 > **This document does NOT authorize implementation.**
-> Provisional task decomposition and scope are defined here. Execution-ready
-> contracts are finalized during Activation Review.
+> The accepted Activation Review defines five ACTIVE task contracts.
+> Each still requires separate implementation authorization.
 
 ---
 
@@ -19,7 +19,7 @@ Evolution webhook
 → n8n technical filter + minimal normalization
 → Finance API ingest endpoint
 → structured result
-→ reply.should_send → Evolution send message
+→ reply.should_send → send Finance-authored text through Evolution
 ```
 
 Without moving financial business logic into n8n.
@@ -50,7 +50,7 @@ minimal envelope normalization
 ↓
 POST /api/v1/inbox/messages (finance:ingest)
 ↓
-structured response { reply?, should_send? }
+structured result with Finance-authored `reply.text` for sendable outcomes
 ↓
 if should_send: Evolution send message API
 ```
@@ -66,7 +66,7 @@ if should_send: Evolution send message API
 ### Retry Behavior
 - 500/503: controlled retry with backoff
 - 429: honor Retry-After header
-- 4xx domain/validation: NO blind retry (return error to sender if appropriate)
+- 4xx domain/validation: NO blind retry; 401/403 never trigger an automated WhatsApp response
 - Network timeout: bounded retry
 - Always preserve: `source`, `source_instance`, `source_message_id`
 
@@ -84,9 +84,9 @@ The following commands must work end-to-end through the Evolution/n8n/Finance pi
 
 | Command | Expected Effect |
 |---------|----------------|
-| `35 almoço nubank` | Expense created, confirmation or direct post depending on parser confidence |
-| `empresa 327,40 google ads inter` | Expense in Empresa book, Inter account |
-| `recebi 2500 cliente empresa inter` | Income created in Empresa book |
+| `35 almoço nubank` | Expense; trailing `nubank` remains description; Account needs rule/default or clarification |
+| `empresa 327,40 google ads inter` | Expense in Empresa book; Account needs rule/default or clarification |
+| `recebi 2500 cliente empresa inter` | Income; Book and Account need rule/default or clarification |
 | `transferi 500 nubank para inter` | Transfer between accounts |
 | `último` | Last transaction returned |
 
@@ -116,7 +116,7 @@ The following commands must work end-to-end through the Evolution/n8n/Finance pi
 ### Live VPS Integration
 - REQUIRES Gate 0 PASS
 - REQUIRES separate explicit authorization for VPS/Lab access
-- Actual Evolution/n8n instance URLs, credentials, network membership and secrets are determined during Activation Review using Gate 0 evidence
+- Actual Evolution/n8n instance URLs, credentials, network membership and secrets require Gate 0 evidence and separate authorization
 - Do NOT hardcode or assume these values in forward planning
 
 ---
@@ -128,26 +128,22 @@ M06 expects to consume from accepted M05:
 - Frozen `POST /api/v1/inbox/messages` endpoint with `finance:ingest`, accepting normalized envelope
 - Inbox persistence triggered by ingest call
 - Interpretation and confirmation orchestration triggered by ingest
-- Structured response contract including reply text and should_send flag
+- Structured response with `reply.should_send`; P03 adds Finance-authored bounded Portuguese `reply.text`
 - Sender normalization compatible with Evolution phone format
 
-**ACTIVATION REVIEW REQUIRED**: Verify the concrete handler implementation, request/response types, authentication mechanism, Evolution payload adaptation, and instance/network/secrets against actual M05 implementation and Gate 0 evidence. The frozen endpoint path is fixed.
+**Activation Review ACCEPTED:** M05 interfaces and approved policies are recorded in [the review](M06-ACTIVATION-REVIEW.md). Live provider details remain conditional on Gate 0.
 
 ---
 
-## 7. Provisional Task Decomposition
+## 7. ACTIVE task contracts
 
-| Task ID | Goal | Key Deliverables |
-|---------|------|-----------------|
-| **M06-P01** | Evolution/n8n transport contract and normalized envelope | Envelope schema, ingest endpoint specification, auth contract, error response contract |
-| **M06-P02** | Thin n8n workflow implementation | Webhook receiver, event filter, envelope normalizer, Finance API caller, reply dispatcher |
-| **M06-P03** | Reply mapping/delivery and retry behavior | Response-to-reply transformation, Evolution send integration, retry policy for 500/503/429, no-retry for 4xx domain errors |
-| **M06-P04** | Duplicate/reply-failure resilience | Verification that duplicate webhooks produce one financial effect, reply failure does not duplicate finance, idempotency preserved through transport |
-| **M06-P05** | Live integration E2E and milestone verification | End-to-end test with real or simulated Evolution/n8n, all five acceptance commands verified, frozen scenario coverage |
-
-Task boundaries may be refined during Activation Review based on actual M05 implementation and Gate 0 infrastructure evidence.
-
----
+| Task | Status |
+|---|---|
+| [M06-P01](M06-P01.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
+| [M06-P02](M06-P02.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
+| [M06-P03](M06-P03.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
+| [M06-P04](M06-P04.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
+| [M06-P05](M06-P05.md) | ACTIVE / NOT AUTHORIZED FOR IMPLEMENTATION |
 
 ## 8. Required Test Categories
 
@@ -155,7 +151,7 @@ Task boundaries may be refined during Activation Review based on actual M05 impl
 - Envelope normalization edge cases
 - Event filter correctness (ignore non-message, ignore status updates)
 - Retry policy logic (backoff, Retry-After, no blind 4xx retry)
-- Reply mapping transformations
+- Finance-owned reply presenter and transport pass-through
 
 ### Integration Tests
 - Ingest endpoint called correctly with normalized envelope

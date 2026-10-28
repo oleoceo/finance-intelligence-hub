@@ -1,8 +1,8 @@
 # M06 Activation Review — ACCEPTED
 
-**Status:** ACCEPTED by project owner on 2026-10-27; M06 remains PLANNED until its separate promotion PR is reviewed and merged.
+**Status:** ACCEPTED by project owner on 2026-10-27; M06 promotion is REVIEW REQUIRED; M06 becomes ACTIVE on acceptance and merge of the promotion PR.
 **Date:** 2026-10-27
-**Forward plan:** [M06 overview](M06-OVERVIEW.md)
+**Active milestone overview:** [M06 overview](M06-OVERVIEW.md)
 **Authoritative main:** `6ac27917df7e4c2007aec01cd30f067cd4cdd338`
 **Reviewer/approver:** project owner — explicit continuation approval following review of all three activation decisions
 
@@ -57,9 +57,9 @@ Keep Evolution ingress verification material, Evolution send credentials, and th
 
 Finance call retry: bounded backoff for 500/503/timeouts; 429 honors Retry-After within a maximum delay; 400/401/403/409/422 are not blindly retried. An ambiguous Finance response may be retried only with the *same* identity. Outbound send retry is a separate bounded queue/path and never calls Finance create again. A send timeout can have delivered the message; reply delivery is best effort, not exactly once. Log only identity/correlation/status/reply ID, not credentials or raw text. No finance:admin token in n8n, no raw unauthorized Inbox persistence, no financial parsing or SQL in workflow.
 
-## 6. Proposed PLANNED task specifications
+## 6. Accepted task specifications
 
-These five specifications are separately reviewable proposals, not ACTIVE contracts or implementation authorization. On approval, create the corresponding `docs/tasks/active/M06-P0x.md` record before starting that task. The exact paths below are the maximum permitted surfaces; a task may use fewer. `docs/integrations/m06/**` and `integrations/n8n/m06/**` are new bounded directories. Common authority: [freeze ledger](../../frozen/FINAL-FREEZE-DECISIONS.md), [architecture](../../frozen/03-ARCHITECTURE.md), [API](../../frozen/05-API-CONTRACTS.md), [WhatsApp](../../frozen/06-WHATSAPP-FLOWS.md), [security](../../frozen/07-SECURITY.md), and [roadmap/tests](../../frozen/09-ROADMAP-TESTS.md). Gate A is PASS; Gate 0/B/C are NOT EXECUTED. No migration is expected. Any dependency addition requires a task-specific justification and minimal lockfile change, not an implicit path grant. `PROJECT_STATE.md` may be changed only during accepted closure. Every task stops for a frozen-authority conflict, unresolved security or financial decision, missing required test evidence, or work outside its permitted paths. No task permits Production, VPS, or live Evolution/n8n access without separate explicit authorization.
+These section 6 specifications preserve the approved proposal wording as historical decision evidence; section 8 records the accepted reply, 401/403, command and promotion decisions. The five ACTIVE contracts apply those decisions and remain NOT AUTHORIZED FOR IMPLEMENTATION until separately authorized. The exact paths below are the maximum permitted surfaces; a task may use fewer. `docs/integrations/m06/**` and `integrations/n8n/m06/**` are new bounded directories. Common authority: [freeze ledger](../../frozen/FINAL-FREEZE-DECISIONS.md), [architecture](../../frozen/03-ARCHITECTURE.md), [API](../../frozen/05-API-CONTRACTS.md), [WhatsApp](../../frozen/06-WHATSAPP-FLOWS.md), [security](../../frozen/07-SECURITY.md), and [roadmap/tests](../../frozen/09-ROADMAP-TESTS.md). Gate A is PASS; Gate 0/B/C are NOT EXECUTED. No migration is expected. Any dependency addition requires a task-specific justification and minimal lockfile change, not an implicit path grant. `PROJECT_STATE.md` may be changed only during accepted closure. Every task stops for a frozen-authority conflict, unresolved security or financial decision, missing required test evidence, or work outside its permitted paths. No task permits Production, VPS, or live Evolution/n8n access without separate explicit authorization.
 
 ### M06-P01 — Transport and trusted envelope contract
 
@@ -71,7 +71,7 @@ These five specifications are separately reviewable proposals, not ACTIVE contra
 - **Tests:** Unit/static fixture validation for required types, canonical identity retention and field mapping. Integration contract cases for trusted versus forged origin, sender spoofing, cross-instance event and all rejected event classes, asserting zero Finance calls. E2E scenario specification for trusted ingest and fail-closed rejection; live execution belongs to P05 after Gate 0.
 - **Security / financial invariants:** AuthorizedSender remains enforced inside Finance before raw Inbox persistence; n8n has `finance:ingest` only; no n8n financial decisions; rejected events cause zero Inbox/Transaction effects; no secrets or raw text in fixtures/logs.
 - **Forbidden scope:** Workflow implementation, presenter/send behavior, schema or parser changes, real credentials/URLs/provider features, Gate 0 execution and live infrastructure.
-- **Human authorization / stop:** Remain PLANNED until M06/P01 approval. If Gate 0 cannot establish a supported authenticity mechanism and verified sender/instance binding, stop live promotion and return the evidence to the human; do not substitute an unverified payload field.
+- **Human authorization / stop:** P01 remains NOT AUTHORIZED FOR IMPLEMENTATION until separate approval. If Gate 0 cannot establish a supported authenticity mechanism and verified sender/instance binding, stop live promotion and return the evidence to the human; do not substitute an unverified payload field.
 
 ### M06-P02 — Thin webhook filter, normalization and Finance ingest workflow
 
@@ -142,4 +142,4 @@ Gate A PASS. Gate 0 NOT EXECUTED and required for live integration; Gate B/C NOT
 - [x] Gate 0/VPS separation acknowledged: Gate 0/B/C remain NOT EXECUTED, no live access, credential use or deployment is authorized.
 - [x] M06 documentation promotion to ACTIVE authorized through a separately reviewed promotion PR; no task implementation authorized by this decision.
 
-**Current decision:** M06 Activation Review ACCEPTED. Merge this review after exact-head CI SUCCESS, then prepare a separate promotion PR to move M06 planning and the five bounded task contracts to ACTIVE. M06 remains PLANNED until that promotion is reviewed and merged. **P01–P05 implementation authorization: NO.** Gate 0/B/C remain NOT EXECUTED. No VPS/Lab/Production access, live Evolution/n8n integration, infrastructure changes or transport implementation is authorized.
+**Current decision:** M06 Activation Review ACCEPTED and integrated via PR #26; reviewed head `38a85db185a704d5523b54c16262c3707e24fd61`, exact-head CI `40605635355` SUCCESS, squash `17669300ab61899e672ec9659646d0650a16bc99`, post-merge CI `40606061490` SUCCESS. Documentary promotion is REVIEW REQUIRED; M06 becomes ACTIVE after promotion acceptance and merge. **P01–P05 implementation authorization: NO.** Gate 0/B/C remain NOT EXECUTED. No VPS/Lab/Production access, live Evolution/n8n integration, infrastructure changes or transport implementation is authorized.

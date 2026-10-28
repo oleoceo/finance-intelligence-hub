@@ -1,0 +1,43 @@
+{
+  "name": "M06-P02 local template — verification required",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "finance-m06-local-template",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "ingress",
+      "name": "Synthetic webhook entry",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Provider-neutral workflow logic. A trusted ingress adapter must supply verify;\n// the importable template supplies a fail-closed adapter until Gate 0.\nconst fields = [\n  'instance',\n  'messageId',\n  'sender',\n  'corroboratingSender',\n  'receivedAt',\n  'text',\n  'kind',\n  'contentKind',\n  'isGroup',\n  'fromMe',\n];\nconst bounded = (value) => typeof value === 'string' && value.length > 0 && value.length <= 255;\n\nfunction validTime(value) {\n  if (typeof value !== 'string') return false;\n  const match =\n    /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?(Z|([+-])(\\d{2}):(\\d{2}))$/.exec(\n      value,\n    );\n  if (!match) return false;\n  const [, year, month, day, hour, minute, second, zone, , offsetHour, offsetMinute] = match;\n  const y = Number(year),\n    m = Number(month),\n    d = Number(day);\n  const leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);\n  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];\n  return (\n    m >= 1 &&\n    m <= 12 &&\n    d >= 1 &&\n    d <= days[m - 1] &&\n    Number(hour) <= 23 &&\n    Number(minute) <= 59 &&\n    Number(second) <= 59 &&\n    (zone === 'Z' || (Number(offsetHour) <= 23 && Number(offsetMinute) <= 59)) &&\n    !Number.isNaN(Date.parse(value))\n  );\n}\n\nfunction normalize(event, verified, configuredInstance) {\n  if (\n    !verified ||\n    !event ||\n    typeof event !== 'object' ||\n    Array.isArray(event) ||\n    Object.keys(event).sort().join() !== [...fields].sort().join() ||\n    Object.keys(verified).sort().join() !== [...fields].sort().join() ||\n    fields.some((field) => !Object.is(event[field], verified[field])) ||\n    !bounded(configuredInstance) ||\n    event.instance !== configuredInstance ||\n    event.kind !== 'message' ||\n    event.contentKind !== 'text' ||\n    event.isGroup !== false ||\n    event.fromMe !== false ||\n    !bounded(event.messageId) ||\n    !bounded(event.sender) ||\n    !/^\\d{8,20}$/.test(event.sender) ||\n    event.sender !== event.corroboratingSender ||\n    !validTime(event.receivedAt) ||\n    typeof event.text !== 'string'\n  )\n    return null;\n  return {\n    source: 'whatsapp',\n    source_instance: configuredInstance,\n    source_message_id: event.messageId,\n    sender_reference: event.sender,\n    received_at: event.receivedAt,\n    raw_text: event.text,\n    message_context: { is_group: false, from_me: false },\n  };\n}\n\nfunction retryDecision(status, retryAfter, attempt) {\n  if (attempt >= 3) return { retry: false, delayMs: 0 };\n  if (status === 429) {\n    const seconds = Number(retryAfter);\n    return {\n      retry: true,\n      delayMs: Number.isFinite(seconds) && seconds >= 0 ? Math.min(seconds * 1000, 30000) : 30000,\n    };\n  }\n  if (status === 500 || status === 503 || status === 'timeout')\n    return { retry: true, delayMs: Math.min(1000 * 2 ** (attempt - 1), 4000) };\n  return { retry: false, delayMs: 0 };\n}\n\nasync function processEvent(\n  event,\n  { verify = async () => null, configuredInstance, finance, wait = async () => {} },\n) {\n  const verified = await verify(event);\n  const envelope = normalize(event, verified, configuredInstance);\n  if (!envelope) return { stage: 'rejected', reason: 'INGRESS_REJECTED' };\n  for (let attempt = 1; attempt <= 3; attempt++) {\n    let response;\n    try {\n      response = await finance(envelope);\n    } catch {\n      response = { status: 'timeout' };\n    }\n    if (response.status >= 200 && response.status < 300)\n      return { stage: 'accepted', status: response.status };\n    const decision = retryDecision(response.status, response.retryAfter, attempt);\n    if (!decision.retry)\n      return { stage: 'failed', status: response.status, reason: 'FINANCE_INGEST_FAILED' };\n    await wait(decision.delayMs);\n  }\n}\n\n// Gate 0 must replace this adapter with a reviewed, trusted-origin verifier.\nconst verify = async () => null;\nconst result = await processEvent($input.first().json.body, {\n  verify,\n  configuredInstance: '',\n  finance: async () => { throw new Error('INGRESS_NOT_CONFIGURED'); },\n});\nreturn [{ json: result }];"
+      },
+      "id": "gate",
+      "name": "Fail-closed verification and ingest boundary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 0]
+    }
+  ],
+  "connections": {
+    "Synthetic webhook entry": {
+      "main": [
+        [
+          {
+            "node": "Fail-closed verification and ingest boundary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,11 @@
+# M06-P02 local workflow
+
+The importable `integrations/n8n/m06/p02/workflow.json` is inactive and fails closed. Its webhook enters a Code node containing the tested provider-neutral filter, mapper and bounded retry logic. The verifier returns no attestation and the configured instance is empty, so the imported template cannot forward a request. Import is a local artifact check, not permission to activate it.
+
+The isolated harness injects a synthetic verifier and a mock Finance endpoint. That verifier snapshots the event independently of payload `trusted` claims. It proves the intended mapping and retry behavior, but is not a real Evolution origin verifier. Gate 0 must establish actual Evolution and n8n versions, a supported origin mechanism, immutable sender/instance/message binding, and a separately reviewed Finance HTTP credential binding before live configuration. The runtime must remain disabled if these cannot be established. The Finance credential must be a separate `finance:ingest` reference; no `finance:admin` or outbound Evolution credential belongs in this workflow.
+
+Accepted input is a verified, configured-instance private incoming text event. The mapper forwards exactly `source`, `source_instance`, `source_message_id`, `sender_reference`, `received_at`, `raw_text`, and `message_context` (`is_group`, `from_me`). It preserves text and the original identity triple on retry. It performs no parsing, SQL, sender authorization or financial decisions. Finance remains responsible for AuthorizedSender enforcement before raw Inbox persistence.
+
+Transient 500/503 and transport timeout receive at most three total attempts with 1s then 2s delay. 429 uses Retry-After seconds capped at 30s, also with three total attempts. 400/401/403/409/422 terminate. Results expose only stage, reason and status; no input, sender, text, credentials or response bodies. There is no outbound WhatsApp branch. P03–P05 and live Gate 0 verification remain separate.
+
+Run `node integrations/n8n/m06/p02/build-workflow.mjs` to regenerate the importable JSON from the tested processor, then `node --test integrations/n8n/m06/p02/p02.test.mjs`. Native Node tests are outside the current Vitest CI globs and must be run independently; automatic discovery needs a separately scoped CI/package change.

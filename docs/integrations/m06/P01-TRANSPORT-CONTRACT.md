@@ -1,6 +1,6 @@
 # M06-P01 transport and trusted envelope contract
 
-Status: REVIEW REQUIRED. This is a provider-neutral local contract, not an executable n8n workflow or proof of a deployed Evolution installation. Gate 0 must establish the actual Evolution/n8n versions, supported origin verification or effective access restriction, event shape, and instance/sender binding before live configuration. Unknown authenticity or conflicting metadata fails closed.
+Status: DONE; accepted via PR #28. This is a provider-neutral local contract, not an executable n8n workflow or proof of a deployed Evolution installation. Gate 0 must establish the actual Evolution/n8n versions, supported origin verification or effective access restriction, event shape, and instance/sender binding before live configuration. Unknown authenticity or conflicting metadata fails closed.
 
 ## Boundary and order
 

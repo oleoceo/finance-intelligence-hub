@@ -1,6 +1,6 @@
 # M06 — WhatsApp Integration (Evolution + n8n Transport)
 
-**Status:** ACTIVE — P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 REVIEW REQUIRED / local acceptance
+**Status:** ACTIVE — P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / local acceptance integrated; live integration NOT EXECUTED
 **Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance
 **Blocks:** M07 activation
 
@@ -143,7 +143,7 @@ M06 expects to consume from accepted M05:
 | [M06-P02](../completed/M06-P02.md) | DONE / integrated via PR #29 |
 | [M06-P03](../completed/M06-P03.md) | DONE / integrated via PR #30 |
 | [M06-P04](../completed/M06-P04.md) | DONE / integrated via PR #31 |
-| [M06-P05](M06-P05.md) | REVIEW REQUIRED / local acceptance |
+| [M06-P05](../completed/M06-P05.md) | DONE / local acceptance only, PR #32 |
 
 ## 8. Required Test Categories
 
@@ -198,3 +198,5 @@ Per AGENTS.md §6:
 - `06-WHATSAPP-FLOWS.md`
 - `07-SECURITY.md`
 - `09-ROADMAP-TESTS.md`
+
+**Milestone state:** LOCAL IMPLEMENTATION ACCEPTED - LIVE INTEGRATION NOT EXECUTED. P05 PR #32 reviewed HEAD `3072b50f000cf4c48fc0d3acc1d13c2670b59d9a`, exact-head CI `40699057147` SUCCESS, squash `dffec7923d786fb5900f1768155b6efe750da220`, post-merge CI `40700898781` SUCCESS. Gate 0/B/C NOT EXECUTED.

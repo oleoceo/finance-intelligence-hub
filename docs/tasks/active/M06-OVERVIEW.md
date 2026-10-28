@@ -1,6 +1,6 @@
 # M06 — WhatsApp Integration (Evolution + n8n Transport)
 
-**Status:** ACTIVE — promotion REVIEW REQUIRED; P01–P05 NOT AUTHORIZED FOR IMPLEMENTATION
+**Status:** ACTIVE — promoted by accepted documentary PR #27; P01–P05 NOT AUTHORIZED FOR IMPLEMENTATION
 **Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance
 **Blocks:** M07 activation
 

@@ -124,7 +124,7 @@ function transportStatus(error) {
 
 export async function processEvent(
   event,
-  { verify = async () => null, configuredInstance, finance, wait = async () => {}, now = Date.now },
+  { verify = async () => null, configuredInstance, finance, wait, now = Date.now },
 ) {
   let verified;
   try {
@@ -150,6 +150,11 @@ export async function processEvent(
     const decision = retryDecision(response.status, response.retryAfter, attempt, now());
     if (!decision.retry)
       return { stage: 'failed', status: response.status, reason: 'FINANCE_INGEST_FAILED' };
-    await wait(decision.delayMs);
+    if (typeof wait !== 'function') return { stage: 'failed', reason: 'FINANCE_INGEST_FAILED' };
+    try {
+      await wait(decision.delayMs);
+    } catch {
+      return { stage: 'failed', reason: 'FINANCE_INGEST_FAILED' };
+    }
   }
 }

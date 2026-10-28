@@ -28,7 +28,7 @@ const workflowCode = () => {
   );
   return workflow.nodes.find((node) => node.type === 'n8n-nodes-base.code').parameters.jsCode;
 };
-const runWorkflow = (event, integration) => {
+const runWorkflow = (event, integration, runtime = {}) => {
   let code = workflowCode();
   if (integration) {
     const defaultBinding = /const integration = \{\n  verify: async \(\) => null,[\s\S]*?\n\};/;
@@ -38,6 +38,7 @@ const runWorkflow = (event, integration) => {
   return vm.runInNewContext(`(async () => { ${code} })()`, {
     $input: { first: () => ({ json: { body: event } }) },
     __integration: integration,
+    setTimeout: runtime.setTimeout,
   });
 };
 const run = async (event, options = {}) => {
@@ -260,4 +261,129 @@ test('processEvent honors bounded Retry-After seconds and HTTP-date with stable 
     assert.deepEqual(calls[0], calls[1]);
     assert.deepEqual(delays, [expected]);
   }
+});
+
+const flushWorkflow = () => new Promise((resolve) => setImmediate(resolve));
+const assertGeneratedRetry = async (responses, expectedDelays, expectedStage, now) => {
+  const calls = [];
+  const delays = [];
+  const pending = [];
+  const integration = {
+    verify,
+    configuredInstance: instance,
+    now: () => now,
+    financeTransport: async ({ body }) => {
+      calls.push(body);
+      const response = responses[calls.length - 1];
+      if (response instanceof Error) throw response;
+      return response;
+    },
+  };
+  const resultPromise = runWorkflow(base(), integration, {
+    setTimeout: (resolve, ms) => {
+      delays.push(ms);
+      pending.push(resolve);
+    },
+  });
+  for (let index = 0; index < expectedDelays.length; index++) {
+    await flushWorkflow();
+    assert.equal(calls.length, index + 1, 'later Finance call must await the timer');
+    assert.deepEqual(delays, expectedDelays.slice(0, index + 1));
+    assert.equal(pending.length, 1);
+    pending.shift()();
+  }
+  const result = await resultPromise;
+  assert.equal(result[0].json.stage, expectedStage);
+  assert.equal(calls.length, responses.length);
+  assert.ok(calls.length <= 3);
+  assert.deepEqual(
+    calls.map(({ source, source_instance, source_message_id, raw_text }) => [
+      source,
+      source_instance,
+      source_message_id,
+      raw_text,
+    ]),
+    Array.from({ length: calls.length }, () => [
+      'whatsapp',
+      instance,
+      'synthetic-message-1',
+      'synthetic text',
+    ]),
+  );
+};
+
+test('generated workflow awaits 1s/2s before 500, 503 and transient retries', async () => {
+  const now = Date.parse('2026-01-01T12:00:00Z');
+  await assertGeneratedRetry(
+    [{ status: 500 }, { status: 503 }, { status: 503 }],
+    [1000, 2000],
+    'failed',
+    now,
+  );
+  await assertGeneratedRetry(
+    [
+      Object.assign(new Error('transport'), { code: 'ETIMEDOUT' }),
+      { status: 503 },
+      { status: 202 },
+    ],
+    [1000, 2000],
+    'accepted',
+    now,
+  );
+});
+
+test('generated workflow awaits bounded 429 delta-seconds and HTTP-date', async () => {
+  const now = Date.parse('2026-01-01T12:00:00Z');
+  for (const [header, delay] of [
+    ['5', 5000],
+    ['Thu, 01 Jan 2026 12:00:05 GMT', 5000],
+    ['60', 30000],
+    ['Thu, 01 Jan 2026 12:01:00 GMT', 30000],
+  ])
+    await assertGeneratedRetry(
+      [{ status: 429, retryAfter: header }, { status: 429, retryAfter: header }, { status: 202 }],
+      [delay, delay],
+      'accepted',
+      now,
+    );
+});
+
+test('generated workflow terminates 401, 403 and unknown exceptions without waiting', async () => {
+  for (const failure of [{ status: 401 }, { response: { status: 403 } }, new Error('bug')]) {
+    let calls = 0;
+    let timers = 0;
+    const result = await runWorkflow(
+      base(),
+      {
+        verify,
+        configuredInstance: instance,
+        financeTransport: async () => {
+          calls++;
+          throw failure;
+        },
+      },
+      {
+        setTimeout: () => {
+          timers++;
+        },
+      },
+    );
+    assert.equal(result[0].json.stage, 'failed');
+    assert.equal(calls, 1);
+    assert.equal(timers, 0);
+  }
+});
+
+test('generated workflow fails closed on transient response when timer is unavailable', async () => {
+  let calls = 0;
+  const result = await runWorkflow(base(), {
+    verify,
+    configuredInstance: instance,
+    financeTransport: async () => {
+      calls++;
+      return { status: 503 };
+    },
+  });
+  assert.equal(result[0].json.stage, 'failed');
+  assert.equal(calls, 1);
 });

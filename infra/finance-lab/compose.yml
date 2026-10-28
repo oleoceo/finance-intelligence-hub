@@ -1,0 +1,51 @@
+# Stage at /opt/apps/apps/lab/finance-hub. No ports or shared application network until ADR-003 closes.
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    image: finance-hub-api:lab
+    restart: unless-stopped
+    init: true
+    secrets: [app_password, admin_token, ingest_token]
+    networks: [finance-products-db]
+    security_opt: ['no-new-privileges:true']
+    pids_limit: 256
+    read_only: true
+    tmpfs: ['/tmp']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+  migrate:
+    image: finance-hub-api:lab
+    profiles: [maintenance]
+    entrypoint: ['node', '/app/entrypoint.mjs']
+    command: ['migrate:up']
+    restart: 'no'
+    secrets: [migrations_password]
+    networks: [finance-products-db]
+    security_opt: ['no-new-privileges:true']
+    read_only: true
+    tmpfs: ['/tmp']
+secrets:
+  app_password:
+    file: ../../secrets/app_password
+  migrations_password:
+    file: ../../secrets/migrations_password
+  admin_token:
+    file: ../../secrets/admin_token
+  ingest_token:
+    file: ../../secrets/ingest_token
+networks:
+  finance-products-db:
+    external: true
+    name: finance-products-db

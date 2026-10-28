@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 
 // Synthetic contract harness only. No Evolution payload shape or runtime workflow is implied.
 const instance = 'synthetic-instance-a';
-const verified = new WeakSet();
+const verified = new WeakMap();
 const authenticate = (event, evidence) => {
-  if (evidence === 'isolated-test-verifier' && event.instance === instance) verified.add(event);
+  if (evidence === 'isolated-test-verifier' && event.instance === instance)
+    verified.set(event, Object.freeze({ ...event }));
   return event;
 };
 const base = () => ({
@@ -29,10 +30,43 @@ const keys = [
   'raw_text',
   'message_context',
 ];
-const validTime = (value) =>
-  typeof value === 'string' &&
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
-  !Number.isNaN(Date.parse(value));
+function validTime(value) {
+  if (typeof value !== 'string') return false;
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|([+-])(\d{2}):(\d{2}))$/.exec(
+      value,
+    );
+  if (!match) return false;
+  const [
+    ,
+    yearText,
+    monthText,
+    dayText,
+    hourText,
+    minuteText,
+    secondText,
+    zone,
+    ,
+    offsetHourText,
+    offsetMinuteText,
+  ] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return (
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    day <= daysInMonth[month - 1] &&
+    Number(hourText) <= 23 &&
+    Number(minuteText) <= 59 &&
+    Number(secondText) <= 59 &&
+    (zone === 'Z' || (Number(offsetHourText) <= 23 && Number(offsetMinuteText) <= 59)) &&
+    !Number.isNaN(Date.parse(value))
+  );
+}
 const bounded = (value) => typeof value === 'string' && value.length >= 1 && value.length <= 255;
 function validateEnvelope(value) {
   return (
@@ -54,8 +88,11 @@ function validateEnvelope(value) {
   );
 }
 function normalize(event) {
+  const attestation = verified.get(event);
   if (
-    !verified.has(event) ||
+    !attestation ||
+    Object.keys(event).length !== Object.keys(attestation).length ||
+    Object.keys(attestation).some((key) => !Object.is(event[key], attestation[key])) ||
     event.instance !== instance ||
     event.kind !== 'message' ||
     event.contentKind !== 'text' ||
@@ -116,6 +153,13 @@ const rejected = [
   ['conflicting sender', { corroboratingSender: '11111111111' }, true],
   ['invalid timestamp', { receivedAt: 'not-a-date' }, true],
   ['timezone-free timestamp', { receivedAt: '2026-01-01T12:00:00' }, true],
+  ['impossible February 30', { receivedAt: '2026-02-30T12:00:00Z' }, true],
+  ['non-leap February 29', { receivedAt: '2026-02-29T12:00:00Z' }, true],
+  ['leap-year February 30', { receivedAt: '2024-02-30T12:00:00Z' }, true],
+  ['April 31', { receivedAt: '2026-04-31T12:00:00Z' }, true],
+  ['invalid offset hour', { receivedAt: '2026-01-01T12:00:00+24:00' }, true],
+  ['invalid offset minute', { receivedAt: '2026-01-01T12:00:00-03:60' }, true],
+  ['malformed offset', { receivedAt: '2026-01-01T12:00:00+3:00' }, true],
   ['group', { isGroup: true }, true],
   ['from_me', { fromMe: true }, true],
   ['status update', { kind: 'status' }, true],
@@ -131,6 +175,38 @@ for (const [name, override, trust] of rejected)
     if (trust) authenticate(event, 'isolated-test-verifier');
     assert.equal(deliver(event, calls), null);
     assert.equal(calls.length, 0);
+  });
+
+const tampered = [
+  [
+    'sender and corroborating sender',
+    { sender: '11111111111', corroboratingSender: '11111111111' },
+  ],
+  ['provider message ID', { messageId: 'synthetic-message-2' }],
+  ['instance identity', { instance: 'synthetic-instance-b' }],
+  ['event type', { kind: 'status' }],
+  ['security-relevant direction', { fromMe: true }],
+  ['security-relevant metadata', { senderAlias: '11111111111' }],
+];
+for (const [name, override] of tampered)
+  test(`post-verification ${name} tampering: zero Finance forwarding`, () => {
+    const calls = [];
+    const event = authenticate(base(), 'isolated-test-verifier');
+    Object.assign(event, override);
+    assert.equal(deliver(event, calls), null);
+    assert.equal(calls.length, 0);
+  });
+
+for (const timestamp of [
+  '2024-02-29T12:00:00Z',
+  '2026-01-01T12:00:00-03:00',
+  '2026-01-01T12:00:00.123+05:30',
+])
+  test(`valid timezone-qualified timestamp ${timestamp} is preserved`, () => {
+    const calls = [];
+    const event = authenticate({ ...base(), receivedAt: timestamp }, 'isolated-test-verifier');
+    assert.equal(deliver(event, calls).received_at, timestamp);
+    assert.equal(calls.length, 1);
   });
 
 test('strict envelope rejects missing, wrong-type and extra fields', () => {

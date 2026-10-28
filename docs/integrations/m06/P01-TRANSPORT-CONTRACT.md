@@ -8,7 +8,7 @@ Status: REVIEW REQUIRED. This is a provider-neutral local contract, not an execu
 
 Before mapping or forwarding, the ingress must verify that the request originated from the configured Evolution instance using a real supported authentication mechanism or effective access restriction. It must bind that verified origin to the configured instance and to the event identity; derive sender metadata from verified incoming-message context; verify all corroborating sender/instance fields agree; and allow only an incoming private text message with sufficient, internally consistent metadata. An obscure URL, a payload `trusted: true` claim, or a claimed authorized phone number proves none of these. Unrecognized event fields that affect origin, sender, instance, identity, kind, direction, or content are not silently ignored: reject until their semantics are established. No financial parsing occurs here.
 
-The verification mechanism, field locations and provider event names are deliberately unspecified until Gate 0. The isolated test verifier in `integrations/n8n/m06/contract/` is synthetic proof of the boundary only; a payload cannot mark itself verified. If deployed verification cannot be established, live promotion stops. Finance independently enforces `AuthorizedSender` before storing raw Inbox content. Rejection at ingress means zero Finance forwarding, zero outbound reply and zero financial effects.
+The verification mechanism, field locations and provider event names are deliberately unspecified until Gate 0. The isolated test verifier in `integrations/n8n/m06/contract/` is synthetic P01 acceptance proof only: it records an immutable snapshot of verified identity and metadata, rejects subsequent mutation, and never treats a payload claim as proof. It is not evidence of real Evolution authenticity. Gate 0 and separate live authorization must establish the deployed version's actual verification mechanism. If deployed verification cannot be established, live promotion stops. Finance independently enforces `AuthorizedSender` before storing raw Inbox content. Rejection at ingress means zero Finance forwarding, zero outbound reply and zero financial effects.
 
 ## Exact M05 envelope
 
@@ -38,7 +38,7 @@ Canonical Inbox identity is the ordered triple `source + source_instance + sourc
 | Missing or conflicting sender fields | Reject | 0 | 0 |
 | Wrong/cross-instance identity or conflicting message ID | Reject | 0 | 0 |
 | Missing provider message ID or malformed sender reference | Reject | 0 | 0 |
-| Missing, invalid or timezone-free `received_at` | Reject | 0 | 0 |
+| Missing, impossible calendar date, malformed offset or timezone-free `received_at` | Reject | 0 | 0 |
 | Group or `from_me` message | Reject | 0 | 0 |
 | Status update or non-message event | Reject | 0 | 0 |
 | Unsupported non-text event or absent text | Reject | 0 | 0 |
@@ -58,3 +58,13 @@ Diagnostics may record a bounded correlation ID, configured instance alias, a ke
 ## Synthetic E2E specification (not executed live)
 
 Given a mock verifier that independently authenticates a configured synthetic ingress, a consistent incoming private text event maps to exactly the strict envelope and makes one mock Finance Inbox call. Replaying it retains the exact identity triple. Given an untrusted ingress, forged authorized-looking sender, conflicting metadata, wrong instance, unsupported event, or malformed envelope, the pipeline terminates before the mock Finance call and before any reply. P02 owns executable workflow integration; P05 owns separately gated live E2E. Neither is implemented here.
+
+## P01 validation
+
+Run the synthetic contract directly from the repository root:
+
+```sh
+node --test integrations/n8n/m06/contract/p01.test.mjs
+```
+
+Correction validation: 35 tests PASS, 0 FAIL, 0 skipped. The cases include post-verification sender, message ID, instance, event-kind and security-metadata tampering with zero Finance calls; impossible dates and malformed offsets with zero Finance calls; and preservation of valid timezone-qualified timestamps. This is local synthetic acceptance evidence. The existing Vitest unit and PostgreSQL integration globs do not include this native `node:test` file, so GitHub Actions CI does not automatically execute P01. Adding it to CI requires separate authorization to change paths outside P01. Real Evolution verification and live E2E evidence remain pending Gate 0 and separate VPS/Lab approval.

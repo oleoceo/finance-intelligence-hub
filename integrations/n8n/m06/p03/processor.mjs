@@ -1,5 +1,9 @@
 import { normalize, retryDecision, transportStatus } from '../p02/processor.mjs';
 
+// Versioned boundary contract. Any future Core size change fails explicitly until transport is updated.
+export const OUTBOUND_REPLY_CONTRACT_VERSION = 'm06-p03-v1';
+export const OUTBOUND_REPLY_TEXT_LIMIT = 500;
+
 const fail = (stage, status) => ({ stage, ...(status ? { status } : {}) });
 
 function sendable(response) {
@@ -23,7 +27,7 @@ function sendable(response) {
     reply?.should_send === true &&
     typeof reply.text === 'string' &&
     reply.text.length > 0 &&
-    [...reply.text].length <= 500 &&
+    [...reply.text].length <= OUTBOUND_REPLY_TEXT_LIMIT &&
     !/[\u0000-\u0009\u000b-\u001f\u007f\p{Cf}\p{Cs}]/u.test(reply.text)
   )
     return reply.text;
@@ -62,6 +66,13 @@ export async function processEventWithReply(
       return fail('finance_failed');
     }
   }
+  const reply = financeResponse?.body?.data?.reply;
+  if (
+    reply?.should_send === true &&
+    (reply.contract?.version !== OUTBOUND_REPLY_CONTRACT_VERSION ||
+      reply.contract?.max_code_points !== OUTBOUND_REPLY_TEXT_LIMIT)
+  )
+    return fail('reply_contract_mismatch', financeResponse.status);
   const text = sendable(financeResponse);
   if (text === null) return fail('accepted_no_reply', financeResponse.status);
   if (text === undefined) return fail('invalid_finance_reply', financeResponse.status);

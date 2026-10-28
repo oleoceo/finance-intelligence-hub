@@ -2,7 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { processEventWithReply } from './processor.mjs';
+import {
+  processEventWithReply,
+  OUTBOUND_REPLY_CONTRACT_VERSION,
+  OUTBOUND_REPLY_TEXT_LIMIT,
+} from './processor.mjs';
+
+const contract = { version: 'm06-p03-v1', max_code_points: 500 };
 
 const event = {
   instance: 'local',
@@ -21,7 +27,7 @@ const accepted = {
   body: {
     data: {
       result: { type: 'transaction_created' },
-      reply: { should_send: true, text: '✅ Gasto registrado! R$ 35,00.\nRef: ABC123' },
+      reply: { should_send: true, text: '✅ Gasto registrado! R$ 35,00.\nRef: ABC123', contract },
     },
   },
 };
@@ -34,6 +40,27 @@ const deps = (patch = {}) => ({
   now: () => Date.parse('2026-10-28T12:00:00Z'),
   ...patch,
 });
+
+const runGenerated = (candidate, integration, runtime = {}) => {
+  const workflow = JSON.parse(readFileSync(new URL('./workflow.json', import.meta.url), 'utf8'));
+  assert.equal(workflow.active, false);
+  const source = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.code').parameters
+    .jsCode;
+  const binding = /const integration = \{\n  verify: async \(\) => null,[\s\S]*?\n\};/;
+  assert.equal((source.match(binding) ?? []).length, 1);
+  const code = source.replace(binding, 'const integration = __integration;');
+  return vm.runInNewContext(`(async () => { ${code} })()`, {
+    $input: { first: () => ({ json: { body: candidate } }) },
+    __integration: integration,
+    setTimeout: runtime.setTimeout,
+  });
+};
+
+async function nextTimer(queue) {
+  for (let i = 0; i < 30 && queue.length === 0; i++) await Promise.resolve();
+  assert.equal(queue.length, 1, 'a bounded timer must be scheduled before another send');
+  return queue.shift();
+}
 
 test('sends Finance text verbatim to verified sender without financial interpretation', async () => {
   const calls = [];
@@ -71,7 +98,10 @@ test('suppresses no-reply outcomes and rejects malformed Finance replies', async
   const malformed = await processEventWithReply(
     event,
     deps({
-      finance: async () => ({ status: 200, body: { data: { reply: { should_send: true } } } }),
+      finance: async () => ({
+        status: 200,
+        body: { data: { reply: { should_send: true, contract } } },
+      }),
     }),
   );
   assert.equal(malformed.stage, 'invalid_finance_reply');
@@ -81,12 +111,53 @@ test('suppresses no-reply outcomes and rejects malformed Finance replies', async
       finance: async () => ({
         status: 200,
         body: {
-          data: { result: { type: 'ignored' }, reply: { should_send: true, text: 'unsafe' } },
+          data: {
+            result: { type: 'ignored' },
+            reply: { should_send: true, text: 'unsafe', contract },
+          },
         },
       }),
     }),
   );
   assert.equal(inconsistent.stage, 'invalid_finance_reply');
+});
+
+test('versioned reply bound fails explicitly on mismatch before outbound send', async () => {
+  assert.equal(OUTBOUND_REPLY_CONTRACT_VERSION, contract.version);
+  assert.equal(OUTBOUND_REPLY_TEXT_LIMIT, contract.max_code_points);
+  const coreSource = readFileSync(
+    new URL('../../../../packages/core/src/application/inbox/present-reply.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(coreSource, /REPLY_TEXT_LIMIT = 500;/);
+  assert.match(coreSource, /REPLY_CONTRACT_VERSION = 'm06-p03-v1';/);
+  for (const override of [
+    { version: contract.version, max_code_points: 501 },
+    { version: 'future', max_code_points: 500 },
+    undefined,
+  ]) {
+    let sends = 0;
+    const result = await processEventWithReply(
+      event,
+      deps({
+        finance: async () => ({
+          status: 200,
+          body: {
+            data: {
+              result: { type: 'transaction_created' },
+              reply: { should_send: true, text: 'safe', contract: override },
+            },
+          },
+        }),
+        send: async () => {
+          sends++;
+          return { status: 200 };
+        },
+      }),
+    );
+    assert.deepEqual(result, { stage: 'reply_contract_mismatch', status: 200 });
+    assert.equal(sends, 0);
+  }
 });
 
 test('401/403 and terminal 4xx never send; Finance retry retains canonical identity', async () => {
@@ -228,4 +299,166 @@ test('generated workflow dispatches verbatim through separate credential and ski
   const suppressed = await run();
   assert.equal(suppressed[0].json.stage, 'accepted_no_reply');
   assert.equal(calls.length, 1);
+});
+
+test('generated Code node awaits 1s/2s for outbound 500, 503 and timeout without re-ingest', async () => {
+  for (const firstFailure of [500, 503, 'timeout']) {
+    const timers = [],
+      sent = [],
+      financeCalls = [];
+    const integration = {
+      verify: async (value) => Object.freeze({ ...value }),
+      configuredInstance: 'local',
+      financeTransport: async (request) => {
+        financeCalls.push(request);
+        return accepted;
+      },
+      sendTransport: async (request) => {
+        sent.push(request);
+        if (sent.length === 1)
+          return firstFailure === 'timeout'
+            ? Promise.reject({ code: 'ETIMEDOUT' })
+            : { status: firstFailure };
+        return sent.length === 2 ? { status: 503 } : { status: 200 };
+      },
+    };
+    const run = runGenerated(event, integration, {
+      setTimeout: (callback, delay) => timers.push({ callback, delay }),
+    });
+    const firstTimer = await nextTimer(timers);
+    assert.equal(firstTimer.delay, 1000);
+    assert.equal(financeCalls.length, 1);
+    assert.equal(sent.length, 1);
+    firstTimer.callback();
+    const secondTimer = await nextTimer(timers);
+    assert.equal(secondTimer.delay, 2000);
+    assert.equal(financeCalls.length, 1);
+    assert.equal(sent.length, 2);
+    secondTimer.callback();
+    const result = await run;
+    assert.equal(result[0].json.stage, 'sent');
+    assert.equal(result[0].json.possiblyDeliveredEarlier, firstFailure === 'timeout');
+    assert.equal(financeCalls.length, 1);
+    assert.equal(sent.length, 3);
+    for (const request of sent) {
+      assert.equal(request.credentialRef, 'evolution:send');
+      assert.equal(request.message.recipient, event.sender);
+      assert.equal(request.message.text, accepted.body.data.reply.text);
+    }
+  }
+});
+
+test('generated Code node honors capped 429 delta and HTTP-date Retry-After', async () => {
+  for (const [retryAfter, expectedDelay] of [
+    ['45', 30000],
+    ['Wed, 28 Oct 2026 12:00:07 GMT', 7000],
+  ]) {
+    let financeCalls = 0,
+      sends = 0;
+    const timers = [];
+    const result = await runGenerated(
+      event,
+      {
+        verify: async (value) => ({ ...value }),
+        configuredInstance: 'local',
+        now: () => Date.parse('2026-10-28T12:00:00Z'),
+        financeTransport: async () => {
+          financeCalls++;
+          return accepted;
+        },
+        sendTransport: async () => {
+          sends++;
+          return sends === 1 ? { status: 429, retryAfter } : { status: 200 };
+        },
+      },
+      {
+        setTimeout: (callback, delay) => {
+          timers.push(delay);
+          callback();
+        },
+      },
+    );
+    assert.equal(result[0].json.stage, 'sent');
+    assert.deepEqual(timers, [expectedDelay]);
+    assert.equal(financeCalls, 1);
+    assert.equal(sends, 2);
+  }
+});
+
+test('generated Code node rejects untrusted, group, from_me and Finance 401/403 without send', async () => {
+  for (const [candidate, verify] of [
+    [{ ...event }, async () => null],
+    [{ ...event, isGroup: true }, async (value) => ({ ...value })],
+    [{ ...event, fromMe: true }, async (value) => ({ ...value })],
+  ]) {
+    let finances = 0,
+      sends = 0;
+    const result = await runGenerated(candidate, {
+      verify,
+      configuredInstance: 'local',
+      financeTransport: async () => {
+        finances++;
+        return accepted;
+      },
+      sendTransport: async () => {
+        sends++;
+        return { status: 200 };
+      },
+    });
+    assert.equal(result[0].json.stage, 'rejected');
+    assert.equal(finances, 0);
+    assert.equal(sends, 0);
+  }
+  for (const status of [401, 403]) {
+    let finances = 0,
+      sends = 0;
+    const result = await runGenerated(event, {
+      verify: async (value) => ({ ...value }),
+      configuredInstance: 'local',
+      financeTransport: async () => {
+        finances++;
+        return { status };
+      },
+      sendTransport: async () => {
+        sends++;
+        return { status: 200 };
+      },
+    });
+    assert.equal(result[0].json.stage, 'finance_failed');
+    assert.equal(result[0].json.status, status);
+    assert.equal(finances, 1);
+    assert.equal(sends, 0);
+  }
+});
+
+test('generated Code node fails closed when the retry timer is missing or throws', async () => {
+  for (const setTimeout of [
+    undefined,
+    () => {
+      throw new Error('timer unavailable');
+    },
+  ]) {
+    let finances = 0,
+      sends = 0;
+    const result = await runGenerated(
+      event,
+      {
+        verify: async (value) => ({ ...value }),
+        configuredInstance: 'local',
+        financeTransport: async () => {
+          finances++;
+          return accepted;
+        },
+        sendTransport: async () => {
+          sends++;
+          return { status: 503 };
+        },
+      },
+      { setTimeout },
+    );
+    assert.equal(result[0].json.stage, 'send_failed');
+    assert.equal(result[0].json.possiblyDelivered, false);
+    assert.equal(finances, 1);
+    assert.equal(sends, 1);
+  }
 });

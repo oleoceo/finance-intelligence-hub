@@ -150,11 +150,17 @@ describe('Inbox API boundary', () => {
     ];
     try {
       for (const [result, expectedSend] of cases) {
-        override.result = result;
+        override.result = expectedSend
+          ? { ...result, replyContract: { version: 'm06-p03-v1', maxCodePoints: 500 } }
+          : result;
         const data = await send();
         expect(data.reply.should_send).toBe(expectedSend);
         expect('text' in data.reply).toBe(expectedSend);
+        if (expectedSend)
+          expect(data.reply.contract).toEqual({ version: 'm06-p03-v1', max_code_points: 500 });
       }
+      override.result = { ...base, type: 'cancelled', replyText: 'unsafe without contract' };
+      expect((await send()).reply).toEqual({ should_send: false });
       expect(financialWrite).not.toHaveBeenCalled();
     } finally {
       override.result = null;

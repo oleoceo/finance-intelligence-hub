@@ -2,6 +2,7 @@ import type { InboxProcessingResult } from './process-message.js';
 
 /** Presentation policy only; the processor has already committed before this is called. */
 export const REPLY_TEXT_LIMIT = 500;
+export const REPLY_CONTRACT_VERSION = 'm06-p03-v1';
 
 function safeText(value: unknown, max: number): string | null {
   if (typeof value !== 'string') return null;
@@ -41,6 +42,16 @@ function bounded(text: string | null): string | null {
   return text && [...text].length <= REPLY_TEXT_LIMIT ? text : null;
 }
 
+function confirmationExpiry(value: unknown): string | null {
+  if (!(value instanceof Date) || !Number.isFinite(value.getTime())) return null;
+  const iso = value.toISOString();
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})Z$/.exec(iso);
+  if (!match) return null;
+  const [, year, month, day, hour, minute, second, milliseconds] = match;
+  const fraction = milliseconds === '000' ? '' : `,${milliseconds}`;
+  return `Confirmação expira em ${day}/${month}/${year} às ${hour}:${minute}:${second}${fraction} UTC.`;
+}
+
 export function presentInboxReply(result: InboxProcessingResult): string | null {
   if (result.type === 'transaction_created') {
     const transaction = result.transaction;
@@ -72,6 +83,9 @@ export function presentInboxReply(result: InboxProcessingResult): string | null 
   }
   if (result.type === 'confirmation_required') {
     const { action, options } = result.confirmation;
+    const expiry = confirmationExpiry(result.confirmation.expiresAt);
+    if (!expiry) return null;
+    const pending = (message: string) => bounded(`${message}\n${expiry}`);
     if (['select_book', 'select_account', 'clarify_book', 'clarify_account'].includes(action)) {
       if (
         action.startsWith('select_') &&
@@ -82,20 +96,24 @@ export function presentInboxReply(result: InboxProcessingResult): string | null 
         const first = safeText(options[0].name, 120);
         const second = safeText(options[1].name, 120);
         if (first && second)
-          return bounded(
+          return pending(
             `${action === 'select_book' ? 'Escolha o contexto' : 'Escolha a conta'}:\n1. ${first}\n2. ${second}\nResponda 1 ou 2.`,
           );
       }
-      return 'Preciso de mais detalhes. Reenvie o comando completo com o contexto ou a conta.';
+      return pending(
+        'Preciso de mais detalhes. Reenvie o comando completo com o contexto ou a conta.',
+      );
     }
     if (action === 'select_amount' || action === 'clarify_amount')
-      return 'Qual é o valor? Reenvie o comando completo com o valor.';
+      return pending('Qual é o valor? Reenvie o comando completo com o valor.');
     if (action === 'clarify_intent')
-      return 'Não entendi o pedido. Reenvie o comando completo para continuar.';
+      return pending('Não entendi o pedido. Reenvie o comando completo para continuar.');
     if (
       /^(?:select|clarify)_(?:category|merchant|description|date|destinationAccount)$/.test(action)
     )
-      return 'Preciso de mais detalhes. Reenvie o comando completo com a informação que falta.';
+      return pending(
+        'Preciso de mais detalhes. Reenvie o comando completo com a informação que falta.',
+      );
     return null;
   }
   if (result.type === 'cancelled') return '✅ Solicitação pendente cancelada.';

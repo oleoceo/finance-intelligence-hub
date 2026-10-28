@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { presentInboxReply, REPLY_TEXT_LIMIT } from './present-reply.js';
+import { presentInboxReply, REPLY_CONTRACT_VERSION, REPLY_TEXT_LIMIT } from './present-reply.js';
 import type { InboxProcessingResult } from './process-message.js';
 
 const transaction = {
@@ -28,12 +28,15 @@ const last = (patch: Record<string, unknown> = {}): InboxProcessingResult => ({
 const confirmation = (
   action: string,
   options?: { number: '1' | '2'; id: string; name: string }[],
+  expiresAt = new Date('2026-10-28T12:15:00Z'),
 ): InboxProcessingResult => ({
   type: 'confirmation_required',
   inboxMessageId: 'inbox',
   status: 'needs_confirmation',
-  confirmation: { id: 'session', action, expiresAt: new Date('2026-10-28T12:15:00Z'), options },
+  confirmation: { id: 'session', action, expiresAt, options },
 });
+
+const expiryLine = '\nConfirmação expira em 28/10/2026 às 12:15:00 UTC.';
 
 describe('Finance-owned reply presenter', () => {
   it('formats persisted success values and actual currency without floating point', () => {
@@ -66,31 +69,59 @@ describe('Finance-owned reply presenter', () => {
       { number: '2' as const, id: 'private-2', name: 'Empresa' },
     ];
     expect(presentInboxReply(confirmation('select_book', options))).toBe(
-      'Escolha o contexto:\n1. Casa\n2. Empresa\nResponda 1 ou 2.',
+      `Escolha o contexto:\n1. Casa\n2. Empresa\nResponda 1 ou 2.${expiryLine}`,
     );
     expect(presentInboxReply(confirmation('select_account', options))).toBe(
-      'Escolha a conta:\n1. Casa\n2. Empresa\nResponda 1 ou 2.',
+      `Escolha a conta:\n1. Casa\n2. Empresa\nResponda 1 ou 2.${expiryLine}`,
     );
     expect(
       presentInboxReply(
         confirmation('select_account', [{ ...options[0]!, name: 'bad\nname' }, options[1]!]),
       ),
-    ).toContain('Reenvie o comando completo');
+    ).toBe(
+      `Preciso de mais detalhes. Reenvie o comando completo com o contexto ou a conta.${expiryLine}`,
+    );
   });
   it('uses explicit clarification syntax and fixed lifecycle replies', () => {
     expect(presentInboxReply(confirmation('clarify_amount'))).toBe(
-      'Qual é o valor? Reenvie o comando completo com o valor.',
+      `Qual é o valor? Reenvie o comando completo com o valor.${expiryLine}`,
     );
     expect(presentInboxReply(confirmation('clarify_intent'))).toBe(
-      'Não entendi o pedido. Reenvie o comando completo para continuar.',
+      `Não entendi o pedido. Reenvie o comando completo para continuar.${expiryLine}`,
     );
     expect(presentInboxReply(confirmation('clarify_book'))).toBe(
-      'Preciso de mais detalhes. Reenvie o comando completo com o contexto ou a conta.',
+      `Preciso de mais detalhes. Reenvie o comando completo com o contexto ou a conta.${expiryLine}`,
     );
     expect(presentInboxReply({ type: 'cancelled' })).toBe('✅ Solicitação pendente cancelada.');
     expect(presentInboxReply({ type: 'expired' })).toBe(
       '⏳ Esta confirmação expirou. Reenvie o comando completo para tentar novamente.',
     );
+  });
+  it('uses the persisted UTC expiry even when the pending window is almost over', () => {
+    const nearExpiry = new Date('2026-10-28T12:00:00.500Z');
+    expect(
+      presentInboxReply(
+        confirmation(
+          'select_book',
+          [
+            { number: '1', id: 'private-1', name: 'Casa' },
+            { number: '2', id: 'private-2', name: 'Empresa' },
+          ],
+          nearExpiry,
+        ),
+      ),
+    ).toBe(
+      'Escolha o contexto:\n1. Casa\n2. Empresa\nResponda 1 ou 2.\nConfirmação expira em 28/10/2026 às 12:00:00,500 UTC.',
+    );
+    expect(presentInboxReply(confirmation('clarify_intent', undefined, nearExpiry))).toContain(
+      '12:00:00,500 UTC.',
+    );
+    expect(
+      presentInboxReply(confirmation('select_book', undefined, new Date('invalid'))),
+    ).toBeNull();
+    expect(
+      presentInboxReply(confirmation('clarify_amount', undefined, new Date('invalid'))),
+    ).toBeNull();
   });
   it('fails closed for unsafe success fields, unknown actions and suppressed outcomes', () => {
     for (const patch of [
@@ -114,8 +145,17 @@ describe('Finance-owned reply presenter', () => {
   });
   it('bounds all reply text', () => {
     expect(REPLY_TEXT_LIMIT).toBe(500);
+    expect(REPLY_CONTRACT_VERSION).toBe('m06-p03-v1');
     const result = presentInboxReply(created({ description: 'a'.repeat(120) }));
     expect(result).not.toBeNull();
     expect([...result!].length).toBeLessThanOrEqual(REPLY_TEXT_LIMIT);
+    const maxChoices = presentInboxReply(
+      confirmation('select_account', [
+        { number: '1', id: 'private-1', name: 'A'.repeat(120) },
+        { number: '2', id: 'private-2', name: 'B'.repeat(120) },
+      ]),
+    );
+    expect(maxChoices).not.toBeNull();
+    expect([...maxChoices!].length).toBeLessThanOrEqual(REPLY_TEXT_LIMIT);
   });
 });

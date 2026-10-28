@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import prettier from 'prettier';
 
 const p02 = readFileSync(new URL('../p02/processor.mjs', import.meta.url), 'utf8').replaceAll(
   'export ',
@@ -69,5 +70,5 @@ const workflow = {
 };
 writeFileSync(
   new URL('./workflow.json', import.meta.url),
-  `${JSON.stringify(workflow, null, 2)}\n`,
+  await prettier.format(JSON.stringify(workflow), { parser: 'json' }),
 );

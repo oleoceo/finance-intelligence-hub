@@ -1,6 +1,7 @@
 # FINANCE-LAB-T01 — API packaging and Lab migration executor
 
 **Status:** REVIEW REQUIRED
+**Operational correction:** PR #35 was merged as `29c2e42`; the secret-owner UID fix is pending independent review. Scope is limited to Compose runtime identity, a disposable Compose bind-mount test and the associated procedure/CI steps. No VPS or migration execution.
 **Activation review:** 2026-10-28, against `origin/main` `df85f58e02b97d2faec12950a9c40dfd59d5668f`.
 **Authorization:** Owner requested local implementation and Draft PR; no VPS mutation or merge.
 

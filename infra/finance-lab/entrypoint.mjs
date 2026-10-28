@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 
+if (process.getuid() === 0) throw new Error('Finance Lab runtime must be non-root');
+
 function secret(name) {
   const value = readFileSync(`/run/secrets/${name}`, 'utf8').trimEnd();
   if (!value) throw new Error(`Empty secret: ${name}`);

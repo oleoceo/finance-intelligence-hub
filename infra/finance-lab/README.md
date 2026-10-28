@@ -4,12 +4,14 @@ Stage this repository checkout at `/opt/apps/apps/lab/finance-hub` after indepen
 
 ## Protected inputs
 
-Create `secrets/` outside Git-tracked content with mode `0700` and four individual files with mode `0600`, owned by the deployment operator: `app_password`, `migrations_password`, `admin_token`, `ingest_token`. Use distinct Lab values. The first two must match the already provisioned `finance_hub_app` and `finance_hub_migrations` roles. Do not put credentials into a Compose environment file, command line, Git, logs or screenshots. Restrict access to the checkout because local Docker Compose secrets are file mounts. Never use the migration role for the API.
+Create `secrets/` outside Git-tracked content with mode `0700` and four individual files with mode `0600`, owned by the non-root deployment operator: `app_password`, `migrations_password`, `admin_token`, `ingest_token`. Use distinct Lab values. The first two must match the already provisioned `finance_hub_app` and `finance_hub_migrations` roles. Do not put credentials into a Compose environment file, command line, Git, logs or screenshots. Restrict access to the checkout because local Docker Compose secrets are file mounts. Never use the migration role for the API.
+
+From the secret-owning operator's shell, set `export FINANCE_LAB_UID="$(id -u)" FINANCE_LAB_GID="$(id -g)"`. Require `id -u` to be nonzero and verify `stat -c '%u %a' secrets/*` reports that UID and mode `600` for every file; keep the directory at `700`. These variables contain numeric identity only, not credentials. Compose runs the API and migration container as that same non-root UID/GID, so Linux bind-mounted secrets remain readable without widening file permissions. The Dockerfile's `USER appuser` remains the image default; the Lab Compose user override supplies the secret owner's identity. Run every Compose command from that same shell. Do not substitute UID `0`.
 
 ## Preflight and deployment (future authorized Lab operation)
 
 1. Record the exact Git SHA and image ID. Verify `postgres-products` is healthy, `finance-products-db` exists with `internal=true`, and no PostgreSQL public port exists. Confirm current backup plus externally stored backup and isolated restore evidence before applying migrations. Confirm the migration and app role grants without printing passwords.
-2. `docker compose -f infra/finance-lab/compose.yml config --quiet` and `docker compose -f infra/finance-lab/compose.yml build api`.
+2. `docker compose -f infra/finance-lab/compose.yml config --quiet` and `docker compose -f infra/finance-lab/compose.yml build api`. Run `bash infra/finance-lab/test-secret-read.sh` to verify this host's non-root Compose secret mount with a disposable marker before using real credentials.
 3. `docker compose -f infra/finance-lab/compose.yml --profile maintenance run --rm migrate migrate:status` to list pending migrations. Review the exact list against the five accepted migrations.
 4. `docker compose -f infra/finance-lab/compose.yml --profile maintenance run --rm migrate migrate:up`. This invokes the compiled official database CLI. Do not use `migrate:down` as an automatic rollback.
 5. Repeat `migrate:status`; require zero pending migrations. Then `docker compose -f infra/finance-lab/compose.yml up -d --no-deps api`.

@@ -1,8 +1,25 @@
 import type { FastifyInstance } from 'fastify';
 import { type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { processInboxMessage, type ProcessMessageDependencies } from '@finance-hub/core';
+import {
+  processInboxMessage,
+  type InboxProcessingResult,
+  type ProcessMessageDependencies,
+} from '@finance-hub/core';
 import { inboxMessageSchema } from '../schemas/inbox.js';
 import { meta } from './admin/shared.js';
+
+function replyFor(result: InboxProcessingResult) {
+  return result.replyText && result.replyContract
+    ? {
+        should_send: true,
+        text: result.replyText,
+        contract: {
+          version: result.replyContract.version,
+          max_code_points: result.replyContract.maxCodePoints,
+        },
+      }
+    : { should_send: false };
+}
 
 export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDependencies) {
   const app = instance.withTypeProvider<TypeBoxTypeProvider>();
@@ -53,7 +70,7 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
               })),
             },
           },
-          reply: { should_send: true },
+          reply: replyFor(result),
         },
         meta: responseMeta,
       };
@@ -72,7 +89,7 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
               transaction_date: result.transaction.transactionDate,
             },
           },
-          reply: { should_send: true },
+          reply: replyFor(result),
         },
         meta: responseMeta,
       };
@@ -93,7 +110,7 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
                 }
               : null,
           },
-          reply: { should_send: true },
+          reply: replyFor(result),
         },
         meta: responseMeta,
       };
@@ -101,7 +118,7 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
       data: {
         inbox_message: { id: result.inboxMessageId, status: result.status },
         result: { type: result.type },
-        reply: { should_send: true },
+        reply: replyFor(result),
       },
       meta: responseMeta,
     };

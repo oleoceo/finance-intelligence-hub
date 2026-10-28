@@ -1,6 +1,6 @@
 # M06 Activation Review — ACCEPTED
 
-**Status:** ACCEPTED by project owner on 2026-10-27; M06 ACTIVE; P01 DONE, P02 authorized, P03–P05 not authorized.
+**Status:** ACCEPTED by project owner on 2026-10-27; M06 ACTIVE; P01–P02 DONE; P03 local implementation authorized with exact reply templates pending human review; P04–P05 not authorized.
 **Date:** 2026-10-27
 **Active milestone overview:** [M06 overview](M06-OVERVIEW.md)
 **Authoritative main:** `6ac27917df7e4c2007aec01cd30f067cd4cdd338`
@@ -76,7 +76,7 @@ These section 6 specifications preserve the approved proposal wording as histori
 ### M06-P02 — Thin webhook filter, normalization and Finance ingest workflow
 
 - **Objective / owner:** Implement local n8n transport through the trusted ingress gate, technical filter, normalized envelope and single Finance ingest operation. Owner: n8n workflow; Finance retains all authorization and financial logic.
-- **Permitted paths after activation:** `docs/tasks/active/M06-P02.md`; `integrations/n8n/m06/**` (workflow, local test harness and synthetic fixtures); `docs/integrations/m06/**` (mapping and operational contract). No Finance source changes.
+- **Permitted paths after activation:** `docs/tasks/completed/M06-P02.md`; `integrations/n8n/m06/**` (workflow, local test harness and synthetic fixtures); `docs/integrations/m06/**` (mapping and operational contract). No Finance source changes.
 - **Dependencies:** Accepted P01 contract, explicit P02 authorization, and a locally testable authenticity abstraction/fixture. Real provider configuration remains conditional on Gate 0 and separate live authorization.
 - **Required outputs:** Importable local workflow/template with verification before mapping or Finance call; supported incoming-text event filter; exact strict M05 envelope; bounded Finance retry/error branches with unchanged Inbox identity; documented credential references without values; local test harness and redacted diagnostics.
 - **Acceptance criteria:** Only a verified event from the configured instance with validated sender metadata may reach `POST /api/v1/inbox/messages` using `finance:ingest`. Missing/invalid origin evidence, sender spoofing, cross-instance identity, unknown events, group, `from_me`, malformed data and non-text events terminate before Finance. Preserve provider message ID, source instance and original text; do not infer Book, Account, amount or response wording.
@@ -142,4 +142,4 @@ Gate A PASS. Gate 0 NOT EXECUTED and required for live integration; Gate B/C NOT
 - [x] Gate 0/VPS separation acknowledged: Gate 0/B/C remain NOT EXECUTED, no live access, credential use or deployment is authorized.
 - [x] M06 documentation promotion to ACTIVE authorized through a separately reviewed promotion PR; no task implementation authorized by this decision.
 
-**Current decision:** M06 Activation Review ACCEPTED and integrated via PR #26; reviewed head `38a85db185a704d5523b54c16262c3707e24fd61`, exact-head CI `40605635355` SUCCESS, squash `17669300ab61899e672ec9659646d0650a16bc99`, post-merge CI `40606061490` SUCCESS. Documentary promotion completed via accepted PR #27; M06 is ACTIVE. P01 accepted and integrated via PR #28; P02 implementation authorized. **P03–P05 implementation authorization: NO.** Gate 0/B/C remain NOT EXECUTED. No VPS/Lab/Production access, live Evolution/n8n integration, infrastructure changes or transport implementation is authorized.
+**Current decision:** M06 Activation Review ACCEPTED and integrated via PR #26; reviewed head `38a85db185a704d5523b54c16262c3707e24fd61`, exact-head CI `40605635355` SUCCESS, squash `17669300ab61899e672ec9659646d0650a16bc99`, post-merge CI `40606061490` SUCCESS. Documentary promotion completed via accepted PR #27; M06 is ACTIVE. P01 integrated via PR #28; P02 accepted and integrated via PR #29. **P03 local implementation authorized; exact reply templates and safe fields pending human review. P04–P05 implementation authorization: NO.** Gate 0/B/C remain NOT EXECUTED. No VPS/Lab/Production access, live Evolution/n8n integration, infrastructure changes or transport implementation is authorized.

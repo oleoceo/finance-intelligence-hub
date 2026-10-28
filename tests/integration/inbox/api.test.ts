@@ -216,6 +216,49 @@ describe('P05 Inbox API with PostgreSQL', () => {
     }
   });
 
+  it('keeps one committed effect after a lost response and a verified same-identity replay', async () => {
+    const request = body('gastei 35 almoço');
+    const before = {
+      inbox: await count('inbox_messages'),
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    const committed = await post(request);
+    expect(committed.statusCode).toBe(200);
+    expect(committed.json().data.result.type).toBe('transaction_created');
+    // The caller discards the response after Finance commits, then retries the exact envelope.
+    const replay = await post(request);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json().data.result.type).toBe('duplicate_message');
+    expect(replay.json().data.reply).toEqual({ should_send: false });
+    const inboxId = committed.json().data.inbox_message.id as string;
+    const inboxRows = await fixture.db
+      .selectFrom('inbox_messages')
+      .select(['id', 'source_instance', 'source_message_id'])
+      .where('source_instance', '=', request.source_instance)
+      .where('source_message_id', '=', request.source_message_id)
+      .execute();
+    expect(inboxRows).toEqual([
+      {
+        id: inboxId,
+        source_instance: request.source_instance,
+        source_message_id: request.source_message_id,
+      },
+    ]);
+    const rows = await fixture.db
+      .selectFrom('transactions')
+      .select(['id', 'inbox_message_id'])
+      .where('inbox_message_id', '=', inboxId)
+      .execute();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.inbox_message_id).toBe(inboxId);
+    expect(await count('inbox_messages')).toBe(before.inbox + 1);
+    expect(await count('transactions')).toBe(before.transactions + 1);
+    expect(await count('audit_events')).toBe(before.audits + 1);
+    expect(await count('idempotency_keys')).toBe(before.keys + 1);
+  });
+
   it('executes query_last in the authorized Book with zero financial writes', async () => {
     const before = {
       transactions: await count('transactions'),

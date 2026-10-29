@@ -115,12 +115,14 @@ All paths below are repository relative.
 | [M07-P03](M07-P03.md) | Dedicated Refund create and invariant protection | P02 accepted/integrated | Partial/full/multiple, same Book/currency, original lock, duplicate replay |
 | [M07-P04](M07-P04.md) | Cross-operation concurrency proof and bounded corrections | P03 accepted/integrated | Refund/Refund, Refund/PATCH, Refund/Void, Refund-Void races with real independent connections |
 | [M07-P05](M07-P05.md) | WhatsApp mutation interpretation and ConfirmationSession integration | P04 accepted/integrated | Explicit confirmation, captured target/version, stale rejection, atomic Inbox/audit/effect and duplicate replies |
-| [M07-P06](M07-P06.md) | End-to-end milestone acceptance | P05 accepted/integrated | Exact frozen critical sequence, endpoint/security matrix, regression CI and review evidence |
+| [M07-P06](M07-P06.md) | Administrative Refund/audit GETs and end-to-end milestone acceptance | P05 accepted/integrated | Both frozen read routes, scope/schema/response tests, exact critical sequence, regression CI and review evidence |
 
 Each linked contract defines its allowed paths, routing, invariants, acceptance and
 tests. P04 consolidates adversarial proof; it does NOT defer safety from P01–P03.
-Each financial endpoint must be safe when introduced. P06 verifies wiring already
-delivered by P01–P05, rather than postponing API functionality.
+Each financial mutation endpoint must be safe when introduced. P06 implements
+the frozen `GET /api/v1/transactions/{id}/refunds` and
+`GET /api/v1/transactions/{id}/audit` as `finance:admin` reads and verifies
+mutation wiring already delivered by P01–P05.
 
 ## 5. Locking, financial and security contract
 
@@ -172,13 +174,14 @@ No Outbox event without a configured consumer.
 No implementation in this PR. No VPS, Lab, Production, Evolution, n8n deployment,
 real data, merge, M08 reports/CSV, M09 recovery, AI provider, new transaction types,
 architecture redesign, generic repository framework or unrelated refactoring.
-Frozen audit/refund GET endpoints not decomposed in the approved M07 plan are not
-silently added; acceptance reads existing Transaction APIs and database evidence.
+The two frozen Transaction GET endpoints are explicitly assigned to P06;
+M08 reports/CSV remain excluded. Their implementation and tests occur only
+after activation and separate P06 authorization.
 
 New migrations: NO. New dependencies: NO. Package manifests and lockfile: unchanged.
 Existing public exports may be extended only during authorized implementation.
-Security behavior is unchanged by these documents; future task tests preserve
-scope/sender/provenance boundaries.
+Security behavior is unchanged by these documents; P06 must test `finance:admin`
+for both reads, reject `finance:ingest`, and preserve sender/provenance boundaries.
 
 ## 7. Gates and critical scenario
 

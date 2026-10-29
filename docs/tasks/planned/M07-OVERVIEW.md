@@ -70,6 +70,7 @@ Mechanism:
 - Original Expense with posted Refund: cannot be Voided
 - Expense amount correction cannot go below sum of posted refunds
 - Expense date correction cannot move after any posted Refund date
+- Administrative `GET /api/v1/transactions/{id}/refunds` exposes linked Refund history; `GET /api/v1/transactions/{id}/audit` exposes the target's append-only audit (both `finance:admin`, assigned to P06)
 
 ### WhatsApp Integration
 - Void via WhatsApp always requires explicit Confirmation.
@@ -121,7 +122,7 @@ From M05:
 | **M07-P03** | Refund creation and invariants | Refund endpoint, linked-income representation, amount/date/Book/currency validation, refund-of-refund rejection, dedicated endpoint enforcement |
 | **M07-P04** | Refund concurrency / original Expense locking | PostgreSQL FOR UPDATE or equivalent on original Expense, concurrent over-refund prevention, Expense-with-refunds void blocking, correction amount floor enforcement, correction date ceiling enforcement |
 | **M07-P05** | WhatsApp Confirmation integration for correction/void/refund | Explicit Confirmation for every WhatsApp Void and Refund; clear ordinary Correction may execute directly when target, change and version are unambiguous; ambiguous Correction may use ConfirmationSession; Transaction sessions carry target_entity_id/target_version, reject stale confirmation, and finalize original Inbox |
-| **M07-P06** | API integration and milestone verification | All endpoints wired, frozen critical scenario proven, unit/integration suites green |
+| **M07-P06** | Administrative reads, API integration and milestone verification | Frozen Refund/audit GET endpoints with `finance:admin`, schema/response/authorization tests; mutation endpoints verified, critical scenario proven, unit/integration suites green |
 
 ---
 
@@ -173,6 +174,7 @@ Expense 500
 - Transaction ConfirmationSession preserves `target_entity_id` and `target_version`
 - Stale Confirmation target_version rejected
 - Generic create cannot produce Refund
+- Refund and audit GETs require `finance:admin`, return scoped linked history and target audit, and reject unauthorized/malformed requests
 
 ---
 
@@ -196,7 +198,8 @@ resolve the former interface/schema/locking questions against the main baseline.
 
 P01–P03 include the safety guards needed when each endpoint is introduced; P04
 consolidates cross-operation concurrency proof. P05 extends the existing Inbox
-pipeline; P06 proves the exact frozen scenario and full regression. No task is
+pipeline; P06 implements both frozen administrative Transaction GETs and proves
+the exact frozen scenario and full regression. No task is
 ACTIVE yet. Human approval, documentary promotion and explicit P01 authorization
 are required before implementation; no merge or live infrastructure authorization
 is implied. Gate 0 still has no formal PASS and Production is not homologated.

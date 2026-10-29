@@ -53,6 +53,11 @@ jobs:
           git diff --exit-code -- integrations/n8n/m06/live/workflow.json
           node --test integrations/n8n/m06/contract/p01.test.mjs integrations/n8n/m06/p02/p02.test.mjs integrations/n8n/m06/p03/p03.test.mjs integrations/n8n/m06/p04/p04.test.mjs integrations/n8n/m06/live/live.test.mjs
 
+      - name: M06 Evolution 2.3.7 logging patch and synthetic leak tests
+        run: |
+          bash integrations/evolution/prepare.sh "$RUNNER_TEMP/evolution-m06-patched"
+          docker build --tag evolution-m06-logging:ci "$RUNNER_TEMP/evolution-m06-patched"
+
       - name: M06 n8n 2.23.3 isolated import and runtime
         run: bash integrations/n8n/m06/live/test-runtime.sh
 

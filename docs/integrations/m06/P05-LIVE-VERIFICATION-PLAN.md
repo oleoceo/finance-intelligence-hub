@@ -1,6 +1,6 @@
 # M06-P05 conditional live verification plan
 
-**Status: NOT EXECUTED.** This plan grants no access to Lab, VPS, Production, Evolution, n8n, or credentials.
+**Execution update (2026-10-29):** Lab operations have now been executed with owner guidance. Five-command real WhatsApp acceptance plus selected security/replay tests passed; see [M06 live evidence](LIVE-ACCEPTANCE-2026-10-29.md). Failure injection and ambiguous send/reply outcomes remain simulated, not live-tested. Formal Gate 0 and M06 signoff remain pending. The entry gates below describe the original conditional authorization contract and this document does not retroactively authorize past access.
 
 ## Entry gates
 
@@ -21,7 +21,7 @@ Use a dedicated Lab instance, test sender, test Book/Accounts and disposable tes
 
 ## Scenario checklist
 
-All entries are **NOT EXECUTED**: five official commands; Book and Account clarification and valid choices; existing and empty Last; forged origin; spoofed/conflicting sender; cross-instance event; unauthorized sender; group and `from_me`; duplicate replay and lost Finance response; outbound failure and ambiguous timeout; 401/403 with zero automated replies. Assert real PostgreSQL state before calling a financial scenario PASS. A send timeout may have delivered a reply, so record ambiguity without claiming exactly-once delivery.
+**Execution status is now mixed, not universally NOT EXECUTED:** Five official commands (including existing Last), missing/wrong authentication, conflicting instance/UUID/sender identity, group, `from_me`, conflicting LID, unknown metadata, duplicate replay through actual Lab webhook and direct Finance ingest, and unauthorized sender Finance 403 were observed PASS in Lab. Book/Account clarification and empty Last remain **local simulated acceptance only**. Lost Finance response, outbound failure and ambiguous timeout remain **simulated only**. A redelivery from the real provider was not performed. See the dated evidence report for precise scope and limits. Assert real PostgreSQL state before calling a financial scenario PASS. A send timeout may have delivered a reply, so record ambiguity without claiming exactly-once delivery.
 
 ## Stop conditions
 

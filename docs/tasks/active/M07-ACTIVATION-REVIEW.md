@@ -1,12 +1,12 @@
-# M07 Activation Review
+# M07 Activation Review — ACCEPTED
 
-**Status:** REVIEW REQUIRED — documentary proposal only.
+**Status:** ACCEPTED — project owner approved activation and local-only M07-P01 continuation on 2026-10-29; this review contains no feature implementation.
 **Date:** 2026-10-29.
 **Authoritative main:** `645ea0193188be54ec5c9e0d988ec6348b0038ef`.
 **Forward plan:** [M07 overview](M07-OVERVIEW.md).
-**Template:** [Activation Review](ACTIVATION-REVIEW.md).
-**Reviewer/approver:** project owner; approval pending.
-**Implementation authorized:** NO. No M07 feature is implemented by this review.
+**Template:** [Activation Review](../planned/ACTIVATION-REVIEW.md).
+**Reviewer/approver:** project owner, explicit approval 2026-10-29 after independent REVIEW PASS of PR #42 head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, CI 40963187248 SUCCESS; squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`.
+**Implementation authorized:** M07-P01 only, local/WSL/CI after documentary promotion; P02–P06 require separate authorization; no VPS/Lab/Production actions.
 
 ## 1. Upstream completion and Sync Gate
 
@@ -215,14 +215,13 @@ No local application suite is required solely for this documentation change.
 Existing full GitHub CI remains required on the exact Draft PR head; report its
 run/SHA/results in the PR and handoff. Do not reuse baseline CI as PR-head evidence.
 
-- [ ] Forward plan and concrete assumption delta accepted.
-- [ ] P01–P06 boundaries, dependencies, lock protocol and tests approved.
-- [ ] Forbidden scope and gate dependencies confirmed.
-- [ ] Promotion to ACTIVE approved.
-- [ ] M07-P01 implementation explicitly authorized.
+- [x] Forward plan and concrete assumption delta accepted.
+- [x] P01–P06 boundaries, dependencies, lock protocol and tests approved.
+- [x] Forbidden scope and gate dependencies confirmed.
+- [x] Promotion to ACTIVE approved.
+- [x] M07-P01 implementation explicitly authorized.
 
-Approver/date: pending. Until approval, overview and proposed task contracts remain
-under planned; status is REVIEW REQUIRED for this review, not ACTIVE implementation.
+Approver/date: project owner / 2026-10-29. M07 Activation Review accepted and PR #42 squash-merged. Approved promotion places the overview, this review and six contracts under active; only P01 is authorized for local implementation. Gate 0 remains without formal PASS.
 
 ## 9. Promotion and minimal P01 handoff
 
@@ -235,4 +234,4 @@ Handoff: previous milestone M06 DONE; closure PR #41; squash/main
 `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS;
 regression totals in §1; next task M07-P01 only after approval/promotion and explicit
 authorization. Before P01: fetch, preserve dirty work, synchronize to origin/main,
-re-read state/contract, then branch. Approval of this proposal is not a merge.
+re-read state/contract, then branch. Acceptance of this review does not preapprove future task implementation merges.

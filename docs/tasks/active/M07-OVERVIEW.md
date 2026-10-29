@@ -1,12 +1,11 @@
 # M07 — Correction / Void / Refund
 
-**Status:** PLANNED — Activation Review REVIEW REQUIRED
+**Status:** ACTIVE — Activation Review ACCEPTED 2026-10-29; M07-P01 authorized for local/CI implementation (not yet DONE).
 **Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
 **Blocks:** Gate B
 
-> **This document does NOT authorize implementation.**
-> Provisional task decomposition and scope are defined here. Execution-ready
-> contracts are finalized during Activation Review.
+> **Activation accepted:** [review](M07-ACTIVATION-REVIEW.md), PR #42 squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, independent REVIEW PASS head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, CI #40963187248 SUCCESS.
+> M07-P01 alone is owner-authorized for local/WSL/CI implementation. P02–P06 require predecessor acceptance and separate authorization. No VPS/Production authorization.
 
 ---
 
@@ -199,10 +198,7 @@ resolve the former interface/schema/locking questions against the main baseline.
 P01–P03 include the safety guards needed when each endpoint is introduced; P04
 consolidates cross-operation concurrency proof. P05 extends the existing Inbox
 pipeline; P06 implements both frozen administrative Transaction GETs and proves
-the exact frozen scenario and full regression. No task is
-ACTIVE yet. Human approval, documentary promotion and explicit P01 authorization
-are required before implementation; no merge or live infrastructure authorization
-is implied. Gate 0 still has no formal PASS and Production is not homologated.
+the exact frozen scenario and full regression. The milestone and its execution contracts are ACTIVE after documentary promotion; only P01 implementation is authorized by the project owner on 2026-10-29. Future task authorizations and merges remain separately gated; no live infrastructure authorization is implied. Gate 0 still has no formal PASS and Production is not homologated.
 
 ---
 

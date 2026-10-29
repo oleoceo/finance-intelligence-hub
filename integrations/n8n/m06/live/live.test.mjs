@@ -59,6 +59,29 @@ test('maps provider message timestamp, ID and private sender; outer sender is th
   assert.equal(Object.isFrozen(mapped), true);
 });
 
+test('maps authenticated Evolution LID-normalized private message to the corroborated phone', async () => {
+  const candidate = input();
+  candidate.body.data.key.addressingMode = 'lid';
+  candidate.body.data.key.remoteJidAlt = candidate.body.data.key.remoteJid;
+  const mapped = mapEvolution(candidate.body, config);
+  assert.equal(mapped.sender, '5511999999999');
+  assert.equal(mapped.corroboratingSender, mapped.sender);
+  const calls = [];
+  const result = await runLive(
+    candidate,
+    config,
+    credentials,
+    async (request) => {
+      calls.push(request);
+      return response;
+    },
+    wait,
+  );
+  assert.equal(result.stage, 'sent');
+  assert.equal(calls[0].body.sender_reference, '5511999999999');
+  assert.equal(calls[0].body.source_message_id, 'TEST123');
+});
+
 for (const [label, mutate] of [
   ['wrong instance', (b) => (b.instance = 'other')],
   ['wrong UUID', (b) => (b.data.instanceId = 'other')],
@@ -72,7 +95,21 @@ for (const [label, mutate] of [
     'alternate conflicting sender',
     (b) => (b.data.key.remoteJidAlt = '5511222222222@s.whatsapp.net'),
   ],
-  ['LID addressing', (b) => (b.data.key.addressingMode = 'lid')],
+  ['LID addressing without corroborating alternate', (b) => (b.data.key.addressingMode = 'lid')],
+  [
+    'LID addressing with conflicting alternate',
+    (b) => {
+      b.data.key.addressingMode = 'lid';
+      b.data.key.remoteJidAlt = '5511222222222@s.whatsapp.net';
+    },
+  ],
+  [
+    'LID addressing with raw LID alternate',
+    (b) => {
+      b.data.key.addressingMode = 'lid';
+      b.data.key.remoteJidAlt = '123456789@lid';
+    },
+  ],
   ['participant', (b) => (b.data.key.participant = '5511222222222@s.whatsapp.net')],
   ['unknown identity metadata', (b) => (b.data.sender = '5511999999999')],
   ['unknown key metadata', (b) => (b.data.key.trusted = true)],

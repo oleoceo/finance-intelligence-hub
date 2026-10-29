@@ -2,6 +2,8 @@
 
 # Finance Intelligence Hub
 
+**M06-LIVE-T03 (2026-10-29): REVIEW REQUIRED.** Owner-authorized LID adapter correction is under Draft PR review. Local M06 regression: 5 files / 124 tests PASS. Full CI and independent review pending. No VPS deployment or real processing authorized. See [task](docs/tasks/active/M06-LIVE-T03.md) and [extension update](docs/integrations/m06/LIVE-T03-LID-UPDATE.md).
+
 ## Current Project State
 
 **Documento:** `PROJECT_STATE.md`

@@ -1,0 +1,5 @@
+# Finance Lab Transport LID update — review package
+
+Build the private extension from the reviewed PR head with `node integrations/n8n/m06/live/build.mjs`. The generated `integrations/n8n/m06/live/dist/` package is the only extension payload to replace in the existing n8n installation after independent review and separate operational authorization. Keep the existing workflow inactive during package replacement and n8n restart. Do not change Evolution, Finance API, databases, credentials or Compose topology.
+
+Before release, verify the installed extension matches the reviewed commit and run an authenticated synthetic event with `addressingMode=lid`, matching phone `remoteJid` and `remoteJidAlt`, then conflicting and raw-LID negatives. Inspect only sanitized stage results. Re-enable real processing only after the reviewer accepts the exact-head CI and the operator separately authorizes the live change. Roll back by restoring the prior private extension package and restarting n8n with the workflow inactive.

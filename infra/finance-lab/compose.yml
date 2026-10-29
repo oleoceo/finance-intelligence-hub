@@ -5,6 +5,7 @@ services:
       context: ../..
       dockerfile: apps/api/Dockerfile
     image: finance-hub-api:lab
+    user: '${FINANCE_LAB_UID:?set non-root secret owner UID}:${FINANCE_LAB_GID:?set secret owner GID}'
     restart: unless-stopped
     init: true
     secrets: [app_password, admin_token, ingest_token]
@@ -27,6 +28,7 @@ services:
       start_period: 20s
   migrate:
     image: finance-hub-api:lab
+    user: '${FINANCE_LAB_UID:?set non-root secret owner UID}:${FINANCE_LAB_GID:?set secret owner GID}'
     profiles: [maintenance]
     entrypoint: ['node', '/app/entrypoint.mjs']
     command: ['migrate:up']

@@ -48,10 +48,24 @@ jobs:
         run: pnpm typecheck
 
       - name: Finance Lab Compose validation
+        env:
+          FINANCE_LAB_UID: '1000'
+          FINANCE_LAB_GID: '1000'
         run: docker compose -f infra/finance-lab/compose.yml config --quiet
 
       - name: Finance API image build
+        env:
+          FINANCE_LAB_UID: '1000'
+          FINANCE_LAB_GID: '1000'
         run: docker compose -f infra/finance-lab/compose.yml build api
+
+      - name: Finance Lab non-root secret mount
+        run: bash infra/finance-lab/test-secret-read.sh
+
+      - name: Finance Lab sudo Docker secret mount
+        env:
+          FINANCE_LAB_FORCE_SUDO_DOCKER: '1'
+        run: bash infra/finance-lab/test-secret-read.sh
 
       - name: Unit tests
         run: pnpm test

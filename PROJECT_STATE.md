@@ -2,7 +2,7 @@
 
 # Finance Intelligence Hub
 
-**M06-LIVE-T03 (2026-10-29): REVIEW REQUIRED.** Owner-authorized LID adapter correction is under Draft PR review. Local M06 regression: 5 files / 124 tests PASS. Full CI and independent review pending. No VPS deployment or real processing authorized. See [task](docs/tasks/active/M06-LIVE-T03.md) and [extension update](docs/integrations/m06/LIVE-T03-LID-UPDATE.md).
+**M06 LAB E2E (2026-10-29): LIVE LAB EVIDENCE RECORDED — REVIEW REQUIRED.** Five real WhatsApp acceptance commands, four posted Transactions, authenticated ingress, duplicate/replay and negative identity tests PASS per operator evidence. M06 LID fix PR #40 merged into main at `e43d63cfda4d6e0685dc0260c0ac419a3304909b` (post-merge CI #40931394789 SUCCESS) and private n8n extension deployed. Formal Gate 0 and M06 closure still await documented review/decision; simulated failure-path tests are not live proof. See [live evidence](docs/integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md).
 
 ## Current Project State
 

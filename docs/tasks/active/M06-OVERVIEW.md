@@ -1,8 +1,8 @@
 # M06 — WhatsApp Integration (Evolution + n8n Transport)
 
-**Status:** ACTIVE — P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / local acceptance integrated; live integration NOT EXECUTED
+**Status:** ACTIVE — P01–P05 local acceptance DONE; live Lab five-command and selected security/replay tests PASS on 2026-10-29. **Formal M06/Gate 0 acceptance pending**; see [operator evidence](../integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md).
 
-M06-LIVE-T02 Evolution logging remediation is REVIEW REQUIRED. It is a local patched-image artifact; no live service change or real WhatsApp acceptance has occurred.
+M06-LIVE-T02 logging remediation was merged via PR #39 and its corrected image deployed to the Lab; M06-LIVE-T03 LID compatibility was merged via PR #40 and the private n8n extension updated. Observed live transactions and negative tests are documented in the evidence report. The earlier planning-only and NOT EXECUTED passages below reflect historical state, not the current live Lab observation.
 **Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance
 **Blocks:** M07 activation
 
@@ -146,7 +146,8 @@ M06 expects to consume from accepted M05:
 | [M06-P03](../completed/M06-P03.md) | DONE / integrated via PR #30 |
 | [M06-P04](../completed/M06-P04.md) | DONE / integrated via PR #31 |
 | [M06-P05](../completed/M06-P05.md) | DONE / local acceptance only, PR #32 |
-| [M06-LIVE-T01](M06-LIVE-T01.md) | REVIEW REQUIRED / inactive local operational artifacts; no live activation |
+| [M06-LIVE-T01](M06-LIVE-T01.md) | PR #38 integrated; live Lab pipeline executed; formal acceptance pending |
+| [M06-LIVE-T03](M06-LIVE-T03.md) | PR #40 merged; LID adapter deployed and real LID message processed; acceptance review pending |
 
 ## 8. Required Test Categories
 
@@ -202,4 +203,4 @@ Per AGENTS.md §6:
 - `07-SECURITY.md`
 - `09-ROADMAP-TESTS.md`
 
-**Milestone state:** LOCAL IMPLEMENTATION ACCEPTED - LIVE INTEGRATION NOT EXECUTED. P05 PR #32 reviewed HEAD `3072b50f000cf4c48fc0d3acc1d13c2670b59d9a`, exact-head CI `40699057147` SUCCESS, squash `dffec7923d786fb5900f1768155b6efe750da220`, post-merge CI `40700898781` SUCCESS. Gate 0/B/C NOT EXECUTED.
+**Milestone state (updated 2026-10-29):** LAB LIVE FUNCTIONAL + NEGATIVE TESTS PASS; formal acceptance REVIEW REQUIRED. Older state was: LOCAL IMPLEMENTATION ACCEPTED - LIVE INTEGRATION NOT EXECUTED. P05 PR #32 reviewed HEAD `3072b50f000cf4c48fc0d3acc1d13c2670b59d9a`, exact-head CI `40699057147` SUCCESS, squash `dffec7923d786fb5900f1768155b6efe750da220`, post-merge CI `40700898781` SUCCESS. Gate 0/B/C NOT EXECUTED.

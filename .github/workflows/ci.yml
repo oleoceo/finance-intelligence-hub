@@ -59,6 +59,9 @@ jobs:
           FINANCE_LAB_GID: '1000'
         run: docker compose -f infra/finance-lab/compose.yml build api
 
+      - name: Finance API final image runtime test
+        run: bash infra/finance-lab/test-runtime-image.sh
+
       - name: Finance Lab non-root secret mount
         run: bash infra/finance-lab/test-secret-read.sh
 

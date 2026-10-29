@@ -14,6 +14,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@12.3.4 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=deps /app/packages/core/node_modules ./packages/core/node_modules
 COPY --from=deps /app/packages/database/node_modules ./packages/database/node_modules
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
@@ -48,6 +49,7 @@ WORKDIR /app
 # Copy production-only node_modules
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=prod-deps /app/packages/core/node_modules ./packages/core/node_modules
 COPY --from=prod-deps /app/packages/database/node_modules ./packages/database/node_modules
 # Copy workspace manifests
 COPY --from=prod-deps /app/package.json ./package.json

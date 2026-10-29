@@ -1,12 +1,11 @@
 # M07 — Correction / Void / Refund
 
-**Status:** PLANNED — Activation Review REVIEW REQUIRED
+**Status:** ACTIVE — Activation Review ACCEPTED 2026-10-29; M07-P01 authorized for local/CI implementation (not yet DONE).
 **Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
 **Blocks:** Gate B
 
-> **This document does NOT authorize implementation.**
-> Provisional task decomposition and scope are defined here. Execution-ready
-> contracts are finalized during Activation Review.
+> **Activation accepted:** [review](M07-ACTIVATION-REVIEW.md), PR #42 squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, independent REVIEW PASS head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, CI #40963187248 SUCCESS.
+> M07-P01 alone is owner-authorized for local/WSL/CI implementation. P02–P06 require predecessor acceptance and separate authorization. No VPS/Production authorization.
 
 ---
 
@@ -109,11 +108,11 @@ From M05:
 - Confirmation target tracking (`target_entity_id`, `target_version`)
 - Inbox finalization after confirmation resolution
 
-**Activation Review prepared:** [concrete implementation inventory and delta](M07-ACTIVATION-REVIEW.md). Schema/version/session targets exist; mutation ports, audit actions, operation idempotency scopes and mutation confirmation dispatch require bounded extensions. No migration or dependency is proposed. Implementation remains unauthorized pending approval and promotion.
+**Activation Review accepted:** [concrete implementation inventory and delta](M07-ACTIVATION-REVIEW.md). Schema/version/session targets exist; mutation ports, audit actions, operation idempotency scopes and mutation confirmation dispatch require bounded extensions. No migration or dependency is planned. M07-P01 is owner-authorized for local/WSL/CI implementation after promotion; P02–P06 remain separately gated.
 
 ---
 
-## 5. Task Decomposition — proposed execution contracts
+## 5. Task Decomposition — activated execution contracts
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
@@ -191,7 +190,7 @@ Expense 500
 
 ## 9. Activation Review and execution handoff
 
-[Activation Review](M07-ACTIVATION-REVIEW.md) and proposed contracts
+[Accepted Activation Review](M07-ACTIVATION-REVIEW.md) and active execution contracts
 [M07-P01](M07-P01.md), [M07-P02](M07-P02.md), [M07-P03](M07-P03.md),
 [M07-P04](M07-P04.md), [M07-P05](M07-P05.md), [M07-P06](M07-P06.md)
 resolve the former interface/schema/locking questions against the main baseline.
@@ -199,10 +198,7 @@ resolve the former interface/schema/locking questions against the main baseline.
 P01–P03 include the safety guards needed when each endpoint is introduced; P04
 consolidates cross-operation concurrency proof. P05 extends the existing Inbox
 pipeline; P06 implements both frozen administrative Transaction GETs and proves
-the exact frozen scenario and full regression. No task is
-ACTIVE yet. Human approval, documentary promotion and explicit P01 authorization
-are required before implementation; no merge or live infrastructure authorization
-is implied. Gate 0 still has no formal PASS and Production is not homologated.
+the exact frozen scenario and full regression. The milestone and its execution contracts are ACTIVE after documentary promotion; only P01 implementation is authorized by the project owner on 2026-10-29. Future task authorizations and merges remain separately gated; no live infrastructure authorization is implied. Gate 0 still has no formal PASS and Production is not homologated.
 
 ---
 

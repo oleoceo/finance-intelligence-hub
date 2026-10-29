@@ -144,6 +144,7 @@ M06 expects to consume from accepted M05:
 | [M06-P03](../completed/M06-P03.md) | DONE / integrated via PR #30 |
 | [M06-P04](../completed/M06-P04.md) | DONE / integrated via PR #31 |
 | [M06-P05](../completed/M06-P05.md) | DONE / local acceptance only, PR #32 |
+| [M06-LIVE-T01](M06-LIVE-T01.md) | REVIEW REQUIRED / inactive local operational artifacts; no live activation |
 
 ## 8. Required Test Categories
 

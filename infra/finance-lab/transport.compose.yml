@@ -1,0 +1,11 @@
+# Operator opt-in overlay. Existing external network must already exist and be internal.
+services:
+  api:
+    networks:
+      finance-products-db: {}
+      finance-hub-transport:
+        aliases: [finance-lab-api]
+networks:
+  finance-hub-transport:
+    external: true
+    name: finance-hub-transport

@@ -108,11 +108,11 @@ From M05:
 - Confirmation target tracking (`target_entity_id`, `target_version`)
 - Inbox finalization after confirmation resolution
 
-**Activation Review prepared:** [concrete implementation inventory and delta](M07-ACTIVATION-REVIEW.md). Schema/version/session targets exist; mutation ports, audit actions, operation idempotency scopes and mutation confirmation dispatch require bounded extensions. No migration or dependency is proposed. Implementation remains unauthorized pending approval and promotion.
+**Activation Review accepted:** [concrete implementation inventory and delta](M07-ACTIVATION-REVIEW.md). Schema/version/session targets exist; mutation ports, audit actions, operation idempotency scopes and mutation confirmation dispatch require bounded extensions. No migration or dependency is planned. M07-P01 is owner-authorized for local/WSL/CI implementation after promotion; P02–P06 remain separately gated.
 
 ---
 
-## 5. Task Decomposition — proposed execution contracts
+## 5. Task Decomposition — activated execution contracts
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
@@ -190,7 +190,7 @@ Expense 500
 
 ## 9. Activation Review and execution handoff
 
-[Activation Review](M07-ACTIVATION-REVIEW.md) and proposed contracts
+[Accepted Activation Review](M07-ACTIVATION-REVIEW.md) and active execution contracts
 [M07-P01](M07-P01.md), [M07-P02](M07-P02.md), [M07-P03](M07-P03.md),
 [M07-P04](M07-P04.md), [M07-P05](M07-P05.md), [M07-P06](M07-P06.md)
 resolve the former interface/schema/locking questions against the main baseline.

@@ -1,0 +1,10 @@
+# External n8n project only. Confirm its Compose service key is n8n before use.
+# Merge with /opt/apps/apps/n8n/docker-compose.yml; never use standalone.
+services:
+  n8n:
+    networks:
+      finance-hub-transport: {}
+networks:
+  finance-hub-transport:
+    external: true
+    name: finance-hub-transport

@@ -54,6 +54,15 @@ FINAL-FREEZE-DECISIONS.md
 
 ---
 
+## Current operational evidence — 2026-10-29
+
+**M06-LIVE-T01: REVIEW REQUIRED — inactive local artifacts prepared; independent review pending.** [Task](docs/tasks/active/M06-LIVE-T01.md) and [deployment procedure](docs/integrations/m06/LIVE-T01-DEPLOYMENT.md). No VPS access, credential access, webhook activation, WhatsApp send or merge is authorized in this task. M06 P01–P05 remain accepted locally; live integration NOT EXECUTED / NOT ACCEPTED. Gate 0 is pending acceptance, not PASS. Older NOT EXECUTED statements below describe prior milestones, not a denial of the owner-reported operational work.
+
+Owner-reported observations (not independently re-executed by this agent): `postgres-products` healthy on isolated `finance-products-db`; `finance_hub_lab` has all five official migrations and none pending; `finance-lab-api-1` healthy with `/health` and `/ready` 200; encrypted post-migration backup copied off-VPS and SHA-256 verified. Restore of that post-migration backup remains pending. n8n 2.23.3 uses `n8n_internal` and `proxy`; Evolution 2.3.7 uses `apps-backend` and `proxy`. Internal `finance-hub-transport` was manually connected to n8n and Finance API; n8n → Finance `/health` and `/ready` both returned 200. Owner recovered both management panels. Repository exists at `/opt/apps/apps/lab/finance-hub`. Owner additionally confirmed Compose paths by metadata inspection: `/opt/apps/apps/n8n/docker-compose.yml`, `/opt/apps/apps/platforms/evolution-main/docker-compose.yml`, and `/opt/apps/apps/lab/finance-hub/infra/finance-lab/compose.yml`. No Lab WhatsApp instance or real M06 workflow activated.
+
+Next allowed action: independent review of M06-LIVE-T01 Draft PR and exact-head CI. Local validation: 39 unit files / 1,023 tests; 26 PostgreSQL files / 453 tests; 5 native M06 files / 121 tests; P05 1 file / 25 tests; pinned n8n import/runtime and Compose isolation checks PASS. Forced-sudo Docker validation remains CI-only because local sudo credentials were not accessed. Deployment and live five-command/security acceptance require separate operational release. Pending evidence: deployed Evolution build identity, header authentication through actual proxy, private instance identity and payload shape, effective provider log redaction, credential setup, network persistence after recreation, backup restore and Gate 0 acceptance. ADR-003 remains OPEN.
+
+---
 # 2. Current overall status
 
 M01 - Local Bootstrap: DONE.
@@ -825,7 +834,7 @@ M20 Alerts / Predictions
 
 No demonstrated frozen-architecture blocker or unresolved M02 acceptance failure. Human review accepted M02 on 2026-10-20.
 The prior failed verification and correction rationale remain recorded as history in the accepted evidence report.
-VPS state remains unknown. Gate 0 is required before live infrastructure activity, is NOT EXECUTED and is not authorized by this closure.
+Historical closure statement: VPS state was then unknown. Current owner-reported operational observations and pending acceptance are recorded above; this task authorizes no VPS activity.
 
 ---
 
@@ -834,13 +843,13 @@ VPS state remains unknown. Gate 0 is required before live infrastructure activit
 Current risks are primarily operational, not architectural:
 
 ```text
-actual VPS state not yet inspected
+owner-reported VPS observations require independent operational acceptance
 
-postgres-products existence unknown
+postgres-products reported healthy; persistent isolation requires recreation evidence
 
-n8n apps-backend membership unknown
+n8n transport network persistence and credential binding pending
 
-actual backup posture unknown
+post-migration off-VPS backup reported verified; isolated restore pending
 
 Codex VPS privilege model not yet configured
 ```
@@ -851,7 +860,7 @@ These belong to Gate 0.
 
 # 39. Current allowed next actions
 
-M01–M05 DONE; Gate A PASS. M05-P01–P06 human technically accepted and integrated. Gate 0/B/C NOT EXECUTED. Next allowed action: Gate 0 read-only inspection planning; execution requires separate explicit human approval; P01 DONE; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / human accepted / integrated for local acceptance only.
+M01–M05 DONE; Gate A PASS. M05-P01–P06 human technically accepted and integrated. Gate 0/B/C NOT EXECUTED. Next allowed action: M06-LIVE-T01 local artifacts and independent review; live execution requires separate explicit approval; P01 DONE; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / human accepted / integrated for local acceptance only.
 
 ---
 
@@ -1205,7 +1214,7 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-M01–M05 DONE / integrated; Gate A PASS. M05-P01–P06 human technically accepted; PR #24 merged at `ca3527514df52d302746de2c779934099a98b473`, post-merge CI `40596736837` SUCCESS. M06 ACTIVE via documentary promotion PR #27; P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / human accepted / integrated for local acceptance only; M07–M09 PLANNED; Gate 0/B/C NOT EXECUTED. Next allowed action: Gate 0 read-only inspection planning; execution requires separate explicit human approval.
+M01–M05 DONE / integrated; Gate A PASS. M05-P01–P06 human technically accepted; PR #24 merged at `ca3527514df52d302746de2c779934099a98b473`, post-merge CI `40596736837` SUCCESS. M06 ACTIVE via documentary promotion PR #27; P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / human accepted / integrated for local acceptance only; M07–M09 PLANNED; Gate 0/B/C NOT EXECUTED. Next allowed action: M06-LIVE-T01 local artifacts and independent review; live execution requires separate explicit human approval.
 
 ---
 
@@ -1317,9 +1326,9 @@ NONE
 
 # 63. Next action
 
-**Finance Lab packaging, 2026-10-28:** INFRA-T01 integrated via PR #34 at `df85f58`; FINANCE-LAB-T01 packaging integrated via PR #35 at `29c2e42`. Owner reports `postgres-products` healthy (PostgreSQL 18.6, pinned digest), `finance_hub_lab`, private `finance-products-db` (`internal=true`), persistent `finance_postgres_products_data`, successful `bootstrap.sql`, separate working `finance_hub_migrations` (schema CREATE) and `finance_hub_app` (no schema CREATE), and an initial local backup under `/opt/apps/backups/databases/finance-hub/lab/`. These are owner-reported operational results; this task has not independently accessed the VPS. The Compose secret-owner UID correction is REVIEW REQUIRED. Migrations, external backup, isolated restore and Gate 0 acceptance remain pending. No Lab deployment is authorized by this record; ADR-003 n8n route remains OPEN.
+**Finance Lab packaging, 2026-10-28:** INFRA-T01 integrated via PR #34 at `df85f58`; FINANCE-LAB-T01 packaging integrated via PR #35 at `29c2e42`. Owner reports `postgres-products` healthy (PostgreSQL 18.6, pinned digest), `finance_hub_lab`, private `finance-products-db` (`internal=true`), persistent `finance_postgres_products_data`, successful `bootstrap.sql`, separate working `finance_hub_migrations` (schema CREATE) and `finance_hub_app` (no schema CREATE), and an initial local backup under `/opt/apps/backups/databases/finance-hub/lab/`. These are owner-reported operational results; this task has not independently accessed the VPS. The Compose secret-owner UID correction is REVIEW REQUIRED. Superseded by the 2026-10-29 owner report above: five migrations and external post-migration backup are reported complete; restore and Gate 0 acceptance remain pending. No Lab deployment is authorized by this record; ADR-003 n8n route remains OPEN.
 
-**Next action:** Gate 0 read-only inspection planning; execution requires separate explicit human approval. M05-P01–P06 are DONE / integrated; M05 has human technical acceptance. M06 ACTIVE via documentary promotion PR #27; P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / human accepted / integrated for local acceptance only; M07–M09 remain PLANNED; Gate 0/B/C NOT EXECUTED. No VPS or live infrastructure work.
+**Next action:** M06-LIVE-T01 local artifacts and independent review; live execution requires separate explicit human approval. M05-P01–P06 are DONE / integrated; M05 has human technical acceptance. M06 ACTIVE via documentary promotion PR #27; P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / human accepted / integrated for local acceptance only; M07–M09 remain PLANNED; Gate 0/B/C NOT EXECUTED. No VPS or live infrastructure work.
 
 M06-P01 documentary closure: DONE / integrated via PR #28; accepted head `de4291b0d68298c60e34ca66e1e32f342b01a20e`, exact-head CI `40612282461` SUCCESS, squash `19e4490c671a606e1f2e43204dbc0da5d5d97615`, post-merge CI `40613174472` SUCCESS. Synthetic native Node contract suite: 35 PASS independently; not discovered by automatic Vitest CI. M06 remains ACTIVE; M06-P02 DONE; M06-P03 DONE / integrated via PR #30; M06-P04 DONE; M06-P05 DONE / human accepted / integrated for local acceptance only.
 
@@ -1329,4 +1338,4 @@ M06-P03 documentary closure: DONE / human accepted; reviewed HEAD `55b189b3a9246
 
 M06-P04 accepted closure: PR #31 reviewed HEAD `b77a91cc2555fcbd76bd885c94783998099c5fcd`; exact-head CI `40687766415` SUCCESS; squash `08ed0105e2ca98c982b1880c34ab7e54401f85e9`; post-merge CI `40694469814` SUCCESS on that exact SHA. CI: 1,023 unit and 453 real PostgreSQL integration PASS; P01–P04 native: 84 PASS locally. M06-P05 is DONE / integrated locally; live Gate 0 remains NOT EXECUTED.
 
-M06-P05 local closure: DONE / human accepted / integrated via PR #32. Reviewed HEAD `3072b50f000cf4c48fc0d3acc1d13c2670b59d9a`; exact-head CI `40699057147` SUCCESS; squash/main `dffec7923d786fb5900f1768155b6efe750da220`; post-merge CI `40700898781` SUCCESS. CI 1,023 unit / 453 real PostgreSQL integration PASS; dedicated P05 local acceptance 25 PASS and P01-P04 native 84 PASS (agent-reported). **M06 LOCAL IMPLEMENTATION ACCEPTED - LIVE INTEGRATION NOT EXECUTED.** Gate A PASS; Gate 0/B/C NOT EXECUTED. No live VPS, Evolution or n8n integration accepted. Next action: review Gate 0 read-only inspection proposal; separate explicit approval required to execute.
+M06-P05 local closure: DONE / human accepted / integrated via PR #32. Reviewed HEAD `3072b50f000cf4c48fc0d3acc1d13c2670b59d9a`; exact-head CI `40699057147` SUCCESS; squash/main `dffec7923d786fb5900f1768155b6efe750da220`; post-merge CI `40700898781` SUCCESS. CI 1,023 unit / 453 real PostgreSQL integration PASS; dedicated P05 local acceptance 25 PASS and P01-P04 native 84 PASS (agent-reported). **M06 LOCAL IMPLEMENTATION ACCEPTED - LIVE INTEGRATION NOT EXECUTED.** Gate A PASS; Gate 0/B/C NOT EXECUTED. No live VPS, Evolution or n8n integration accepted. Current follow-up: M06-LIVE-T01 local artifacts and independent review; separate operational release required for live execution.

@@ -1,0 +1,47 @@
+{
+  "name": "M06 Lab — Evolution 2.3.7 (INACTIVE)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "finance-m06-lab",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "ingress",
+      "name": "Authenticated Lab webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "id": "transport",
+      "name": "Finance Lab Transport",
+      "type": "CUSTOM.financeLabTransport",
+      "typeVersion": 1,
+      "position": [280, 0],
+      "parameters": {
+        "enabled": false,
+        "instance": "",
+        "instanceId": "",
+        "ownerJid": "",
+        "evolutionUrl": ""
+      }
+    }
+  ],
+  "connections": {
+    "Authenticated Lab webhook": {
+      "main": [[{ "node": "Finance Lab Transport", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "executionTimeout": 240
+  }
+}

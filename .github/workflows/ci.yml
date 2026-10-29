@@ -47,6 +47,24 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: M06 provider binding and accepted transport regression
+        run: |
+          node integrations/n8n/m06/live/build.mjs
+          git diff --exit-code -- integrations/n8n/m06/live/workflow.json
+          node --test integrations/n8n/m06/contract/p01.test.mjs integrations/n8n/m06/p02/p02.test.mjs integrations/n8n/m06/p03/p03.test.mjs integrations/n8n/m06/p04/p04.test.mjs integrations/n8n/m06/live/live.test.mjs
+
+      - name: M06 n8n 2.23.3 isolated import and runtime
+        run: bash integrations/n8n/m06/live/test-runtime.sh
+
+      - name: M06 opt-in transport Compose
+        env:
+          FINANCE_LAB_UID: '1000'
+          FINANCE_LAB_GID: '1000'
+        run: |
+          docker compose --profile maintenance -f infra/finance-lab/compose.yml -f infra/finance-lab/transport.compose.yml config --format json > /tmp/m06-compose.json
+          node integrations/n8n/m06/live/check-network.mjs /tmp/m06-compose.json
+          bash integrations/n8n/m06/live/test-n8n-network.sh
+
       - name: Finance Lab Compose validation
         env:
           FINANCE_LAB_UID: '1000'
@@ -75,5 +93,10 @@ jobs:
 
       - name: Integration tests (PostgreSQL via Testcontainers)
         run: pnpm test:integration:postgres
+        env:
+          TESTCONTAINERS_HOST_OVERRIDE: localhost
+
+      - name: M06 five-command acceptance (PostgreSQL, simulated provider)
+        run: pnpm exec vitest run --config integrations/n8n/m06/p05/vitest.config.ts
         env:
           TESTCONTAINERS_HOST_OVERRIDE: localhost

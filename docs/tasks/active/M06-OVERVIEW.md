@@ -1,6 +1,6 @@
 # M06 — WhatsApp Integration (Evolution + n8n Transport)
 
-**Status:** ACTIVE — P01–P05 local acceptance DONE; live Lab five-command and selected security/replay tests PASS on 2026-10-29. **Formal M06/Gate 0 acceptance pending**; see [operator evidence](../integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md).
+**Status:** ACTIVE — P01–P05 local acceptance DONE; live Lab five-command and selected security/replay tests PASS on 2026-10-29. **Formal M06/Gate 0 acceptance pending**; see [operator evidence](../../integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md).
 
 M06-LIVE-T02 logging remediation was merged via PR #39 and its corrected image deployed to the Lab; M06-LIVE-T03 LID compatibility was merged via PR #40 and the private n8n extension updated. Observed live transactions and negative tests are documented in the evidence report. The earlier planning-only and NOT EXECUTED passages below reflect historical state, not the current live Lab observation.
 **Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance

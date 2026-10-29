@@ -1,6 +1,6 @@
 # M06 — Evidências de verificação real do laboratório (2026-10-29)
 
-**Estado desta evidência:** REVIEW REQUIRED — execução operacional reportada pelo proprietário e confrontada com saídas de terminal e capturas fornecidas na conversa. Não equivale à aprovação formal da milestone ou do Gate 0. Nenhum segredo, JID, número de telefone ou payload sensível deve ser anexado ao Git.
+**Estado desta evidência:** ACCEPTED FOR LAB by project owner on 2026-10-29 — os resultados foram reportados pelo operador e confrontados com saídas de terminal e capturas fornecidas na conversa. O aceite é técnico/funcional da M06 no Lab, **não** aprovação formal do Gate 0, homologação de Produção ou garantia de entrega exatamente uma vez. Nenhum segredo, JID, número de telefone ou payload sensível deve ser anexado ao Git.
 
 ## Escopo, versões e controle
 
@@ -45,10 +45,10 @@ Resultados fornecidos pelo operador:
 - **Sem execução real nesta rodada:** fluxos de esclarecimento/seleção Book/Account e consulta `último` para livro vazio; têm cobertura no P05 local. Tampouco há teste real de redelivery espontâneo do provedor; o replay via webhook foi sintético.
 - **Gate 0:** existe evidência operacional de isolamento, redes, papéis, restauração, autenticação, versão e rollout, porém a decisão formal `Gate 0 PASS` ainda não foi registrada no ledger. Esta documentação não altera retroativamente permissões de implantação.
 - **Gate B/C:** não pertencem ao encerramento da M06; permanecem nas dependências futuras do roadmap.
-- **Formalização pendente:** revisão independente desta evidência, decisão humana de aceite do Lab para M06, atualização consistente dos estados das tasks e do Gate 0 quando houver decisão. **Não** marcar lacunas simuladas como `LIVE PASS` ou prometer notificação exatamente uma vez.
+- **Formalização:** o proprietário expressou aceite técnico do Lab e autorização para fechar a M06 em 2026-10-29; a documentação e as tasks são encerradas neste PR. **Gate 0 segue sem PASS formal** e permanece um bloqueio explícito para alegar prontidão de produção ou liberar novas mudanças operacionais fora do escopo autorizado. **Não** marcar lacunas simuladas como `LIVE PASS` ou prometer notificação exatamente uma vez.
 
 ## Segurança operacional após testes
 
 A instância `finance-hub-lab` e o workflow podem continuar disponíveis para testes autorizados; fora de uma janela de teste, a recomendação é desabilitar `Operational Release` e publicar, além de desativar apenas o webhook da instância Lab, sem tocar nos serviços compartilhados. Não apagar mensagens, sessões ou histórico financeiro.
 
-**Conclusão técnica:** os cinco casos funcionais e os negativos listados passam no Lab real. **Estado de governança:** `REVIEW REQUIRED / LIVE LAB EVIDENCE RECORDED` até revisão e aceite formal.
+**Conclusão técnica:** os cinco casos funcionais e os negativos listados passam no Lab real. **Estado de governança:** `M06 DONE — TECHNICAL LAB ACCEPTED (2026-10-29); GATE 0 FORMAL PASS PENDING; NOT PRODUCTION ACCEPTED`. Falhas e ambiguidades reais de transporte, fluxos de esclarecimento e Last vazio permanecem apenas simulados. Não extrapolar essa evidência para prontidão de Produção.

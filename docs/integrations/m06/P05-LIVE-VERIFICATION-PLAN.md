@@ -1,6 +1,6 @@
 # M06-P05 conditional live verification plan
 
-**Execution update (2026-10-29):** Lab operations have now been executed with owner guidance. Five-command real WhatsApp acceptance plus selected security/replay tests passed; see [M06 live evidence](LIVE-ACCEPTANCE-2026-10-29.md). Failure injection and ambiguous send/reply outcomes remain simulated, not live-tested. Formal Gate 0 and M06 signoff remain pending. The entry gates below describe the original conditional authorization contract and this document does not retroactively authorize past access.
+**Execution update (2026-10-29):** Lab operations have now been executed with owner guidance. Five-command real WhatsApp acceptance plus selected security/replay tests passed; see [M06 live evidence](LIVE-ACCEPTANCE-2026-10-29.md). Failure injection and ambiguous send/reply outcomes remain simulated, not live-tested. M06 was technically accepted for Lab by the project owner on 2026-10-29; Gate 0 formal PASS and Production signoff remain pending. The entry gates below describe the original conditional authorization contract and this document does not retroactively authorize past access.
 
 ## Entry gates
 

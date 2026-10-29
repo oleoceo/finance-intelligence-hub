@@ -74,7 +74,9 @@ export function mapEvolution(body, config) {
     (key.remoteJidAlt != null && key.remoteJidAlt !== key.remoteJid) ||
     (key.participant != null && key.participant !== '') ||
     (key.participantAlt != null && key.participantAlt !== '') ||
-    (key.addressingMode != null && key.addressingMode !== 'pn')
+    (key.addressingMode === 'lid'
+      ? !phone(key.remoteJidAlt) || key.remoteJidAlt !== key.remoteJid
+      : key.addressingMode != null && key.addressingMode !== 'pn')
   )
     return null;
   if (

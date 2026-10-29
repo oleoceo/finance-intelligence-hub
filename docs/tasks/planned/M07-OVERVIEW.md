@@ -1,7 +1,7 @@
 # M07 — Correction / Void / Refund
 
-**Status:** PLANNED
-**Dependencies:** M06 accepted
+**Status:** PLANNED — Activation Review REVIEW REQUIRED
+**Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
 **Blocks:** Gate B
 
 > **This document does NOT authorize implementation.**
@@ -70,6 +70,7 @@ Mechanism:
 - Original Expense with posted Refund: cannot be Voided
 - Expense amount correction cannot go below sum of posted refunds
 - Expense date correction cannot move after any posted Refund date
+- Administrative `GET /api/v1/transactions/{id}/refunds` exposes linked Refund history; `GET /api/v1/transactions/{id}/audit` exposes the target's append-only audit (both `finance:admin`, assigned to P06)
 
 ### WhatsApp Integration
 - Void via WhatsApp always requires explicit Confirmation.
@@ -108,11 +109,11 @@ From M05:
 - Confirmation target tracking (`target_entity_id`, `target_version`)
 - Inbox finalization after confirmation resolution
 
-**ACTIVATION REVIEW REQUIRED**: All concrete reuse of M04 transaction/idempotency/audit interfaces and M05 confirmation interfaces must be verified against actual implementations. Do not guess exact signatures now.
+**Activation Review prepared:** [concrete implementation inventory and delta](M07-ACTIVATION-REVIEW.md). Schema/version/session targets exist; mutation ports, audit actions, operation idempotency scopes and mutation confirmation dispatch require bounded extensions. No migration or dependency is proposed. Implementation remains unauthorized pending approval and promotion.
 
 ---
 
-## 5. Provisional Task Decomposition
+## 5. Task Decomposition — proposed execution contracts
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
@@ -121,7 +122,7 @@ From M05:
 | **M07-P03** | Refund creation and invariants | Refund endpoint, linked-income representation, amount/date/Book/currency validation, refund-of-refund rejection, dedicated endpoint enforcement |
 | **M07-P04** | Refund concurrency / original Expense locking | PostgreSQL FOR UPDATE or equivalent on original Expense, concurrent over-refund prevention, Expense-with-refunds void blocking, correction amount floor enforcement, correction date ceiling enforcement |
 | **M07-P05** | WhatsApp Confirmation integration for correction/void/refund | Explicit Confirmation for every WhatsApp Void and Refund; clear ordinary Correction may execute directly when target, change and version are unambiguous; ambiguous Correction may use ConfirmationSession; Transaction sessions carry target_entity_id/target_version, reject stale confirmation, and finalize original Inbox |
-| **M07-P06** | API integration and milestone verification | All endpoints wired, frozen critical scenario proven, unit/integration suites green |
+| **M07-P06** | Administrative reads, API integration and milestone verification | Frozen Refund/audit GET endpoints with `finance:admin`, schema/response/authorization tests; mutation endpoints verified, critical scenario proven, unit/integration suites green |
 
 ---
 
@@ -173,6 +174,7 @@ Expense 500
 - Transaction ConfirmationSession preserves `target_entity_id` and `target_version`
 - Stale Confirmation target_version rejected
 - Generic create cannot produce Refund
+- Refund and audit GETs require `finance:admin`, return scoped linked history and target audit, and reject unauthorized/malformed requests
 
 ---
 
@@ -187,14 +189,20 @@ Expense 500
 
 ---
 
-## 9. Known Risks Deferred to Activation Review
+## 9. Activation Review and execution handoff
 
-- Exact M04 Transaction port interface for PATCH/version operations
-- Whether M04 already exposes a version field or if M07 must add it
-- Exact M05 ConfirmationSession API for creating sessions with target_entity_id/target_version
-- Whether existing audit infrastructure supports Void/Refund event types
-- PostgreSQL locking strategy for concurrent Refund (FOR UPDATE vs advisory lock)
-- Whether M02 migration already includes all required columns for Correction/Void/Refund
+[Activation Review](M07-ACTIVATION-REVIEW.md) and proposed contracts
+[M07-P01](M07-P01.md), [M07-P02](M07-P02.md), [M07-P03](M07-P03.md),
+[M07-P04](M07-P04.md), [M07-P05](M07-P05.md), [M07-P06](M07-P06.md)
+resolve the former interface/schema/locking questions against the main baseline.
+
+P01–P03 include the safety guards needed when each endpoint is introduced; P04
+consolidates cross-operation concurrency proof. P05 extends the existing Inbox
+pipeline; P06 implements both frozen administrative Transaction GETs and proves
+the exact frozen scenario and full regression. No task is
+ACTIVE yet. Human approval, documentary promotion and explicit P01 authorization
+are required before implementation; no merge or live infrastructure authorization
+is implied. Gate 0 still has no formal PASS and Production is not homologated.
 
 ---
 

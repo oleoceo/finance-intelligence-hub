@@ -1,6 +1,8 @@
 # M06 — WhatsApp Integration (Evolution + n8n Transport)
 
 **Status:** ACTIVE — P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / local acceptance integrated; live integration NOT EXECUTED
+
+M06-LIVE-T02 Evolution logging remediation is REVIEW REQUIRED. It is a local patched-image artifact; no live service change or real WhatsApp acceptance has occurred.
 **Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance
 **Blocks:** M07 activation
 

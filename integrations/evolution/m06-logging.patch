@@ -1,0 +1,202 @@
+diff --git a/src/api/integrations/channel/whatsapp/whatsapp.baileys.service.ts b/src/api/integrations/channel/whatsapp/whatsapp.baileys.service.ts
+index 60e857f..aab1056 100644
+--- a/src/api/integrations/channel/whatsapp/whatsapp.baileys.service.ts
++++ b/src/api/integrations/channel/whatsapp/whatsapp.baileys.service.ts
+@@ -704,13 +704,11 @@ export class BaileysStartupService extends ChannelStartupService {
+     this.eventHandler();
+ 
+     this.client.ws.on('CB:call', (packet) => {
+-      console.log('CB:call', packet);
+       const payload = { event: 'CB:call', packet: packet };
+       this.sendDataWebhook(Events.CALL, payload, true, ['websocket']);
+     });
+ 
+     this.client.ws.on('CB:ack,class:call', (packet) => {
+-      console.log('CB:ack,class:call', packet);
+       const payload = { event: 'CB:ack,class:call', packet: packet };
+       this.sendDataWebhook(Events.CALL, payload, true, ['websocket']);
+     });
+@@ -940,9 +938,6 @@ export class BaileysStartupService extends ChannelStartupService {
+       syncType?: proto.HistorySync.HistorySyncType;
+     }) => {
+       try {
+-        if (syncType === proto.HistorySync.HistorySyncType.ON_DEMAND) {
+-          console.log('received on-demand history sync, messages=', messages);
+-        }
+         console.log(
+           `recv ${chats.length} chats, ${contacts.length} contacts, ${messages.length} msgs (is latest: ${isLatest}, progress: ${progress}%), type: ${syncType}`,
+         );
+@@ -1099,7 +1094,7 @@ export class BaileysStartupService extends ChannelStartupService {
+               ].some((err) => param?.includes?.(err)),
+             )
+           ) {
+-            this.logger.warn(`Message ignored with messageStubParameters: ${JSON.stringify(received, null, 2)}`);
++            this.logger.warn('Message ignored with messageStubParameters');
+             continue;
+           }
+           if (received.message?.conversation || received.message?.extendedTextMessage?.text) {
+@@ -1109,8 +1104,6 @@ export class BaileysStartupService extends ChannelStartupService {
+               const messageId = await this.client.requestPlaceholderResend(received.key);
+ 
+               console.log('requested placeholder resync, id=', messageId);
+-            } else if (requestId) {
+-              console.log('Message received from phone, id=', requestId, received);
+             }
+ 
+             if (text == 'onDemandHistSync') {
+@@ -1472,14 +1465,10 @@ export class BaileysStartupService extends ChannelStartupService {
+             }
+           }
+ 
+-          this.logger.verbose(messageRaw);
+-
+           sendTelemetry(`received.message.${messageRaw.messageType ?? 'unknown'}`);
+           if (messageRaw.key.remoteJid?.includes('@lid') && messageRaw.key.remoteJidAlt) {
+             messageRaw.key.remoteJid = messageRaw.key.remoteJidAlt;
+           }
+-          console.log(messageRaw);
+-
+           this.sendDataWebhook(Events.MESSAGES_UPSERT, messageRaw);
+ 
+           await chatbotController.emit({
+@@ -1556,7 +1545,7 @@ export class BaileysStartupService extends ChannelStartupService {
+     },
+ 
+     'messages.update': async (args: { update: Partial<WAMessage>; key: WAMessageKey }[], settings: any) => {
+-      this.logger.verbose(`Update messages ${JSON.stringify(args, undefined, 2)}`);
++
+ 
+       const readChatToUpdate: Record<string, true> = {}; // {remoteJid: true}
+ 
+@@ -4860,7 +4849,6 @@ export class BaileysStartupService extends ChannelStartupService {
+   }
+ 
+   public async baileysSendNode(stanza: any) {
+-    console.log('stanza', JSON.stringify(stanza));
+     const response = await this.client.sendNode(stanza);
+ 
+     return response;
+diff --git a/src/api/integrations/event/webhook/webhook.controller.ts b/src/api/integrations/event/webhook/webhook.controller.ts
+index 7f1dd8d..26dbe87 100644
+--- a/src/api/integrations/event/webhook/webhook.controller.ts
++++ b/src/api/integrations/event/webhook/webhook.controller.ts
+@@ -115,8 +115,8 @@ export class WebhookController extends EventController implements EventControlle
+         if (enabledLog) {
+           const logData = {
+             local: `${origin}.sendData-Webhook`,
+-            url: baseURL,
+-            ...webhookData,
++            event,
++            instance: instanceName,
+           };
+ 
+           this.logger.log(logData);
+@@ -133,18 +133,7 @@ export class WebhookController extends EventController implements EventControlle
+             await this.retryWebhookRequest(httpService, webhookData, `${origin}.sendData-Webhook`, baseURL, serverUrl);
+           }
+         } catch (error) {
+-          this.logger.error({
+-            local: `${origin}.sendData-Webhook`,
+-            message: `Todas as tentativas falharam: ${error?.message}`,
+-            hostName: error?.hostname,
+-            syscall: error?.syscall,
+-            code: error?.code,
+-            error: error?.errno,
+-            stack: error?.stack,
+-            name: error?.name,
+-            url: baseURL,
+-            server_url: serverUrl,
+-          });
++          this.logger.error({ local: `${origin}.sendData-Webhook`, statusCode: error?.response?.status });
+         }
+       }
+     }
+@@ -160,8 +149,8 @@ export class WebhookController extends EventController implements EventControlle
+         if (enabledLog) {
+           const logData = {
+             local: `${origin}.sendData-Webhook-Global`,
+-            url: globalURL,
+-            ...webhookData,
++            event,
++            instance: instanceName,
+           };
+ 
+           this.logger.log(logData);
+@@ -183,18 +172,7 @@ export class WebhookController extends EventController implements EventControlle
+             );
+           }
+         } catch (error) {
+-          this.logger.error({
+-            local: `${origin}.sendData-Webhook-Global`,
+-            message: `Todas as tentativas falharam: ${error?.message}`,
+-            hostName: error?.hostname,
+-            syscall: error?.syscall,
+-            code: error?.code,
+-            error: error?.errno,
+-            stack: error?.stack,
+-            name: error?.name,
+-            url: globalURL,
+-            server_url: serverUrl,
+-          });
++          this.logger.error({ local: `${origin}.sendData-Webhook-Global`, statusCode: error?.response?.status });
+         }
+       }
+     }
+@@ -226,7 +204,6 @@ export class WebhookController extends EventController implements EventControlle
+           this.logger.log({
+             local: `${origin}`,
+             message: `Sucesso no envio após ${attempts + 1} tentativas`,
+-            url: baseURL,
+           });
+         }
+         return;
+@@ -236,30 +213,11 @@ export class WebhookController extends EventController implements EventControlle
+         const isTimeout = error.code === 'ECONNABORTED';
+ 
+         if (error?.response?.status && nonRetryableStatusCodes.includes(error.response.status)) {
+-          this.logger.error({
+-            local: `${origin}`,
+-            message: `Erro não recuperável (${error.response.status}): ${error?.message}. Cancelando retentativas.`,
+-            statusCode: error?.response?.status,
+-            url: baseURL,
+-            server_url: serverUrl,
+-          });
++          this.logger.error({ local: origin, statusCode: error.response.status, retryable: false });
+           throw error;
+         }
+ 
+-        this.logger.error({
+-          local: `${origin}`,
+-          message: `Tentativa ${attempts}/${maxRetryAttempts} falhou: ${isTimeout ? 'Timeout da requisição' : error?.message}`,
+-          hostName: error?.hostname,
+-          syscall: error?.syscall,
+-          code: error?.code,
+-          isTimeout,
+-          statusCode: error?.response?.status,
+-          error: error?.errno,
+-          stack: error?.stack,
+-          name: error?.name,
+-          url: baseURL,
+-          server_url: serverUrl,
+-        });
++        this.logger.error({ local: origin, attempt: attempts, maxAttempts: maxRetryAttempts, isTimeout, statusCode: error?.response?.status });
+ 
+         if (attempts === maxRetryAttempts) {
+           throw error;
+@@ -276,7 +234,6 @@ export class WebhookController extends EventController implements EventControlle
+         this.logger.log({
+           local: `${origin}`,
+           message: `Aguardando ${nextDelay.toFixed(1)} segundos antes da próxima tentativa`,
+-          url: baseURL,
+         });
+ 
+         await new Promise((resolve) => setTimeout(resolve, nextDelay * 1000));
+@@ -298,7 +255,7 @@ export class WebhookController extends EventController implements EventControlle
+     } catch (error) {
+       this.logger.error({
+         local: 'WebhookController.generateJwtToken',
+-        message: `JWT generation failed: ${error?.message}`,
++        message: 'JWT generation failed',
+       });
+       throw error;
+     }

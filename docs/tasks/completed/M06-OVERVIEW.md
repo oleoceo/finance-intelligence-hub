@@ -1,10 +1,10 @@
 # M06 — WhatsApp Integration (Evolution + n8n Transport)
 
-**Status:** ACTIVE — P01 DONE via PR #28; P02 DONE via PR #29; P03 DONE via PR #30; P04 DONE via PR #31; P05 DONE / local acceptance integrated; live integration NOT EXECUTED
+**Status:** DONE — accepted by project owner on 2026-10-29 for the real Lab functional transport, five commands and selected negative/replay scenarios. **Gate 0 formal PASS remains pending; production NOT accepted.** [Evidence](../../integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md).
 
-M06-LIVE-T02 Evolution logging remediation is REVIEW REQUIRED. It is a local patched-image artifact; no live service change or real WhatsApp acceptance has occurred.
+M06-LIVE-T02 logging remediation was merged via PR #39 and its corrected image deployed to the Lab; M06-LIVE-T03 LID compatibility was merged via PR #40 and the private n8n extension updated. Observed live transactions and negative tests are documented in the evidence report. Earlier planning-only and NOT EXECUTED passages below are historical state, not the current Lab acceptance.
 **Dependencies:** Gate A PASS; Gate 0 PASS required for live/VPS acceptance
-**Blocks:** M07 activation
+**Next:** M07 Activation Review (local planning and implementation contract only; no VPS/Production permission).
 
 > **This document does NOT authorize implementation.**
 > The accepted Activation Review defines five ACTIVE task contracts.
@@ -146,7 +146,10 @@ M06 expects to consume from accepted M05:
 | [M06-P03](../completed/M06-P03.md) | DONE / integrated via PR #30 |
 | [M06-P04](../completed/M06-P04.md) | DONE / integrated via PR #31 |
 | [M06-P05](../completed/M06-P05.md) | DONE / local acceptance only, PR #32 |
-| [M06-LIVE-T01](M06-LIVE-T01.md) | REVIEW REQUIRED / inactive local operational artifacts; no live activation |
+| [M06-LIVE-T01](M06-LIVE-T01.md) | DONE; PR #38 integrated, live Lab pipeline executed and human accepted |
+| [M06-LIVE-T02](M06-LIVE-T02.md) | DONE; PR #39 logging patch deployed in Lab; canary limited to checked logs |
+
+| [M06-LIVE-T03](M06-LIVE-T03.md) | DONE; PR #40 merged, LID adapter deployed and real LID message processed; Lab accepted |
 
 ## 8. Required Test Categories
 
@@ -202,4 +205,4 @@ Per AGENTS.md §6:
 - `07-SECURITY.md`
 - `09-ROADMAP-TESTS.md`
 
-**Milestone state:** LOCAL IMPLEMENTATION ACCEPTED - LIVE INTEGRATION NOT EXECUTED. P05 PR #32 reviewed HEAD `3072b50f000cf4c48fc0d3acc1d13c2670b59d9a`, exact-head CI `40699057147` SUCCESS, squash `dffec7923d786fb5900f1768155b6efe750da220`, post-merge CI `40700898781` SUCCESS. Gate 0/B/C NOT EXECUTED.
+**Milestone state (accepted 2026-10-29):** M06 DONE / TECHNICAL LAB ACCEPTED; Gate 0 formal PASS is pending and Production is NOT accepted. Older state was: LOCAL IMPLEMENTATION ACCEPTED - LIVE INTEGRATION NOT EXECUTED. P05 PR #32 reviewed HEAD `3072b50f000cf4c48fc0d3acc1d13c2670b59d9a`, exact-head CI `40699057147` SUCCESS, squash `dffec7923d786fb5900f1768155b6efe750da220`, post-merge CI `40700898781` SUCCESS. Gate 0/B/C NOT EXECUTED.

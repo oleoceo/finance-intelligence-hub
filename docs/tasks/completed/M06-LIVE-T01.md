@@ -1,6 +1,6 @@
 # M06-LIVE-T01 — Evolution 2.3.7 / n8n 2.23.3 Lab artifacts
 
-**Status:** REVIEW REQUIRED
+**Status:** DONE — Lab technical acceptance by owner on 2026-10-29; Gate 0/Production formal approval remains pending.
 **Authorization:** Owner request 2026-10-29: local implementation, tests, commit, push and Draft PR; no VPS access, real credentials, webhook activation, WhatsApp sends or merge.
 **Activation:** Bounded operational follow-up to accepted P01–P05, against `origin/main` `cb109d4`. No new generic planning cycle.
 
@@ -25,3 +25,8 @@ Native WSL Node 24.22.0 / pnpm 12.3.4: frozen install, lint, format check, build
 Isolated n8n **2.23.3**, image digest `sha256:c0c39b1ca69d43f736bc65f8ddd70972a8989f736e8a4b6a075823f98cc48a23`: import/export remains inactive; custom node/three credentials load; disabled and unauthenticated execution reject; authenticated synthetic ingest via actual n8n HTTP helper retries 503 then returns accepted-no-reply. Container has no external network. Compose API/migration network isolation, n8n preservation and negative unrelated-volume check PASS. Finance image build/runtime smoke and non-root 0600 secret-mount check PASS. Forced-sudo variant is unavailable locally without a sudo credential; existing GitHub Actions executes it independently. Exact PR-head CI evidence belongs to the PR checks and implementation report; do not infer CI GREEN from this local record.
 
 No migrations, application/Core/Database code, dependencies, lockfile, frozen documents or accepted P01–P05 artifacts changed. No VPS access or real secrets used. Live release remains blocked on deployed Evolution/header/identity proof, effective raw-log suppression, network recreation proof, Gate 0 acceptance and explicit operational authorization. Backup restore remains pending. This is artifact review, not M06 live acceptance.
+
+
+## Closure (2026-10-29)
+
+Technical Lab evidence: [accepted E2E report](../../integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md). Original authorization and pre-deployment warnings in this task describe the historical task phase; they do not indicate the Lab work is unexecuted today. PR #38 (transport), #39 (logging) and #40 (LID) were merged. Five real WhatsApp commands, reconciliation with PostgreSQL and selected security/idempotency negatives passed; no Production release. M07 Activation Review is the next selected work.

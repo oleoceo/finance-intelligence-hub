@@ -178,4 +178,41 @@ describe('M08-P01 real PostgreSQL Summary aggregation', () => {
       .executeTakeFirstOrThrow();
     expect(BigInt(after.count) - BigInt(before.count)).toBe(101n);
   });
+
+  it('reflects persisted amount and financial date corrections without audit side effects', async () => {
+    const beforeAudit = await fixture.db
+      .selectFrom('audit_events')
+      .select((eb) => eb.fn.countAll().as('count'))
+      .executeTakeFirstOrThrow();
+    await fixture.db
+      .updateTable('transactions')
+      .set({
+        amount: '600.00',
+        transaction_date: '2024-02-29',
+      })
+      .where('id', '=', ids.expense)
+      .execute();
+    expect(await summary()).toMatchObject({
+      grossExpenses: '600.00',
+      netExpenses: '400.00',
+      net: '-300.00',
+    });
+    await fixture.db
+      .updateTable('transactions')
+      .set({
+        transaction_date: '2024-01-31',
+      })
+      .where('id', '=', ids.expense)
+      .execute();
+    expect(await summary()).toMatchObject({
+      grossExpenses: '0.00',
+      netExpenses: '-200.00',
+      net: '300.00',
+    });
+    const afterAudit = await fixture.db
+      .selectFrom('audit_events')
+      .select((eb) => eb.fn.countAll().as('count'))
+      .executeTakeFirstOrThrow();
+    expect(afterAudit.count).toBe(beforeAudit.count);
+  });
 });

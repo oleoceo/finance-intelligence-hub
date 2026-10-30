@@ -731,4 +731,70 @@ describe('M07-P02 Void HTTP contract on PostgreSQL', () => {
       .execute();
     expect(audit).toHaveLength(1);
   });
+
+  it('serves dedicated Refund with admin scope, strict body, replay and frozen errors', async () => {
+    const expense = await post({ ...createBody(), amount: '500.00' });
+    expect(expense.statusCode).toBe(201);
+    const id: string = expense.json().data.id;
+    const body = {
+      version: 1,
+      amount: '300.00',
+      account_id: accountId,
+      transaction_date: '2026-10-21',
+      description: 'return',
+    };
+    const key = randomUUID();
+    const send = (
+      payload: Record<string, unknown>,
+      headers: Record<string, string> = admin,
+      requestKey?: string,
+    ) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/transactions/${id}/refunds`,
+        headers: { ...headers, ...(requestKey ? { 'idempotency-key': requestKey } : {}) },
+        payload,
+      });
+    expect((await send(body)).statusCode).toBe(422);
+    expect(
+      (await send(body, { authorization: 'Bearer integration-ingest' }, randomUUID())).statusCode,
+    ).toBe(403);
+    expect((await send(body, {}, randomUUID())).statusCode).toBe(401);
+    for (const invalid of [
+      { ...body, book_id: bookId },
+      { ...body, refund_of_transaction_id: id },
+      { ...body, source: 'whatsapp' },
+      { ...body, type: 'income' },
+    ]) {
+      const response = await send(invalid, admin, randomUUID());
+      expect(response.statusCode).toBe(422);
+      expect(response.json().error.code).toBe('VALIDATION_ERROR');
+    }
+    const stale = await send({ ...body, version: 2 }, admin, randomUUID());
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error.code).toBe('VERSION_CONFLICT');
+    const beforeDate = await send({ ...body, transaction_date: '2026-10-19' }, admin, randomUUID());
+    expect(beforeDate.statusCode).toBe(422);
+    expect(beforeDate.json().error.code).toBe('REFUND_DATE_INVALID');
+    const created = await send(body, admin, key);
+    expect(created.statusCode).toBe(201);
+    expect(created.json().data).toMatchObject({
+      type: 'income',
+      amount: '300.00',
+      refund_of_transaction_id: id,
+      is_refund: true,
+    });
+    expect(created.json().meta.request_id).toBeTypeOf('string');
+    const replay = await send(body, admin, key);
+    expect(replay.statusCode).toBe(201);
+    expect(replay.json().data).toEqual(created.json().data);
+    const changed = await send({ ...body, amount: '200.00' }, admin, key);
+    expect(changed.statusCode).toBe(409);
+    expect(changed.json().error.code).toBe('IDEMPOTENCY_CONFLICT');
+    const excess = await send(body, admin, randomUUID());
+    expect(excess.statusCode).toBe(422);
+    expect(excess.json().error.code).toBe('REFUND_AMOUNT_EXCEEDED');
+    const remaining = await send({ ...body, amount: '200.00' }, admin, randomUUID());
+    expect(remaining.statusCode).toBe(201);
+  });
 });

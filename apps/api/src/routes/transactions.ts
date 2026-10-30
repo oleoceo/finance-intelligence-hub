@@ -4,6 +4,7 @@ import {
   ConcurrencyError,
   type CorrectTransaction,
   type VoidTransaction,
+  type CreateRefund,
   getLastTransaction,
   getTransaction,
   listTransactions,
@@ -18,6 +19,7 @@ import {
   createTransactionSchema,
   correctTransactionSchema,
   voidTransactionSchema,
+  refundTransactionSchema,
   lastTransactionQuerySchema,
   listTransactionQuerySchema,
   transactionPathSchema,
@@ -27,6 +29,7 @@ export interface TransactionRouteOptions {
   genericCreate: Pick<GenericCreateTransaction, 'execute'>;
   correction: Pick<CorrectTransaction, 'execute'>;
   voidTransaction: Pick<VoidTransaction, 'execute'>;
+  refund: Pick<CreateRefund, 'execute'>;
   transactionReads: TransactionReadPort;
 }
 
@@ -91,6 +94,30 @@ function mapCreate(body: {
 
 export function registerTransactions(instance: FastifyInstance, options: TransactionRouteOptions) {
   const app = instance.withTypeProvider<TypeBoxTypeProvider>();
+  app.post(
+    '/api/v1/transactions/:id/refunds',
+    { schema: { params: transactionPathSchema, body: refundTransactionSchema } },
+    async (request, reply) => {
+      const key = request.headers['idempotency-key'];
+      if (typeof key !== 'string' || !key.trim() || [...key].length > 255)
+        throw new ApiError(422, 'VALIDATION_ERROR', 'invalid_request');
+      const body = request.body;
+      const record = await options.refund.execute(
+        request.params.id,
+        {
+          version: body.version,
+          amount: body.amount,
+          accountId: body.account_id,
+          transactionDate: body.transaction_date,
+          description: body.description,
+          notes: body.notes,
+        },
+        key,
+        meta(request).correlation_id,
+      );
+      return reply.code(201).send({ data: serializeTransaction(record), meta: meta(request) });
+    },
+  );
   app.post(
     '/api/v1/transactions/:id/void',
     { schema: { params: transactionPathSchema, body: voidTransactionSchema } },

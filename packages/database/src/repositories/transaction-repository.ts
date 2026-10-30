@@ -17,12 +17,47 @@ import type {
   CreateTransactionInput,
   CorrectionFields,
   PostedRefundLimits,
+  PersistRefundInput,
   TransactionCreateSource,
 } from '@finance-hub/core';
 import type { DB } from '../db-types.js';
 
 export class KyselyTransactionRepository implements TransactionRepository {
   constructor(private readonly db: Kysely<DB>) {}
+
+  async createRefund(input: PersistRefundInput): Promise<TransactionRecord | null> {
+    const row = await this.db
+      .insertInto('transactions')
+      .values({
+        id: input.id,
+        human_ref: input.humanRef,
+        book_id: input.bookId,
+        type: 'income',
+        status: 'posted',
+        amount: input.amount,
+        currency: input.currency,
+        account_id: input.accountId,
+        destination_account_id: null,
+        category_id: null,
+        merchant_id: null,
+        description: input.description,
+        notes: input.notes,
+        transaction_date: input.transactionDate,
+        source: input.source,
+        source_reference: input.sourceReference,
+        inbox_message_id: input.inboxMessageId,
+        refund_of_transaction_id: input.originalId,
+        version: 1,
+        voided_at: null,
+        void_reason: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .onConflict((oc) => oc.column('human_ref').doNothing())
+      .returningAll()
+      .executeTakeFirst();
+    return row ? this.mapToTransactionRecord(row) : null;
+  }
 
   /**
    * Insert a Transaction row using ON CONFLICT DO NOTHING RETURNING.

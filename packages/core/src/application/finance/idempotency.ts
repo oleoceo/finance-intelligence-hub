@@ -10,6 +10,7 @@ import type {
 
 export const TRANSACTION_CREATE_SCOPE: IdempotencyScope = 'transactions:create';
 export const TRANSACTION_VOID_SCOPE: IdempotencyScope = 'transactions:void';
+export const TRANSACTION_REFUND_SCOPE: IdempotencyScope = 'transactions:refund';
 
 export function resolveTransactionCreateScope(): IdempotencyScope {
   return TRANSACTION_CREATE_SCOPE;

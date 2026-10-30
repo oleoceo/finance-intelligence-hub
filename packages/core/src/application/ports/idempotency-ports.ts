@@ -10,7 +10,7 @@
 
 export const IDEMPOTENCY_STATES = ['in_progress', 'completed'] as const;
 export type IdempotencyState = (typeof IDEMPOTENCY_STATES)[number];
-export type IdempotencyScope = 'transactions:create' | 'transactions:void';
+export type IdempotencyScope = 'transactions:create' | 'transactions:void' | 'transactions:refund';
 export type IdempotencyFingerprint = string;
 
 /**

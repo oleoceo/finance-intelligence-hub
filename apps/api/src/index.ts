@@ -15,6 +15,7 @@ import {
   GenericCreateTransaction,
   CorrectTransaction,
   VoidTransaction,
+  CreateRefund,
   normalizeName,
   type FinancialTransactionPort,
   type HumanRefGenerator,
@@ -50,6 +51,7 @@ export interface AppOptions extends Credentials {
   genericCreate?: TransactionRouteOptions['genericCreate'];
   correction?: TransactionRouteOptions['correction'];
   voidTransaction?: TransactionRouteOptions['voidTransaction'];
+  refund?: TransactionRouteOptions['refund'];
   inboxTransactions?: InboxTransactionPort;
   inboxProcessing?: InboxProcessingPort;
   humanRefGenerator?: HumanRefGenerator;
@@ -160,6 +162,14 @@ function buildApp(options: AppOptions = {}) {
         store?.financialTransactions ?? { runInTransaction: unavailable },
       options.now ?? (() => new Date()),
     );
+  const refund =
+    options.refund ??
+    new CreateRefund(
+      options.financialTransactions ??
+        store?.financialTransactions ?? { runInTransaction: unavailable },
+      options.humanRefGenerator ?? { generate: () => randomBytes(8).toString('hex').toUpperCase() },
+      options.now ?? (() => new Date()),
+    );
 
   // Add correlation ID extraction hook
   app.addHook('onRequest', (request, _reply, done) => {
@@ -234,7 +244,13 @@ function buildApp(options: AppOptions = {}) {
     registerMerchants(admin, configuration);
     registerClassificationRules(admin, configuration);
     registerAuthorizedSenders(admin, configuration);
-    registerTransactions(admin, { genericCreate, correction, voidTransaction, transactionReads });
+    registerTransactions(admin, {
+      genericCreate,
+      correction,
+      voidTransaction,
+      refund,
+      transactionReads,
+    });
   });
 
   app.register(async (ingest) => {

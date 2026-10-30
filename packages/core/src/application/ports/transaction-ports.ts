@@ -143,6 +143,22 @@ export interface PostedRefundLimits {
   earliestDate: string | null;
 }
 
+export interface PersistRefundInput {
+  id: string;
+  humanRef: string;
+  originalId: string;
+  bookId: string;
+  currency: string;
+  amount: string;
+  accountId: string;
+  transactionDate: string;
+  description: string;
+  notes: string | null;
+  source: TransactionCreateSource;
+  sourceReference: string | null;
+  inboxMessageId: string | null;
+}
+
 /**
  * Minimal Transaction repository contract for M04.
  * Database adapter implements this; Core consumes it.
@@ -166,6 +182,7 @@ export interface TransactionRepository {
   findByHumanRef(humanRef: string): Promise<TransactionRecord | null>;
   findByIdForUpdate(id: string): Promise<TransactionRecord | null>;
   postedRefundLimits(originalId: string): Promise<PostedRefundLimits>;
+  createRefund(input: PersistRefundInput): Promise<TransactionRecord | null>;
   correct(
     id: string,
     expectedVersion: number,

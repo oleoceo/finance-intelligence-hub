@@ -111,7 +111,7 @@ All paths below are repository relative.
 | Task | Deliverable | Dependency | Required proof |
 | --- | --- | --- | --- |
 | [M07-P01](../completed/M07-P01.md) | Correction API/Core/adapter, optimistic version, audit, refund-aware guards | Approved activation and P01 authorization | Mutable/immutable inputs, PostgreSQL competing PATCH, rollback and posted-refund floor/date |
-| [M07-P02](M07-P02.md) | Void API/Core/adapter, idempotency, audit | P01 accepted/integrated | Replay/conflict, stale version, posted-refund block, Refund Void |
+| [M07-P02](../completed/M07-P02.md) | Void API/Core/adapter, idempotency, audit | P01 accepted/integrated | Replay/conflict, stale version, posted-refund block, Refund Void |
 | [M07-P03](M07-P03.md) | Dedicated Refund create and invariant protection | P02 accepted/integrated | Partial/full/multiple, same Book/currency, original lock, duplicate replay |
 | [M07-P04](M07-P04.md) | Cross-operation concurrency proof and bounded corrections | P03 accepted/integrated | Refund/Refund, Refund/PATCH, Refund/Void, Refund-Void races with real independent connections |
 | [M07-P05](M07-P05.md) | WhatsApp mutation interpretation and ConfirmationSession integration | P04 accepted/integrated | Explicit confirmation, captured target/version, stale rejection, atomic Inbox/audit/effect and duplicate replies |
@@ -238,3 +238,5 @@ re-read state/contract, then branch. Acceptance of this review does not preappro
 
 
 **Implementation closure addendum (2026-10-29):** M07-P01 Correction was human accepted and squash-merged via PR #44 at `be5beae71c405b900a39a75c1ee6b134ebc71dd3` following independent REVIEW PASS on head `2cbae6bc51bb0c677baf575b8f8208841242da68` and CI #40980277676 SUCCESS. Post-merge CI run #40981819546. The original activation decision above remains historical; P02 is the next candidate, requiring separate implementation authorization. Gate 0 formal PASS and Production approval remain pending.
+
+**M07-P02 closure addendum (2026-10-29):** Owner accepted independently reviewed Void/idempotency implementation PR #46, head `d4ccf22ebeeb5619feaaa0565a47cb9d2bf3106b`, CI #40985437379 SUCCESS; squash-merged as `3442ea946c72d31bcdffcaf009af19ace0eb40b8`, post-merge CI #40986852299. M07-P03 is next, separate implementation authorization required; no Gate 0 or Production approval. The initial activation wording above remains historical.

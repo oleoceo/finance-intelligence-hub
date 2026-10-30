@@ -194,6 +194,12 @@ export {
 
 export { FinancialError, FinancialValidationError } from './domain/finance/errors.js';
 export { canonicalizeMoneyAmount } from './domain/finance/money.js';
+export { getFinancialSummary } from './application/finance/get-financial-summary.js';
+export type {
+  FinancialSummaryInput,
+  FinancialSummaryDependencies,
+} from './application/finance/get-financial-summary.js';
+export type { SummaryReadPort } from './application/ports/summary-ports.js';
 
 // M04-T01: Application ports
 export {

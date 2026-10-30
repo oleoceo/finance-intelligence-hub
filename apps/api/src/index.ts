@@ -20,6 +20,7 @@ import {
   type FinancialTransactionPort,
   type HumanRefGenerator,
   type TransactionReadPort,
+  type TransactionExportReadPort,
   type AuditReadPort,
   type InboxTransactionPort,
   type InboxProcessingPort,
@@ -29,6 +30,7 @@ import { strict } from './schemas/configuration.js';
 import { registerTransactions, type TransactionRouteOptions } from './routes/transactions.js';
 import { registerInbox } from './routes/inbox.js';
 import { registerReports } from './routes/reports.js';
+import { registerExports } from './routes/exports.js';
 import type { FinancialSummaryDependencies } from '@finance-hub/core';
 
 const ALLOWED_CORRELATION_CHARS = /^[A-Za-z0-9._:-]+$/;
@@ -51,6 +53,7 @@ export interface AppOptions extends Credentials {
   transactions?: ConfigurationOptions['transactions'];
   financialTransactions?: FinancialTransactionPort;
   transactionReads?: TransactionReadPort;
+  transactionExports?: TransactionExportReadPort;
   auditReads?: AuditReadPort;
   genericCreate?: TransactionRouteOptions['genericCreate'];
   correction?: TransactionRouteOptions['correction'];
@@ -264,6 +267,13 @@ function buildApp(options: AppOptions = {}) {
     registerReports(admin, {
       books: options.summaryBooks ?? store?.books ?? { findById: unavailable },
       summaries: options.summaryReads ?? store?.summaryReads ?? { getSummary: unavailable },
+      now: options.now ?? (() => new Date()),
+    });
+    registerExports(admin, {
+      books: options.summaryBooks ?? store?.books ?? { findById: unavailable },
+      summaries: options.summaryReads ?? store?.summaryReads ?? { getSummary: unavailable },
+      transactionExports: options.transactionExports ??
+        store?.transactionReads ?? { exportPage: unavailable, exportSnapshot: unavailable },
       now: options.now ?? (() => new Date()),
     });
   });

@@ -1,10 +1,10 @@
 # M08 — Reports / Export / Operations
 
-**Status:** ACTIVE — P01/P02 DONE; P03 selected for local/WSL/CI implementation and review.
+**Status:** ACTIVE — P01/P02/P03 DONE; P04 selected for local/WSL/CI implementation and review.
 **Dependencies:** [Gate B PASS (local/CI)](../completed/GATE-B.md); Gate B closure main@539a210342b8d9235eca176f5070e68ad5b5d786, CI #187 SUCCESS. [M08 Activation Review](M08-ACTIVATION-REVIEW.md) defines execution contracts.
 **Blocks:** M09 activation
 
-> **Execution gating:** Execute one selected active task at a time. P01/P02 are DONE; P03 is selected. Do not infer VPS/Production permission. See linked contracts below.
+> **Execution gating:** Execute one selected active task at a time. P01/P02/P03 are DONE; P04 is selected. Do not infer VPS/Production permission. See linked contracts below.
 
 ---
 
@@ -91,7 +91,7 @@ From M07:
 |---------|------|-----------------|
 | [**M08-P01**](../completed/M08-P01.md) | Summary Core/query contracts — DONE | Summary calculation logic, period handling, Book timezone support, formula unit tests |
 | [**M08-P02**](../completed/M08-P02.md) | Summary API — DONE | `GET /api/v1/reports/summary`, required book_id, optional date_from/date_to, current-month Book-timezone default, aggregate decimal string response |
-| [**M08-P03**](M08-P03.md) | WhatsApp Summary integration | Command recognition in parser, Summary orchestration through ingest pipeline, reply formatting |
+| [**M08-P03**](../completed/M08-P03.md) | WhatsApp Summary integration — DONE | Command recognition in parser, Summary orchestration through ingest pipeline, reply formatting |
 | [**M08-P04**](M08-P04.md) | CSV export and injection hardening | CSV generation, injection mitigation, content-type headers, download endpoint |
 | [**M08-P05**](M08-P05.md) | Operational endpoint/logging verification | Health/readiness verification, structured log audit, secret redaction confirmation |
 | [**M08-P06**](M08-P06.md) | M08 milestone E2E verification | All Summary formulas verified, WhatsApp Summary E2E, CSV correctness, pagination default 50/max 100 verified only on existing paginated API surfaces, operational checks green |

@@ -1,8 +1,10 @@
+**M08-P03 closure:** PR #60 MERGED as `442e9ad56cb6873558d9020711574adf210136ed`; independent review #5718701193 PASS; premerge CI #201 SUCCESS; postmerge CI #202 (`41129277776`) SUCCESS on the exact squash SHA. M08-P04 selected for local/WSL/CI; P05-P06 gated.
+
 **M08-P02 closure:** PR #59 MERGED as `2406b89ad4c2e61aec28903ed3c82d6f447611ee`; independent review #5717961714 PASS; premerge CI #197 SUCCESS; postmerge CI #198 (`41119383533`) SUCCESS on the exact squash SHA. M08-P03 selected for local/WSL/CI; P04-P06 gated.
 
 **M08-P01 closure:** PR #58 MERGED as `1da05add2259b16b0e7dab7bc8a7fc6025e6a952`; review #5717434106 PASS; post-merge CI #195 (`41112938302`) SUCCESS on that SHA. M08-P02 is DONE; M08-P03 is selected; P04-P06 remain gated. No Gate 0/C or Production acceptance.
 
-**M08 current state (2026-10-30):** `origin/main@2406b89ad4c2e61aec28903ed3c82d6f447611ee`; M08 ACTIVE, P01/P02 DONE and P03 selected for local/WSL/CI implementation. M01-M07 DONE; Gates A/B PASS (B local/CI only); Gate 0 formal PASS absent, Gate C planned, Production not homologated. Earlier milestone records below are historical.
+**M08 current state (2026-10-30):** `origin/main@442e9ad56cb6873558d9020711574adf210136ed`; M08 ACTIVE, P01/P02/P03 DONE and P04 selected for local/WSL/CI implementation. M01-M07 DONE; Gates A/B PASS (B local/CI only); Gate 0 formal PASS absent, Gate C planned, Production not homologated. Earlier milestone records below are historical.
 
 # PROJECT_STATE.md
 

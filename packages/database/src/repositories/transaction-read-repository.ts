@@ -8,6 +8,7 @@
 import type { Kysely } from 'kysely';
 import type {
   TransactionReadPort,
+  TransactionExportReadPort,
   TransactionRecord,
   TransactionReadRecord,
   ListTransactionsInput,
@@ -17,7 +18,9 @@ import type {
 import type { DB } from '../db-types.js';
 import { sql } from 'kysely';
 
-export class KyselyTransactionReadRepository implements TransactionReadPort {
+export class KyselyTransactionReadRepository
+  implements TransactionReadPort, TransactionExportReadPort
+{
   constructor(private readonly db: Kysely<DB>) {}
 
   async findById(id: string): Promise<TransactionReadRecord | null> {
@@ -164,6 +167,58 @@ export class KyselyTransactionReadRepository implements TransactionReadPort {
 
     if (!result) return null;
     return mapToTransactionReadRecord(result);
+  }
+
+  async exportPage(input: {
+    bookId: string;
+    dateFrom?: string;
+    dateTo?: string;
+    before?: { createdAt: Date; id: string };
+    limit: number;
+  }): Promise<TransactionReadRecord[]> {
+    if (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 256) {
+      throw new Error('Invalid export page size');
+    }
+    let query = this.db.selectFrom('transactions').selectAll().where('book_id', '=', input.bookId);
+    if (input.dateFrom) query = query.where('transaction_date', '>=', input.dateFrom);
+    if (input.dateTo) query = query.where('transaction_date', '<=', input.dateTo);
+    if (input.before) {
+      const { createdAt, id } = input.before;
+      query = query.where((eb) =>
+        eb.or([
+          eb('created_at', '<', createdAt),
+          eb.and([eb('created_at', '=', createdAt), eb('id', '<', id)]),
+        ]),
+      );
+    }
+    return (
+      await query.orderBy('created_at', 'desc').orderBy('id', 'desc').limit(input.limit).execute()
+    ).map(mapToTransactionReadRecord);
+  }
+
+  async exportSnapshot(
+    input: { bookId: string; dateFrom?: string; dateTo?: string; limit: number },
+    onFirstPage: (page: TransactionReadRecord[]) => Promise<void>,
+    onPage: (page: TransactionReadRecord[]) => Promise<void>,
+  ): Promise<void> {
+    await this.db
+      .transaction()
+      .setIsolationLevel('repeatable read')
+      .execute(async (tx) => {
+        await sql`SET TRANSACTION READ ONLY`.execute(tx);
+        const reader = new KyselyTransactionReadRepository(tx);
+        let page = await reader.exportPage(input);
+        await onFirstPage(page);
+        while (page.length > 0) {
+          await onPage(page);
+          if (page.length < input.limit) break;
+          const last = page[page.length - 1];
+          page = await reader.exportPage({
+            ...input,
+            before: { createdAt: last.createdAt, id: last.id },
+          });
+        }
+      });
   }
 }
 

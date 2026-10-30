@@ -91,6 +91,22 @@ function key(original: InboxMessage, action: string) {
   return `inbox:${original.id}:${action}`;
 }
 
+function cents(amount: string): bigint {
+  const [whole, fraction = ''] = amount.split('.');
+  return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+}
+
+async function staleTarget(
+  ctx: InboxProcessingContext,
+  claim: InboxClaim,
+  owner: ConfirmationOwner,
+  now: Date,
+): Promise<InboxProcessingResult> {
+  await ctx.confirmations.supersede({ ...owner, now });
+  await finish(ctx, claim, now, 'processed');
+  return { type: 'stale_target', inboxMessageId: claim.message.id, status: 'processed' };
+}
+
 async function prepare(ctx: InboxProcessingContext, value: Stored) {
   const { intent, targetId, targetVersion } = value;
   if (intent.action === 'correction')
@@ -344,6 +360,12 @@ export async function processTransactionMutation(
         )
       : null;
   const receipt = value && parsed.response === 'yes' ? await prepare(ctx, value) : null;
+  // Refund aggregate reads must be protected by the original Expense row lock.
+  // Acquire it after configuration locks and before Confirmation/Inbox locks.
+  const lockedRefundTarget =
+    value?.intent.action === 'refund' && receipt
+      ? await ctx.transactions.findByIdForUpdate(value.targetId)
+      : null;
   const reply = await ctx.confirmations.resolveReply({
     ...owner,
     resolverInboxMessageId: message.id,
@@ -363,9 +385,7 @@ export async function processTransactionMutation(
     throw new Error('Confirmation changed during reply');
   if (reply.kind === 'choice') {
     if (selectedTargetChanged) {
-      await ctx.confirmations.supersede({ ...owner, now });
-      await finish(ctx, claim, now, 'processed');
-      return { type: 'stale_target', inboxMessageId: message.id, status: 'processed' };
+      return staleTarget(ctx, claim, owner, now);
     }
     if (pending.accountTarget && selectedOption) {
       const target = await ctx.transactions.findById(pending.accountTarget.targetId);
@@ -374,7 +394,7 @@ export async function processTransactionMutation(
         target.version !== pending.accountTarget.targetVersion ||
         target.status !== 'posted'
       )
-        throw new Error('Selected Refund target is stale');
+        return staleTarget(ctx, claim, owner, now);
       const selected = {
         ...pending.accountTarget,
         accountId: selectedOption.id,
@@ -494,15 +514,30 @@ export async function processTransactionMutation(
     reply.session.targetVersion !== value.targetVersion
   )
     throw new Error('Confirmation target mismatch');
-  const currentTarget = await ctx.transactions.findById(value.targetId);
+  const currentTarget =
+    value.intent.action === 'refund'
+      ? lockedRefundTarget
+      : await ctx.transactions.findById(value.targetId);
   if (
     !currentTarget ||
     currentTarget.version !== value.targetVersion ||
     currentTarget.status !== 'posted'
   ) {
-    await ctx.confirmations.supersede({ ...owner, now });
-    await finish(ctx, claim, now, 'processed');
-    return { type: 'stale_target', inboxMessageId: message.id, status: 'processed' };
+    return staleTarget(ctx, claim, owner, now);
+  }
+  if (value.intent.action === 'refund') {
+    const account = await ctx.accounts.findById(value.accountId!);
+    const book = await ctx.books.findById(currentTarget.bookId);
+    const posted = await ctx.transactions.postedRefundLimits(value.targetId);
+    if (
+      currentTarget.type !== 'expense' ||
+      !!currentTarget.refundOfTransactionId ||
+      !book?.active ||
+      !account?.active ||
+      account.bookId !== currentTarget.bookId ||
+      cents(posted.total) + cents(value.intent.amount!) > cents(currentTarget.amount)
+    )
+      return staleTarget(ctx, claim, owner, now);
   }
   const result = await execute(ctx, value, original, correlationId, deps, receipt);
   await ctx.confirmations.finalizeConfirmed({

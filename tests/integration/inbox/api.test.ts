@@ -1873,6 +1873,113 @@ describe('P05 Inbox API with PostgreSQL', () => {
     );
   });
 
+  it('closes an account choice when the proposed Expense version becomes stale', async () => {
+    const target = (await post(body('gastei 500 account stale P05'))).json().data.result
+      .transaction;
+    const proposed = await post(body(`estorna 200 da compra ${target.human_ref}`));
+    expect(proposed.json().data.result.confirmation.action).toBe('select_refund_account');
+    const sessionId = proposed.json().data.result.confirmation.id;
+    const originalId = proposed.json().data.inbox_message.id;
+    const before = {
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    const changed = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/transactions/${target.id}`,
+      headers: { authorization: 'Bearer integration-admin' },
+      payload: { version: 1, amount: '501.00' },
+    });
+    expect(changed.statusCode, changed.body).toBe(200);
+    const auditAfterPatch = await count('audit_events');
+    const choice = await post(body('1'));
+    expect(choice.statusCode, choice.body).toBe(200);
+    expect(choice.json().data.result.type).toBe('stale_target');
+    expect(choice.json().data.reply).toMatchObject({ should_send: true });
+    expect(choice.json().data.reply.text.length).toBeLessThanOrEqual(600);
+    expect(await count('transactions')).toBe(before.transactions);
+    expect(await count('audit_events')).toBe(auditAfterPatch);
+    expect(await count('idempotency_keys')).toBe(before.keys);
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('status')
+          .where('id', '=', sessionId)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('cancelled');
+    const rows = await fixture.db
+      .selectFrom('inbox_messages')
+      .select(['id', 'processing_status'])
+      .where('id', 'in', [originalId, choice.json().data.inbox_message.id])
+      .execute();
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { id: originalId, processing_status: 'ignored' },
+        { id: choice.json().data.inbox_message.id, processing_status: 'processed' },
+      ]),
+    );
+  });
+
+  it('revalidates Refund balance at yes without partial financial or idempotency writes', async () => {
+    const target = (await post(body('gastei 500 balance stale P05'))).json().data.result
+      .transaction;
+    const proposed = await post(body(`estorna 400 da compra ${target.human_ref}`));
+    const originalId = proposed.json().data.inbox_message.id;
+    const sessionId = proposed.json().data.result.confirmation.id;
+    expect(proposed.json().data.result.confirmation.action).toBe('select_refund_account');
+    const choice = await post(body('1'));
+    expect(choice.json().data.result.confirmation.action).toBe('confirm_refund');
+    const direct = await app.inject({
+      method: 'POST',
+      url: `/api/v1/transactions/${target.id}/refunds`,
+      headers: { authorization: 'Bearer integration-admin', 'idempotency-key': randomUUID() },
+      payload: {
+        version: 1,
+        amount: '300.00',
+        account_id: accountId,
+        transaction_date: '2026-10-21',
+        description: 'Concurrent refund',
+      },
+    });
+    expect(direct.statusCode, direct.body).toBe(201);
+    const before = {
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    const yes = await post(body('sim'));
+    expect(yes.statusCode, yes.body).toBe(200);
+    expect(yes.json().data.result.type).toBe('stale_target');
+    expect(yes.json().data.reply).toMatchObject({ should_send: true });
+    expect(yes.json().data.reply.text.length).toBeLessThanOrEqual(600);
+    expect(await count('transactions')).toBe(before.transactions);
+    expect(await count('audit_events')).toBe(before.audits);
+    expect(await count('idempotency_keys')).toBe(before.keys);
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('status')
+          .where('id', '=', sessionId)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('cancelled');
+    const rows = await fixture.db
+      .selectFrom('inbox_messages')
+      .select(['id', 'processing_status'])
+      .where('id', 'in', [originalId, yes.json().data.inbox_message.id])
+      .execute();
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { id: originalId, processing_status: 'ignored' },
+        { id: yes.json().data.inbox_message.id, processing_status: 'processed' },
+      ]),
+    );
+  });
+
   it('rolls back Void effect, Audit, idempotency and both Inbox finalizations on injected failures', async () => {
     await sql`CREATE FUNCTION p05_mutation_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'blocked mutation stage'; END $$`.execute(
       fixture.db,

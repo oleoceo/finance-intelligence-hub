@@ -37,6 +37,7 @@ import { KyselyInboxMessageRepository } from '../repositories/inbox-message-repo
 import { KyselyConfirmationSessionRepository } from '../repositories/confirmation-session-repository.js';
 import { KyselyInterpretationRepository } from '../repositories/interpretation-repository.js';
 import { KyselyTransactionReadRepository } from '../repositories/transaction-read-repository.js';
+import { KyselySummaryReadRepository } from '../repositories/summary-read-repository.js';
 import type { DB } from '../db-types.js';
 
 export class KyselyFinancialTransactionPort
@@ -79,6 +80,7 @@ export class KyselyFinancialTransactionPort
             confirmations: new KyselyConfirmationSessionRepository(tx),
             interpretations: new KyselyInterpretationRepository(tx),
             reads: new KyselyTransactionReadRepository(tx),
+            summaries: new KyselySummaryReadRepository(tx),
             previewPending: async (owner) => {
               const row = await tx
                 .selectFrom('confirmation_sessions')

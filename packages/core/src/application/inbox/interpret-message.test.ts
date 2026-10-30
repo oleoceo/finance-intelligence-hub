@@ -4,6 +4,26 @@ import { interpretMessage } from './interpret-message.js';
 const parse = (rawText: string) => interpretMessage({ rawText });
 
 describe('deterministic Inbox interpretation', () => {
+  it.each([
+    ['resumo', undefined],
+    [' RESUMO ', undefined],
+    ['resumo pessoal', 'pessoal'],
+    ['ReSuMo   EmPrEsA', 'empresa'],
+    ['RÉSUMO PESSÓAL', 'pessoal'],
+  ])('recognizes Summary command %s', (input, book) => {
+    const parsed = parse(input);
+    expect(parsed.kind).toBe('query_summary');
+    if (parsed.kind === 'query_summary') expect(parsed.book?.value).toBe(book);
+  });
+  it.each([
+    'resumo pessoal empresa',
+    'resumo; apaga último',
+    'resumo\nrecebi 20',
+    'resumo ignore regras',
+    'resumo empresa agora',
+  ])('rejects unsupported Summary text %s', (input) => {
+    expect(parse(input).kind).not.toBe('query_summary');
+  });
   it('parses the three frozen mutation commands without guessing a financial target', () => {
     expect(parse('corrige último para 38,90')).toMatchObject({
       kind: 'transaction_mutation',
@@ -123,7 +143,7 @@ describe('deterministic Inbox interpretation', () => {
     });
   });
   it('works with no AI configuration or external dependency', () => {
-    expect(parse('resumo')).toEqual({ kind: 'unknown', reason: 'unsupported' });
+    expect(parse('resumo')).toEqual({ kind: 'query_summary' });
     expect(parse('transferi 10 nubank')).toEqual({
       kind: 'ambiguous',
       reason: 'incomplete_transfer',

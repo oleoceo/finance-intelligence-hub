@@ -351,7 +351,11 @@ export async function resolveInterpretation(
   transactions: TransactionPort<MasterDataTransactionContextT04>,
 ): Promise<ResolutionResult> {
   const interpretation = input.interpretation;
-  if (interpretation.kind !== 'create_transaction' && interpretation.kind !== 'query_last')
+  if (
+    interpretation.kind !== 'create_transaction' &&
+    interpretation.kind !== 'query_last' &&
+    interpretation.kind !== 'query_summary'
+  )
     return clarification('intent', 'invalid');
   return transactions.runInTransaction(async (ctx) => {
     const state = await lockedSnapshot(ctx, input.channel, input.senderReference);
@@ -361,10 +365,17 @@ export async function resolveInterpretation(
     const explicit = reference(state.books, interpretation.book, 'book');
     if (isResult(explicit)) return explicit;
     const activeBooks = state.books.filter((b) => b.active);
+    if (interpretation.kind === 'query_summary') {
+      const book =
+        explicit ??
+        activeBooks.find((b) => b.id === state.sender?.defaultBookId) ??
+        chooseOne(activeBooks, 'book');
+      return isResult(book) ? book : { kind: 'query_summary', bookId: book.id };
+    }
     const book =
       explicit ??
       activeBooks.find((b) => b.id === state.sender?.defaultBookId) ??
       chooseOne(activeBooks, 'book');
-    return isResult(book) ? book : { kind: 'query_last', bookId: book.id };
+    return isResult(book) ? book : { kind: interpretation.kind, bookId: book.id };
   });
 }

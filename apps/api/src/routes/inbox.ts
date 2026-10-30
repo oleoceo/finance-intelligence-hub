@@ -135,6 +135,28 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
         },
         meta: responseMeta,
       };
+    if (result.type === 'query_summary')
+      return {
+        data: {
+          inbox_message: { id: result.inboxMessageId, status: result.status },
+          result: {
+            type: 'query_summary',
+            summary: {
+              book_id: result.summary.bookId,
+              currency: result.summary.currency,
+              date_from: result.summary.dateFrom,
+              date_to: result.summary.dateTo,
+              ordinary_income: result.summary.ordinaryIncome,
+              gross_expenses: result.summary.grossExpenses,
+              refunds: result.summary.refunds,
+              net_expenses: result.summary.netExpenses,
+              net: result.summary.net,
+            },
+          },
+          reply: replyFor(result),
+        },
+        meta: responseMeta,
+      };
     return {
       data: {
         inbox_message: { id: result.inboxMessageId, status: result.status },

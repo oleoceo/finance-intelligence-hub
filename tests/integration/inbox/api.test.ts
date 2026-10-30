@@ -414,6 +414,492 @@ describe('P05 Inbox API with PostgreSQL', () => {
     expect(await count('idempotency_keys')).toBe(before.keys);
   });
 
+  it('returns the exact direct API Summary per resolved Book without financial or audit writes', async () => {
+    const before = {
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    for (const [command, expectedBook] of [
+      ['resumo', bookId],
+      ['resumo empresa', bookId],
+      ['resumo pessoal', secondBookId],
+    ] as const) {
+      const message = body(command);
+      const response = await post(message);
+      expect(response.statusCode, response.body).toBe(200);
+      const { result, reply, inbox_message } = response.json().data;
+      expect(inbox_message.status).toBe('processed');
+      expect(result.type).toBe('query_summary');
+      expect(result.summary.book_id).toBe(expectedBook);
+      const direct = await app.inject({
+        method: 'GET',
+        url: `/api/v1/reports/summary?book_id=${expectedBook}`,
+        headers: { authorization: 'Bearer integration-admin' },
+      });
+      expect(direct.statusCode, direct.body).toBe(200);
+      for (const key of ['ordinary_income', 'gross_expenses', 'refunds', 'net_expenses', 'net'])
+        expect(result.summary[key]).toBe(direct.json().data[key]);
+      expect(reply.should_send).toBe(true);
+      expect(reply.contract.max_code_points).toBe(500);
+      expect([...reply.text].length).toBeLessThanOrEqual(500);
+      expect(reply.text).toContain(command.endsWith('pessoal') ? 'Pessoal' : 'Empresa');
+      const replay = await post(message);
+      expect(replay.statusCode).toBe(200);
+      expect(replay.json().data).toEqual({
+        result: { type: 'duplicate_message' },
+        reply: { should_send: false },
+      });
+    }
+    expect(await count('transactions')).toBe(before.transactions);
+    expect(await count('audit_events')).toBe(before.audits);
+    expect(await count('idempotency_keys')).toBe(before.keys);
+  });
+
+  it('delivers a processed Summary for a valid 120-character Book name', async () => {
+    const longName = 'B'.repeat(120);
+    const original = await fixture.db
+      .selectFrom('books')
+      .select('name')
+      .where('id', '=', bookId)
+      .executeTakeFirstOrThrow();
+    await fixture.db
+      .updateTable('books')
+      .set({ name: longName })
+      .where('id', '=', bookId)
+      .execute();
+    const before = await Promise.all(
+      ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+        count(table as 'transactions'),
+      ),
+    );
+    try {
+      const request = body('resumo');
+      const response = await post(request);
+      expect(response.statusCode, response.body).toBe(200);
+      const { inbox_message, result, reply } = response.json().data;
+      expect(inbox_message.status).toBe('processed');
+      expect(result.type).toBe('query_summary');
+      expect(result.summary.book_id).toBe(bookId);
+      expect(reply.should_send).toBe(true);
+      expect(reply.text).toContain(longName);
+      expect([...reply.text].length).toBeLessThanOrEqual(500);
+      const direct = await app.inject({
+        method: 'GET',
+        url: `/api/v1/reports/summary?book_id=${bookId}`,
+        headers: { authorization: 'Bearer integration-admin' },
+      });
+      expect(direct.statusCode, direct.body).toBe(200);
+      for (const key of ['ordinary_income', 'gross_expenses', 'refunds', 'net_expenses', 'net'])
+        expect(result.summary[key]).toBe(direct.json().data[key]);
+      expect(reply.text).not.toContain(bookId);
+      const row = await fixture.db
+        .selectFrom('inbox_messages')
+        .select('processing_status')
+        .where('id', '=', inbox_message.id)
+        .executeTakeFirstOrThrow();
+      expect(row.processing_status).toBe('processed');
+      expect((await post(request)).json().data.reply).toEqual({ should_send: false });
+      expect(
+        await Promise.all(
+          ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+            count(table as 'transactions'),
+          ),
+        ),
+      ).toEqual(before);
+    } finally {
+      await fixture.db
+        .updateTable('books')
+        .set({ name: original.name })
+        .where('id', '=', bookId)
+        .execute();
+    }
+  });
+
+  it.each(['Empresa\nFilial', 'Empresa\u200B'])(
+    'delivers a safe Summary for a Book with an unsafe display name',
+    async (unsafeName) => {
+      const original = await fixture.db
+        .selectFrom('books')
+        .select('name')
+        .where('id', '=', bookId)
+        .executeTakeFirstOrThrow();
+      await fixture.db
+        .updateTable('books')
+        .set({ name: unsafeName })
+        .where('id', '=', bookId)
+        .execute();
+      const before = await Promise.all(
+        ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+          count(table as 'transactions'),
+        ),
+      );
+      try {
+        const request = body('resumo');
+        const response = await post(request);
+        expect(response.statusCode, response.body).toBe(200);
+        const { inbox_message, result, reply } = response.json().data;
+        expect(inbox_message.status).toBe('processed');
+        expect(result.type).toBe('query_summary');
+        expect(result.summary.book_id).toBe(bookId);
+        expect(reply.should_send).toBe(true);
+        expect(reply.text).toContain('Resumo contexto selecionado');
+        expect(reply.text).not.toContain(unsafeName);
+        expect(reply.text).not.toContain(bookId);
+        expect([...reply.text].length).toBeLessThanOrEqual(500);
+        const lines = reply.text.split('\n') as string[];
+        expect(lines).toHaveLength(6);
+        for (const line of lines) expect(line).not.toMatch(/[\p{Cc}\p{Cf}\p{Cs}]/u);
+        const direct = await app.inject({
+          method: 'GET',
+          url: `/api/v1/reports/summary?book_id=${bookId}`,
+          headers: { authorization: 'Bearer integration-admin' },
+        });
+        expect(direct.statusCode, direct.body).toBe(200);
+        const labels = [
+          'Receitas ordinárias',
+          'Despesas brutas',
+          'Estornos',
+          'Despesas líquidas',
+          'Resultado líquido',
+        ];
+        for (const [index, key] of [
+          'ordinary_income',
+          'gross_expenses',
+          'refunds',
+          'net_expenses',
+          'net',
+        ].entries()) {
+          const amount = result.summary[key] as string;
+          expect(amount).toBe(direct.json().data[key]);
+          const negative = amount.startsWith('-');
+          const [integer, cents] = (negative ? amount.slice(1) : amount).split('.');
+          const formatted = `${negative ? '-' : ''}R$ ${integer!.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${cents}`;
+          expect(lines[index + 1]).toBe(`${labels[index]}: ${formatted}`);
+        }
+        expect(
+          (
+            await fixture.db
+              .selectFrom('inbox_messages')
+              .select('processing_status')
+              .where('id', '=', inbox_message.id)
+              .executeTakeFirstOrThrow()
+          ).processing_status,
+        ).toBe('processed');
+        expect((await post(request)).json().data.reply).toEqual({ should_send: false });
+        expect(
+          await Promise.all(
+            ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+              count(table as 'transactions'),
+            ),
+          ),
+        ).toEqual(before);
+      } finally {
+        await fixture.db
+          .updateTable('books')
+          .set({ name: original.name })
+          .where('id', '=', bookId)
+          .execute();
+      }
+    },
+  );
+
+  it.each(['1', '2'])('chooses Book %s for Summary without a valid default', async (choice) => {
+    const reference = choice === '1' ? '5511777000001' : '5511777000002';
+    await fixture.run(async (ctx) =>
+      ctx.authorizedSenders.create({
+        id: randomUUID(),
+        channel: 'whatsapp',
+        senderReference: reference,
+        name: 'Summary choice',
+        defaultBookId: null,
+        defaultAccountId: null,
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+    const request = (text: string, id = randomUUID()) => ({
+      ...body(text, id),
+      sender_reference: reference,
+    });
+    const before = await Promise.all(
+      ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+        count(table as 'transactions'),
+      ),
+    );
+    const first = await post(request('resumo'));
+    expect(first.statusCode, first.body).toBe(200);
+    expect(first.json().data.result.confirmation.action).toBe('select_book');
+    expect(first.json().data.inbox_message.status).toBe('needs_confirmation');
+    const sessionId = first.json().data.result.confirmation.id as string;
+    const options = first.json().data.result.confirmation.options as {
+      number: string;
+      name: string;
+    }[];
+    expect(options).toHaveLength(2);
+    const selectedBookId = options[Number(choice) - 1]!.name === 'Empresa' ? bookId : secondBookId;
+    const selection = request(choice);
+    const selected = await post(selection);
+    expect(selected.statusCode, selected.body).toBe(200);
+    expect(selected.json().data.result.type).toBe('query_summary');
+    expect(selected.json().data.result.summary.book_id).toBe(selectedBookId);
+    expect(selected.json().data.reply.should_send).toBe(true);
+    const direct = await app.inject({
+      method: 'GET',
+      url: `/api/v1/reports/summary?book_id=${selectedBookId}`,
+      headers: { authorization: 'Bearer integration-admin' },
+    });
+    expect(direct.statusCode, direct.body).toBe(200);
+    for (const key of ['ordinary_income', 'gross_expenses', 'refunds', 'net_expenses', 'net'])
+      expect(selected.json().data.result.summary[key]).toBe(direct.json().data[key]);
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('status')
+          .where('id', '=', sessionId)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('confirmed');
+    expect(
+      (
+        await fixture.db
+          .selectFrom('inbox_messages')
+          .select('processing_status')
+          .where('id', '=', first.json().data.inbox_message.id)
+          .executeTakeFirstOrThrow()
+      ).processing_status,
+    ).toBe('processed');
+    expect(
+      (
+        await fixture.db
+          .selectFrom('inbox_messages')
+          .select('processing_status')
+          .where('source_message_id', '=', selection.source_message_id)
+          .executeTakeFirstOrThrow()
+      ).processing_status,
+    ).toBe('processed');
+    expect((await post(selection)).json().data.reply).toEqual({ should_send: false });
+    expect(
+      await Promise.all(
+        ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+          count(table as 'transactions'),
+        ),
+      ),
+    ).toEqual(before);
+  });
+
+  it('clarifies an explicitly inactive Summary Book without financial effects', async () => {
+    const before = await Promise.all(
+      ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+        count(table as 'transactions'),
+      ),
+    );
+    await fixture.db
+      .updateTable('books')
+      .set({ active: false, archived_at: now })
+      .where('id', '=', secondBookId)
+      .execute();
+    try {
+      const response = await post(body('resumo pessoal'));
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().data.result.type).toBe('confirmation_required');
+      expect(response.json().data.result.confirmation.action).toBe('select_book');
+      expect(response.json().data.reply.should_send).toBe(true);
+      expect(response.json().data.reply.text).not.toContain(secondBookId);
+      const session = await fixture.db
+        .selectFrom('confirmation_sessions')
+        .select('status')
+        .where('id', '=', response.json().data.result.confirmation.id)
+        .executeTakeFirstOrThrow();
+      expect(session.status).toBe('pending');
+      expect(
+        (
+          await fixture.db
+            .selectFrom('inbox_messages')
+            .select('processing_status')
+            .where('id', '=', response.json().data.inbox_message.id)
+            .executeTakeFirstOrThrow()
+        ).processing_status,
+      ).toBe('needs_confirmation');
+      expect(
+        await Promise.all(
+          ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+            count(table as 'transactions'),
+          ),
+        ),
+      ).toEqual(before);
+    } finally {
+      await fixture.db
+        .updateTable('books')
+        .set({ active: true, archived_at: null })
+        .where('id', '=', secondBookId)
+        .execute();
+    }
+  });
+
+  it('retries a failed Summary finalization on the same Inbox row', async () => {
+    await sql`CREATE FUNCTION p03_fail_summary_finish() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'blocked summary finish'; END $$`.execute(
+      fixture.db,
+    );
+    await sql`CREATE TRIGGER p03_fail_summary_finish BEFORE UPDATE ON inbox_messages FOR EACH ROW WHEN (NEW.processing_status = 'processed') EXECUTE FUNCTION p03_fail_summary_finish()`.execute(
+      fixture.db,
+    );
+    const request = body('resumo');
+    const before = await Promise.all(
+      ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+        count(table as 'transactions'),
+      ),
+    );
+    try {
+      const failed = await post(request);
+      expect(failed.statusCode).toBe(500);
+    } finally {
+      await sql`DROP TRIGGER p03_fail_summary_finish ON inbox_messages`.execute(fixture.db);
+      await sql`DROP FUNCTION p03_fail_summary_finish()`.execute(fixture.db);
+    }
+    const failedRow = await fixture.db
+      .selectFrom('inbox_messages')
+      .select(['id', 'processing_status', 'attempt_count'])
+      .where('source_message_id', '=', request.source_message_id)
+      .executeTakeFirstOrThrow();
+    expect(failedRow.processing_status).toBe('failed');
+    expect(failedRow.attempt_count).toBe(1);
+    const retry = await post(request);
+    expect(retry.statusCode, retry.body).toBe(200);
+    expect(retry.json().data.result.type).toBe('query_summary');
+    expect(retry.json().data.reply.should_send).toBe(true);
+    const row = await fixture.db
+      .selectFrom('inbox_messages')
+      .select(['id', 'processing_status', 'attempt_count'])
+      .where('source_message_id', '=', request.source_message_id)
+      .executeTakeFirstOrThrow();
+    expect(row).toMatchObject({
+      id: failedRow.id,
+      processing_status: 'processed',
+      attempt_count: 2,
+    });
+    expect((await post(request)).json().data.reply).toEqual({ should_send: false });
+    expect(
+      await Promise.all(
+        ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+          count(table as 'transactions'),
+        ),
+      ),
+    ).toEqual(before);
+  });
+
+  it('rejects a stale Summary worker after a newer claim has completed', async () => {
+    let entered!: () => void;
+    let release!: () => void;
+    const atLock = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const proceed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const real = new KyselyFinancialTransactionPort(fixture.db);
+    const paused = buildForConnection({
+      inboxProcessing: {
+        runInboxTransaction: (fn) =>
+          real.runInboxTransaction((ctx) =>
+            fn({
+              ...ctx,
+              locks: {
+                acquireLocks: async (spec) => {
+                  entered();
+                  await proceed;
+                  await ctx.locks.acquireLocks(spec);
+                },
+              },
+            }),
+          ),
+      },
+    });
+    await paused.ready();
+    const request = body('resumo');
+    const before = await Promise.all(
+      ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+        count(table as 'transactions'),
+      ),
+    );
+    try {
+      const oldPromise = paused.inject({
+        method: 'POST',
+        url: '/api/v1/inbox/messages',
+        headers: { authorization: 'Bearer integration-ingest' },
+        payload: request,
+      });
+      await atLock;
+      const processing = await post(request);
+      expect(processing.statusCode).toBe(200);
+      expect(processing.json().data.result.type).toBe('processing');
+      expect(processing.json().data.reply).toEqual({ should_send: false });
+      const later = buildForConnection({ now: () => new Date(now.getTime() + 120_000) });
+      await later.ready();
+      try {
+        const newer = await later.inject({
+          method: 'POST',
+          url: '/api/v1/inbox/messages',
+          headers: { authorization: 'Bearer integration-ingest' },
+          payload: request,
+        });
+        expect(newer.statusCode, newer.body).toBe(200);
+        expect(newer.json().data.result.type).toBe('query_summary');
+        expect(newer.json().data.reply.should_send).toBe(true);
+      } finally {
+        await later.close();
+      }
+      release();
+      const old = await oldPromise;
+      expect(old.statusCode, old.body).toBe(200);
+      expect(old.json().data.result.type).toBe('stale_claim');
+      expect(old.json().data.reply).toEqual({ should_send: false });
+      const row = await fixture.db
+        .selectFrom('inbox_messages')
+        .select(['processing_status', 'attempt_count'])
+        .where('source_message_id', '=', request.source_message_id)
+        .executeTakeFirstOrThrow();
+      expect(row).toMatchObject({ processing_status: 'processed', attempt_count: 2 });
+      expect((await post(request)).json().data.reply).toEqual({ should_send: false });
+      expect(
+        await Promise.all(
+          ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+            count(table as 'transactions'),
+          ),
+        ),
+      ).toEqual(before);
+    } finally {
+      release();
+      await paused.close();
+    }
+  });
+
+  it('does not persist Summary from an unauthorized sender, group or outbound message', async () => {
+    const before = {
+      inbox: await count('inbox_messages'),
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+    };
+    const unauthorized = await post({ ...body('resumo'), sender_reference: '5511999999999' });
+    expect(unauthorized.statusCode).toBe(403);
+    for (const context of [
+      { is_group: true, from_me: false },
+      { is_group: false, from_me: true },
+    ]) {
+      const ignored = await post(body('resumo', randomUUID(), context));
+      expect(ignored.statusCode).toBe(200);
+      expect(ignored.json().data).toEqual({
+        result: { type: 'ignored' },
+        reply: { should_send: false },
+      });
+    }
+    expect(await count('inbox_messages')).toBe(before.inbox);
+    expect(await count('transactions')).toBe(before.transactions);
+    expect(await count('audit_events')).toBe(before.audits);
+  });
+
   it('opens a clarification and cancels it with a contextual reply', async () => {
     const initial = await post(body('gastei 12', randomUUID()));
     expect(initial.statusCode, initial.body).toBe(200);
@@ -1008,7 +1494,30 @@ describe('P05 Inbox API with PostgreSQL', () => {
     const originalId = original.json().data.inbox_message.id as string;
     const sessionId = original.json().data.result.confirmation.id as string;
     const before = await count('transactions');
-    for (const text of ['oi', 'resumo', 'gastei', 'gastei 13']) {
+    const summary = await post(body('resumo'));
+    expect(summary.statusCode, summary.body).toBe(200);
+    expect(summary.json().data.result.type).toBe('query_summary');
+    expect(summary.json().data.inbox_message.status).toBe('processed');
+    expect(summary.json().data.reply.should_send).toBe(true);
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('status')
+          .where('id', '=', sessionId)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('pending');
+    expect(
+      (
+        await fixture.db
+          .selectFrom('inbox_messages')
+          .select('processing_status')
+          .where('id', '=', originalId)
+          .executeTakeFirstOrThrow()
+      ).processing_status,
+    ).toBe('needs_confirmation');
+    for (const text of ['oi', 'gastei', 'gastei 13']) {
       const result = await post(body(text));
       expect(result.statusCode, result.body).toBe(200);
       expect(result.json().data.result.type).toBe('confirmation_required');

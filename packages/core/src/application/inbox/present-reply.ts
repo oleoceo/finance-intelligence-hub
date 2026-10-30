@@ -23,6 +23,13 @@ function money(amount: unknown, currency: unknown): string | null {
   return symbol ? `${symbol} ${grouped},${cents}` : null;
 }
 
+function summaryMoney(amount: unknown, currency: unknown): string | null {
+  if (typeof amount !== 'string' || !/^-?(?:0|[1-9]\d*)\.\d{2}$/.test(amount)) return null;
+  const negative = amount.startsWith('-');
+  const formatted = money(negative ? amount.slice(1) : amount, currency);
+  return formatted ? `${negative ? '-' : ''}${formatted}` : null;
+}
+
 function reference(value: unknown): string | null {
   return typeof value === 'string' && /^[A-Z0-9]{1,16}$/.test(value) ? value : null;
 }
@@ -53,6 +60,23 @@ function confirmationExpiry(value: unknown): string | null {
 }
 
 export function presentInboxReply(result: InboxProcessingResult): string | null {
+  if (result.type === 'query_summary') {
+    const book = safeText(result.bookName, 120) ?? 'contexto selecionado';
+    const { summary } = result;
+    const from = date(summary.dateFrom);
+    const to = date(summary.dateTo);
+    const values = [
+      summary.ordinaryIncome,
+      summary.grossExpenses,
+      summary.refunds,
+      summary.netExpenses,
+      summary.net,
+    ].map((value) => summaryMoney(value, summary.currency));
+    if (!from || !to || values.some((value) => value === null)) return null;
+    return bounded(
+      `Resumo ${book} (${from} a ${to})\nReceitas ordinárias: ${values[0]}\nDespesas brutas: ${values[1]}\nEstornos: ${values[2]}\nDespesas líquidas: ${values[3]}\nResultado líquido: ${values[4]}`,
+    );
+  }
   if (result.type === 'stale_target')
     return 'O lançamento mudou. Reenvie o comando para validar os dados atuais.';
   if (result.type === 'transaction_mutated') {

@@ -4,6 +4,7 @@ import { buildApp } from '../../../apps/api/src/index.js';
 import { t02Database } from '../repositories/t02-fixtures.js';
 import { KyselyTransactionReadRepository } from '../../../packages/database/src/repositories/transaction-read-repository.js';
 import type { TransactionReadRecord } from '@finance-hub/core';
+import { sql } from 'kysely';
 
 const fixture = t02Database();
 const instant = new Date('2024-03-01T02:30:00Z');
@@ -305,8 +306,26 @@ describe('M08-P04 PostgreSQL CSV export', () => {
     }
   });
   it('closes the PostgreSQL snapshot when the HTTP client disconnects', async () => {
+    const waitFor = async <T>(promise: Promise<T>, label: string): Promise<T> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          promise,
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => reject(new Error(`Timed out waiting for ${label}`)), 20_000);
+          }),
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    };
     const reader = new KyselyTransactionReadRepository(fixture.db);
-    const settled = Promise.withResolvers<void>();
+    const firstPage = Promise.withResolvers<void>();
+    const resume = Promise.withResolvers<void>();
+    const clientClosed = Promise.withResolvers<void>();
+    const settled = Promise.withResolvers<Error | 'completed'>();
+    const abort = new AbortController();
+    let producerStarted = false;
     const previous = process.env.DATABASE_URL;
     process.env.DATABASE_URL = fixture.connectionString;
     let interrupted: ReturnType<typeof buildApp>;
@@ -319,12 +338,25 @@ describe('M08-P04 PostgreSQL CSV export', () => {
           exportPage: (input) => reader.exportPage(input),
           exportSnapshot: async (input, first, page) => {
             try {
-              await reader.exportSnapshot(input, first, page);
-            } finally {
-              settled.resolve();
+              await reader.exportSnapshot(input, first, async (rows) => {
+                producerStarted = true;
+                await page(rows);
+                if (rows.length === 256) {
+                  firstPage.resolve();
+                  await resume.promise;
+                }
+              });
+              settled.resolve('completed');
+            } catch (error) {
+              settled.resolve(error instanceof Error ? error : new Error(String(error)));
+              throw error;
             }
           },
         },
+      });
+      interrupted.addHook('onRequest', (_request, reply, done) => {
+        reply.raw.once('close', () => clientClosed.resolve());
+        done();
       });
     } finally {
       if (previous === undefined) delete process.env.DATABASE_URL;
@@ -332,15 +364,56 @@ describe('M08-P04 PostgreSQL CSV export', () => {
     }
     try {
       const address = await interrupted.listen({ host: '127.0.0.1', port: 0 });
-      const abort = new AbortController();
       const response = await fetch(`${address}/api/v1/exports/transactions.csv?book_id=${book}`, {
         headers: admin,
         signal: abort.signal,
       });
       expect(response.status).toBe(200);
+      const body = response.body;
+      expect(body).not.toBeNull();
+      const drain = (async () => {
+        let bytes = 0;
+        const streamReader = body!.getReader();
+        try {
+          while (true) {
+            const result = await streamReader.read();
+            if (result.done) return { completed: true, bytes };
+            bytes += result.value.byteLength;
+          }
+        } catch {
+          return { completed: false, bytes };
+        }
+      })();
+      await waitFor(
+        Promise.race([
+          firstPage.promise,
+          settled.promise.then(() => {
+            throw new Error('Producer finished before the first page');
+          }),
+        ]),
+        'first page',
+      );
+      expect(producerStarted).toBe(true);
+      const active = await sql<{ pid: number }>`
+        SELECT pid FROM pg_stat_activity
+        WHERE state = 'idle in transaction'
+          AND query LIKE '%from "transactions"%'
+          AND pid <> pg_backend_pid()
+      `.execute(fixture.db);
+      expect(active.rows).toHaveLength(1);
       abort.abort();
-      await expect(response.text()).rejects.toThrow();
-      await settled.promise;
+      await waitFor(clientClosed.promise, 'client disconnect');
+      const clientResult = await waitFor(drain, 'client read failure');
+      expect(clientResult.completed).toBe(false);
+      expect(clientResult.bytes).toBeGreaterThan(0);
+      resume.resolve();
+      const result = await waitFor(settled.promise, 'transaction cleanup');
+      expect(result).toBeInstanceOf(Error);
+      expect((result as Error).message).toBe('CSV client disconnected');
+      const released = await sql<{ state: string }>`
+        SELECT state FROM pg_stat_activity WHERE pid = ${active.rows[0].pid}
+      `.execute(fixture.db);
+      expect(released.rows[0]?.state).not.toBe('idle in transaction');
       expect(
         Number(
           (
@@ -353,9 +426,11 @@ describe('M08-P04 PostgreSQL CSV export', () => {
         ),
       ).toBe(276);
     } finally {
+      abort.abort();
+      resume.resolve();
       await interrupted.close();
     }
-  });
+  }, 70000);
   it('exports complete stable pages and reconciles posted rows with Summary', async () => {
     const before = await fixture.db
       .selectFrom('audit_events')

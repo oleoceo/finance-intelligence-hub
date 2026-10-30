@@ -93,6 +93,27 @@ export function registerInbox(instance: FastifyInstance, deps: ProcessMessageDep
         },
         meta: responseMeta,
       };
+    if (result.type === 'transaction_mutated')
+      return {
+        data: {
+          inbox_message: { id: result.inboxMessageId, status: result.status },
+          result: {
+            type: 'transaction_mutated',
+            action: result.action,
+            transaction: {
+              id: result.transaction.id,
+              human_ref: result.transaction.humanRef,
+              book_id: result.transaction.bookId,
+              type: result.transaction.type,
+              status: result.transaction.status,
+              amount: result.transaction.amount,
+              version: result.transaction.version,
+            },
+          },
+          reply: replyFor(result),
+        },
+        meta: responseMeta,
+      };
     if (result.type === 'query_last')
       return {
         data: {

@@ -1588,4 +1588,455 @@ describe('P05 Inbox API with PostgreSQL', () => {
       expect(await count('idempotency_keys')).toBe(before.keys);
     },
   );
+
+  it('corrects an explicit Transaction directly with one version step and preserved creator Inbox', async () => {
+    const created = await post(body('gastei 500 compra teste P05'));
+    expect(created.statusCode, created.body).toBe(200);
+    const target = created.json().data.result.transaction;
+    const originalInboxId = created.json().data.inbox_message.id;
+    const before = { audits: await count('audit_events'), keys: await count('idempotency_keys') };
+    const corrected = await post(body(`corrige ${target.human_ref} para 450`));
+    expect(corrected.statusCode, corrected.body).toBe(200);
+    expect(corrected.json().data.result).toMatchObject({
+      type: 'transaction_mutated',
+      action: 'correction',
+      transaction: { id: target.id, amount: '450.00', version: 2 },
+    });
+    const persisted = await fixture.db
+      .selectFrom('transactions')
+      .select(['inbox_message_id', 'version', 'amount'])
+      .where('id', '=', target.id)
+      .executeTakeFirstOrThrow();
+    expect(persisted).toMatchObject({
+      inbox_message_id: originalInboxId,
+      version: 2,
+      amount: '450.00',
+    });
+    expect(await count('audit_events')).toBe(before.audits + 1);
+    expect(await count('idempotency_keys')).toBe(before.keys);
+  });
+
+  it('requires a second explicit reply to Void the captured Last, even after a newer Transaction appears', async () => {
+    const created = await post(body('gastei 31 alvo P05'));
+    expect(created.statusCode, created.body).toBe(200);
+    const target = created.json().data.result.transaction;
+    const originalInbox = created.json().data.inbox_message.id;
+    const latestCreated = await fixture.db
+      .selectFrom('transactions')
+      .select('created_at')
+      .where('book_id', '=', bookId)
+      .orderBy('created_at', 'desc')
+      .executeTakeFirstOrThrow();
+    const proposedCreatedAt = new Date(latestCreated.created_at.getTime() + 86_400_000);
+    await fixture.db
+      .updateTable('transactions')
+      .set({ created_at: proposedCreatedAt })
+      .where('id', '=', target.id)
+      .execute();
+    const beforeAudit = await count('audit_events');
+    const request = await post(body('cancela último'));
+    expect(request.statusCode, request.body).toBe(200);
+    expect(request.json().data.result.confirmation.action).toBe('confirm_void');
+    const sessionId = request.json().data.result.confirmation.id;
+    const session = await fixture.db
+      .selectFrom('confirmation_sessions')
+      .select(['target_entity_type', 'target_entity_id', 'target_version'])
+      .where('id', '=', sessionId)
+      .executeTakeFirstOrThrow();
+    expect(session).toMatchObject({
+      target_entity_type: 'transaction',
+      target_entity_id: target.id,
+      target_version: 1,
+    });
+    expect(
+      (
+        await fixture.db
+          .selectFrom('transactions')
+          .select('status')
+          .where('id', '=', target.id)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('posted');
+    const newer = await app.inject({
+      method: 'POST',
+      url: '/api/v1/transactions',
+      headers: { authorization: 'Bearer integration-admin', 'idempotency-key': randomUUID() },
+      payload: {
+        type: 'expense',
+        book_id: bookId,
+        account_id: accountId,
+        amount: '12.00',
+        description: 'newer after proposal',
+        transaction_date: '2026-10-21',
+      },
+    });
+    expect(newer.statusCode, newer.body).toBe(201);
+    await fixture.db
+      .updateTable('transactions')
+      .set({ created_at: new Date(proposedCreatedAt.getTime() + 86_400_000) })
+      .where('id', '=', newer.json().data.id)
+      .execute();
+    const replyRequest = body('sim');
+    const confirmed = await post(replyRequest);
+    expect(confirmed.statusCode, confirmed.body).toBe(200);
+    expect(confirmed.json().data.result).toMatchObject({
+      type: 'transaction_mutated',
+      action: 'void',
+      transaction: { id: target.id, status: 'voided', version: 2 },
+    });
+    expect(
+      (
+        await fixture.db
+          .selectFrom('transactions')
+          .select('status')
+          .where('id', '=', newer.json().data.id)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('posted');
+    expect(
+      (
+        await fixture.db
+          .selectFrom('transactions')
+          .select('inbox_message_id')
+          .where('id', '=', target.id)
+          .executeTakeFirstOrThrow()
+      ).inbox_message_id,
+    ).toBe(originalInbox);
+    expect(await count('audit_events')).toBe(beforeAudit + 2);
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('status')
+          .where('id', '=', sessionId)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('confirmed');
+    const replay = await post(replyRequest);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json().data.result.type).toBe('duplicate_message');
+    expect(await count('audit_events')).toBe(beforeAudit + 2);
+  });
+
+  it('rejects stale Void confirmation without effect or false confirmed state', async () => {
+    const created = await post(body('gastei 49 alvo stale P05'));
+    const target = created.json().data.result.transaction;
+    const pending = await post(body(`cancela ${target.human_ref}`));
+    expect(pending.statusCode, pending.body).toBe(200);
+    const sessionId = pending.json().data.result.confirmation.id;
+    const direct = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/transactions/${target.id}`,
+      headers: { authorization: 'Bearer integration-admin' },
+      payload: { version: 1, amount: '50.00' },
+    });
+    expect(direct.statusCode, direct.body).toBe(200);
+    const reply = await post(body('sim'));
+    expect(reply.statusCode, reply.body).toBe(200);
+    const row = await fixture.db
+      .selectFrom('transactions')
+      .select(['status', 'version', 'amount'])
+      .where('id', '=', target.id)
+      .executeTakeFirstOrThrow();
+    expect(row).toMatchObject({ status: 'posted', version: 2, amount: '50.00' });
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('status')
+          .where('id', '=', sessionId)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).not.toBe('confirmed');
+  });
+
+  it('keeps a candidate version captured during choice and rejects a changed target', async () => {
+    const first = (await post(body('gastei 41 compra escolha versao P05'))).json().data.result
+      .transaction;
+    const second = (await post(body('gastei 42 compra escolha versao P05'))).json().data.result
+      .transaction;
+    const request = await post(body('cancela compra escolha versao P05'));
+    expect(request.statusCode, request.body).toBe(200);
+    expect(request.json().data.result.confirmation.action).toBe('select_transaction');
+    const option = request
+      .json()
+      .data.result.confirmation.options.find(
+        (row: { name: string }) => row.name === first.human_ref,
+      );
+    expect(option).toBeDefined();
+    const changed = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/transactions/${first.id}`,
+      headers: { authorization: 'Bearer integration-admin' },
+      payload: { version: 1, amount: '43.00' },
+    });
+    expect(changed.statusCode, changed.body).toBe(200);
+    const choice = await post(body(option.number));
+    expect(choice.statusCode, choice.body).toBe(200);
+    expect(choice.json().data.result.type).toBe('stale_target');
+    expect(
+      await fixture.db
+        .selectFrom('transactions')
+        .select(['status', 'version'])
+        .where('id', '=', first.id)
+        .executeTakeFirstOrThrow(),
+    ).toMatchObject({ status: 'posted', version: 2 });
+    expect(
+      (
+        await fixture.db
+          .selectFrom('transactions')
+          .select('status')
+          .where('id', '=', second.id)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('posted');
+  });
+
+  it('chooses the credited Account and confirms one linked Refund with original Inbox provenance', async () => {
+    const created = await post(body('gastei 500 compra refund P05'));
+    expect(created.statusCode, created.body).toBe(200);
+    const target = created.json().data.result.transaction;
+    const before = {
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    const original = await post(body(`estorna 200 da compra ${target.human_ref}`));
+    expect(original.statusCode, original.body).toBe(200);
+    expect(original.json().data.result.confirmation.action).toBe('select_refund_account');
+    const originalInbox = original.json().data.inbox_message.id;
+    const sessionId = original.json().data.result.confirmation.id;
+    expect(await count('transactions')).toBe(before.transactions);
+    const choice = original
+      .json()
+      .data.result.confirmation.options.find((row: { name: string }) => row.name === 'Nubank');
+    const selected = await post(body(choice.number));
+    expect(selected.statusCode, selected.body).toBe(200);
+    expect(selected.json().data.result.confirmation.action).toBe('confirm_refund');
+    const stored = await fixture.db
+      .selectFrom('confirmation_sessions')
+      .select(['target_entity_type', 'target_entity_id', 'target_version'])
+      .where('id', '=', sessionId)
+      .executeTakeFirstOrThrow();
+    expect(stored).toMatchObject({
+      target_entity_type: 'transaction',
+      target_entity_id: target.id,
+      target_version: 1,
+    });
+    expect(await count('transactions')).toBe(before.transactions);
+    const reply = await post(body('sim'));
+    expect(reply.statusCode, reply.body).toBe(200);
+    expect(reply.json().data.result).toMatchObject({
+      type: 'transaction_mutated',
+      action: 'refund',
+      transaction: { amount: '200.00', version: 1 },
+    });
+    const refund = await fixture.db
+      .selectFrom('transactions')
+      .select(['refund_of_transaction_id', 'inbox_message_id', 'source', 'account_id', 'amount'])
+      .where('id', '=', reply.json().data.result.transaction.id)
+      .executeTakeFirstOrThrow();
+    expect(refund).toMatchObject({
+      refund_of_transaction_id: target.id,
+      inbox_message_id: originalInbox,
+      source: 'whatsapp',
+      account_id: accountId,
+      amount: '200.00',
+    });
+    expect(await count('transactions')).toBe(before.transactions + 1);
+    expect(await count('audit_events')).toBe(before.audits + 1);
+    expect(await count('idempotency_keys')).toBe(before.keys + 1);
+    expect(
+      (
+        await fixture.db
+          .selectFrom('confirmation_sessions')
+          .select('status')
+          .where('id', '=', sessionId)
+          .executeTakeFirstOrThrow()
+      ).status,
+    ).toBe('confirmed');
+    const inboxRows = await fixture.db
+      .selectFrom('inbox_messages')
+      .select(['id', 'processing_status'])
+      .where('id', 'in', [
+        originalInbox,
+        selected.json().data.inbox_message.id,
+        reply.json().data.inbox_message.id,
+      ])
+      .execute();
+    expect(inboxRows).toEqual(
+      expect.arrayContaining([
+        { id: originalInbox, processing_status: 'processed' },
+        { id: selected.json().data.inbox_message.id, processing_status: 'processed' },
+        { id: reply.json().data.inbox_message.id, processing_status: 'processed' },
+      ]),
+    );
+  });
+
+  it('rolls back Void effect, Audit, idempotency and both Inbox finalizations on injected failures', async () => {
+    await sql`CREATE FUNCTION p05_mutation_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'blocked mutation stage'; END $$`.execute(
+      fixture.db,
+    );
+    try {
+      for (const stage of ['audit_events', 'idempotency_keys', 'inbox_messages'] as const) {
+        const created = await post(body(`gastei 30 rollback ${stage}`));
+        const target = created.json().data.result.transaction;
+        const requested = await post(body(`cancela ${target.human_ref}`));
+        expect(requested.statusCode, requested.body).toBe(200);
+        const originalInbox = requested.json().data.inbox_message.id;
+        const before = {
+          audits: await count('audit_events'),
+          keys: await count('idempotency_keys'),
+        };
+        if (stage === 'audit_events')
+          await sql`CREATE TRIGGER p05_mutation_fail BEFORE INSERT ON audit_events FOR EACH ROW WHEN (NEW.action = 'TRANSACTION_VOIDED') EXECUTE FUNCTION p05_mutation_fail()`.execute(
+            fixture.db,
+          );
+        else if (stage === 'idempotency_keys')
+          await sql`CREATE TRIGGER p05_mutation_fail BEFORE INSERT ON idempotency_keys FOR EACH ROW WHEN (NEW.scope = 'transactions:void') EXECUTE FUNCTION p05_mutation_fail()`.execute(
+            fixture.db,
+          );
+        else
+          await sql`CREATE TRIGGER p05_mutation_fail BEFORE UPDATE ON inbox_messages FOR EACH ROW WHEN (OLD.processing_status = 'needs_confirmation' AND NEW.processing_status = 'processed') EXECUTE FUNCTION p05_mutation_fail()`.execute(
+            fixture.db,
+          );
+        const reply = body('sim');
+        try {
+          const failed = await post(reply);
+          expect(failed.statusCode, `${stage}: ${failed.body}`).toBe(500);
+        } finally {
+          if (stage === 'audit_events')
+            await sql`DROP TRIGGER p05_mutation_fail ON audit_events`.execute(fixture.db);
+          else if (stage === 'idempotency_keys')
+            await sql`DROP TRIGGER p05_mutation_fail ON idempotency_keys`.execute(fixture.db);
+          else await sql`DROP TRIGGER p05_mutation_fail ON inbox_messages`.execute(fixture.db);
+        }
+        expect(
+          await fixture.db
+            .selectFrom('transactions')
+            .select(['status', 'version'])
+            .where('id', '=', target.id)
+            .executeTakeFirstOrThrow(),
+        ).toMatchObject({ status: 'posted', version: 1 });
+        expect(await count('audit_events')).toBe(before.audits);
+        expect(await count('idempotency_keys')).toBe(before.keys);
+        expect(
+          (
+            await fixture.db
+              .selectFrom('inbox_messages')
+              .select('processing_status')
+              .where('id', '=', originalInbox)
+              .executeTakeFirstOrThrow()
+          ).processing_status,
+        ).toBe('needs_confirmation');
+        expect(
+          (
+            await fixture.db
+              .selectFrom('inbox_messages')
+              .select('processing_status')
+              .where('source_message_id', '=', reply.source_message_id)
+              .executeTakeFirstOrThrow()
+          ).processing_status,
+        ).toBe('failed');
+        const retried = await post(reply);
+        expect(retried.statusCode, retried.body).toBe(200);
+        expect(retried.json().data.result.type).toBe('transaction_mutated');
+      }
+    } finally {
+      await sql`DROP FUNCTION p05_mutation_fail()`.execute(fixture.db);
+    }
+  });
+
+  it('serializes two distinct confirmations on independent PostgreSQL connections into one Void', async () => {
+    const created = await post(body('gastei 43 concurrent confirmation'));
+    const target = created.json().data.result.transaction;
+    const pending = await post(body(`cancela ${target.human_ref}`));
+    expect(pending.statusCode, pending.body).toBe(200);
+    const before = { audits: await count('audit_events'), keys: await count('idempotency_keys') };
+    const pools = [
+      new Pool({ connectionString: fixture.connectionString, max: 1 }),
+      new Pool({ connectionString: fixture.connectionString, max: 1 }),
+    ];
+    const dbs = pools.map((pool) => new Kysely<DB>({ dialect: new PostgresDialect({ pool }) }));
+    const pids = await Promise.all(
+      dbs.map(
+        async (db) =>
+          (await sql<{ pid: number }>`SELECT pg_backend_pid() AS pid`.execute(db)).rows[0]!.pid,
+      ),
+    );
+    expect(pids[0]).not.toBe(pids[1]);
+    let entered = 0;
+    let both!: () => void;
+    let release!: () => void;
+    const bothAtBarrier = new Promise<void>((resolve) => {
+      both = resolve;
+    });
+    const proceed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const apps = dbs.map((db) => {
+      const real = new KyselyFinancialTransactionPort(db);
+      let held = false;
+      return buildForConnection({
+        inboxProcessing: {
+          runInboxTransaction: (fn) =>
+            real.runInboxTransaction((ctx) =>
+              fn({
+                ...ctx,
+                locks: {
+                  acquireLocks: async (spec) => {
+                    if (!held) {
+                      held = true;
+                      entered++;
+                      if (entered === 2) both();
+                      await proceed;
+                    }
+                    return ctx.locks.acquireLocks(spec);
+                  },
+                },
+              }),
+            ),
+        },
+      });
+    });
+    try {
+      await Promise.all(apps.map((instance) => instance.ready()));
+      const requests = apps.map((instance) =>
+        instance.inject({
+          method: 'POST',
+          url: '/api/v1/inbox/messages',
+          headers: { authorization: 'Bearer integration-ingest' },
+          payload: body('sim'),
+        }),
+      );
+      await Promise.race([
+        bothAtBarrier,
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Both independent confirmations did not reach the barrier')),
+            10_000,
+          ),
+        ),
+      ]);
+      release();
+      const results = await Promise.all(requests);
+      expect(results.map((result) => result.statusCode)).toEqual([200, 200]);
+      expect(
+        results.filter((result) => result.json().data.result.type === 'transaction_mutated'),
+      ).toHaveLength(1);
+      expect(
+        await fixture.db
+          .selectFrom('transactions')
+          .select(['status', 'version'])
+          .where('id', '=', target.id)
+          .executeTakeFirstOrThrow(),
+      ).toMatchObject({ status: 'voided', version: 2 });
+      expect(await count('audit_events')).toBe(before.audits + 1);
+      expect(await count('idempotency_keys')).toBe(before.keys + 1);
+    } finally {
+      release();
+      await Promise.all(apps.map((instance) => instance.close()));
+      await Promise.all(dbs.map((db) => db.destroy()));
+    }
+  });
 });

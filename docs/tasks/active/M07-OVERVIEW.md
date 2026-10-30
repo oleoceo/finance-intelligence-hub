@@ -1,6 +1,6 @@
 # M07 — Correction / Void / Refund
 
-**Status:** ACTIVE — M07-P01–P04 DONE / integrated via PRs #44/#46/#48/#50; P05 owner-authorized local/WSL/CI after P04 closure CI SUCCESS.
+**Status:** ACTIVE — M07-P01–P04 DONE / integrated via PRs #44/#46/#48/#50; P05 REVIEW REQUIRED on `m07-p05-whatsapp-mutations` after local validation, pending exact-head CI and independent review.
 **Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
 **Blocks:** Gate B
 

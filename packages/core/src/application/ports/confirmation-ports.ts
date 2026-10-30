@@ -68,6 +68,8 @@ export interface ConfirmationSessionRepository {
         sessionId: string;
         action: string;
         payload: Record<string, unknown>;
+        targetEntityId?: string;
+        targetVersion?: number;
         now: Date;
       },
   ): Promise<ConfirmationSession>;
@@ -82,6 +84,16 @@ export interface ConfirmationSessionRepository {
   supersede(input: ConfirmationOwner & { now: Date }): Promise<ConfirmationResolution>;
   /** After the financial effect and Audit/idempotency writes, in the same caller-owned transaction. */
   finalizeConfirmed(
-    input: ConfirmationOwner & ConfirmationResolverClaim & { sessionId: string; now: Date },
+    input: ConfirmationOwner &
+      ConfirmationResolverClaim & {
+        sessionId: string;
+        now: Date;
+        proof?: {
+          resultId: string;
+          action: 'TRANSACTION_UPDATED' | 'TRANSACTION_VOIDED' | 'TRANSACTION_REFUND_CREATED';
+          resultVersion: number;
+          correlationId: string;
+        };
+      },
   ): Promise<void>;
 }

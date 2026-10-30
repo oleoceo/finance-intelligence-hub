@@ -4,6 +4,26 @@ import { interpretMessage } from './interpret-message.js';
 const parse = (rawText: string) => interpretMessage({ rawText });
 
 describe('deterministic Inbox interpretation', () => {
+  it('parses the three frozen mutation commands without guessing a financial target', () => {
+    expect(parse('corrige último para 38,90')).toMatchObject({
+      kind: 'transaction_mutation',
+      action: 'correction',
+      target: 'last',
+      amount: '38.90',
+    });
+    expect(parse('cancela último')).toMatchObject({
+      kind: 'transaction_mutation',
+      action: 'void',
+      target: 'last',
+    });
+    expect(parse('estorna 200 da compra A83K2P')).toMatchObject({
+      kind: 'transaction_mutation',
+      action: 'refund',
+      target: 'reference',
+      humanRef: 'A83K2P',
+      amount: '200.00',
+    });
+  });
   it.each(['35 almoço nubank', 'empresa 327,40 google ads inter', 'gastei R$ 1.250,90 café'])(
     'parses partial expense %s',
     (text) => {

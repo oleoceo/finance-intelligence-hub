@@ -21,6 +21,8 @@ import { resolveInterpretation } from './resolve-interpretation.js';
 import { presentInboxReply, REPLY_CONTRACT_VERSION, REPLY_TEXT_LIMIT } from './present-reply.js';
 import {
   processTransactionMutation,
+  RefundRevalidationRequiredError,
+  resolveRejectedRefund,
   type MutationDependencies,
 } from './process-transaction-mutation.js';
 
@@ -540,6 +542,22 @@ async function processInboxMessageInternal(
   } catch (error) {
     if (error instanceof StaleInboxClaimError)
       return { type: 'stale_claim', inboxMessageId: claim.message.id };
+    let failure = error;
+    if (error instanceof RefundRevalidationRequiredError) {
+      try {
+        const sessionId = error.sessionId;
+        const owner = {
+          channel: 'whatsapp' as const,
+          senderReference: claim.message.senderReference,
+          authorizedSenderId: claim.message.authorizedSenderId,
+        };
+        return await deps.processing.runInboxTransaction((ctx) =>
+          resolveRejectedRefund(ctx, claim, owner, sessionId, now),
+        );
+      } catch (recoveryError) {
+        failure = recoveryError;
+      }
+    }
     // The financial transaction rolled back. A separate fenced transition makes
     // this same Inbox row eligible for a future retry without recording a false effect.
     await deps.inboxTransactions.runInTransaction(async ({ inbox }) => {
@@ -550,7 +568,7 @@ async function processInboxMessageInternal(
         failureCode: 'PROCESSING_FAILED',
       });
     });
-    throw error;
+    throw failure;
   }
 }
 

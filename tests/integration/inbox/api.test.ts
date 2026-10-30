@@ -1980,6 +1980,39 @@ describe('P05 Inbox API with PostgreSQL', () => {
     );
   });
 
+  it('locks Confirmation and Inbox before Refund idempotency and the Expense row', async () => {
+    const target = (await post(body('gastei 500 lock order P05'))).json().data.result.transaction;
+    const proposed = await post(body(`estorna 100 da compra ${target.human_ref}`));
+    expect(proposed.json().data.result.confirmation.action).toBe('select_refund_account');
+    const choice = await post(body('1'));
+    expect(choice.json().data.result.confirmation.action).toBe('confirm_refund');
+    await sql`CREATE FUNCTION p05_check_refund_lock_order() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.scope = 'transactions:refund' AND (
+          NOT EXISTS (SELECT 1 FROM pg_locks WHERE pid = pg_backend_pid() AND relation = 'confirmation_sessions'::regclass AND mode = 'RowShareLock' AND granted)
+          OR NOT EXISTS (SELECT 1 FROM pg_locks WHERE pid = pg_backend_pid() AND relation = 'inbox_messages'::regclass AND mode = 'RowShareLock' AND granted)
+          OR EXISTS (SELECT 1 FROM pg_locks WHERE pid = pg_backend_pid() AND relation = 'transactions'::regclass AND mode = 'RowShareLock' AND granted)
+        ) THEN
+          RAISE EXCEPTION 'Refund lock order violated';
+        END IF;
+        RETURN NEW;
+      END $$`.execute(fixture.db);
+    await sql`CREATE TRIGGER p05_check_refund_lock_order BEFORE INSERT ON idempotency_keys FOR EACH ROW EXECUTE FUNCTION p05_check_refund_lock_order()`.execute(
+      fixture.db,
+    );
+    try {
+      const yes = await post(body('sim'));
+      expect(yes.statusCode, yes.body).toBe(200);
+      expect(yes.json().data.result).toMatchObject({
+        type: 'transaction_mutated',
+        action: 'refund',
+      });
+    } finally {
+      await sql`DROP TRIGGER p05_check_refund_lock_order ON idempotency_keys`.execute(fixture.db);
+      await sql`DROP FUNCTION p05_check_refund_lock_order()`.execute(fixture.db);
+    }
+  });
+
   it('rolls back Void effect, Audit, idempotency and both Inbox finalizations on injected failures', async () => {
     await sql`CREATE FUNCTION p05_mutation_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'blocked mutation stage'; END $$`.execute(
       fixture.db,

@@ -4,6 +4,7 @@ import type { VoidTransaction } from '../finance/void-transaction.js';
 import { prepareVoidLocks } from '../finance/void-transaction.js';
 import type { CreateRefund } from '../finance/create-refund.js';
 import { prepareRefundLocks } from '../finance/create-refund.js';
+import { FinancialError } from '../../domain/finance/errors.js';
 import type { ConfirmationOwner } from '../ports/confirmation-ports.js';
 import type { InboxProcessingContext } from '../ports/financial-transaction-port.js';
 import type { InboxClaim, InboxMessage } from '../ports/inbox-ports.js';
@@ -91,9 +92,10 @@ function key(original: InboxMessage, action: string) {
   return `inbox:${original.id}:${action}`;
 }
 
-function cents(amount: string): bigint {
-  const [whole, fraction = ''] = amount.split('.');
-  return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+export class RefundRevalidationRequiredError extends Error {
+  constructor(readonly sessionId: string) {
+    super('Refund confirmation requires revalidation');
+  }
 }
 
 async function staleTarget(
@@ -105,6 +107,32 @@ async function staleTarget(
   await ctx.confirmations.supersede({ ...owner, now });
   await finish(ctx, claim, now, 'processed');
   return { type: 'stale_target', inboxMessageId: claim.message.id, status: 'processed' };
+}
+
+/** Called only after the rejected financial transaction has fully rolled back. */
+export async function resolveRejectedRefund(
+  ctx: InboxProcessingContext,
+  claim: InboxClaim,
+  owner: ConfirmationOwner,
+  sessionId: string,
+  now: Date,
+): Promise<InboxProcessingResult> {
+  await lockConfiguration(ctx, claim.message.senderReference, now);
+  const reply = await ctx.confirmations.resolveReply({
+    ...owner,
+    resolverInboxMessageId: claim.message.id,
+    ...claimFields(claim),
+    reply: 'yes',
+    now,
+  });
+  if (reply.kind === 'stale_claim')
+    return { type: 'stale_claim', inboxMessageId: claim.message.id };
+  if (reply.kind === 'none')
+    return { type: 'ignored', inboxMessageId: claim.message.id, status: 'ignored' };
+  if (reply.kind === 'expired' || reply.kind === 'cancelled')
+    return { type: reply.kind, inboxMessageId: claim.message.id, status: 'processed' };
+  if (reply.session.id !== sessionId) throw new Error('Refund confirmation changed during retry');
+  return staleTarget(ctx, claim, owner, now);
 }
 
 async function prepare(ctx: InboxProcessingContext, value: Stored) {
@@ -360,12 +388,6 @@ export async function processTransactionMutation(
         )
       : null;
   const receipt = value && parsed.response === 'yes' ? await prepare(ctx, value) : null;
-  // Refund aggregate reads must be protected by the original Expense row lock.
-  // Acquire it after configuration locks and before Confirmation/Inbox locks.
-  const lockedRefundTarget =
-    value?.intent.action === 'refund' && receipt
-      ? await ctx.transactions.findByIdForUpdate(value.targetId)
-      : null;
   const reply = await ctx.confirmations.resolveReply({
     ...owner,
     resolverInboxMessageId: message.id,
@@ -514,10 +536,7 @@ export async function processTransactionMutation(
     reply.session.targetVersion !== value.targetVersion
   )
     throw new Error('Confirmation target mismatch');
-  const currentTarget =
-    value.intent.action === 'refund'
-      ? lockedRefundTarget
-      : await ctx.transactions.findById(value.targetId);
+  const currentTarget = await ctx.transactions.findById(value.targetId);
   if (
     !currentTarget ||
     currentTarget.version !== value.targetVersion ||
@@ -525,21 +544,26 @@ export async function processTransactionMutation(
   ) {
     return staleTarget(ctx, claim, owner, now);
   }
-  if (value.intent.action === 'refund') {
-    const account = await ctx.accounts.findById(value.accountId!);
-    const book = await ctx.books.findById(currentTarget.bookId);
-    const posted = await ctx.transactions.postedRefundLimits(value.targetId);
+  let result: Awaited<ReturnType<typeof execute>>;
+  try {
+    result = await execute(ctx, value, original, correlationId, deps, receipt);
+  } catch (error) {
     if (
-      currentTarget.type !== 'expense' ||
-      !!currentTarget.refundOfTransactionId ||
-      !book?.active ||
-      !account?.active ||
-      account.bookId !== currentTarget.bookId ||
-      cents(posted.total) + cents(value.intent.amount!) > cents(currentTarget.amount)
+      value.intent.action === 'refund' &&
+      error instanceof FinancialError &&
+      [
+        'REFUND_AMOUNT_EXCEEDED',
+        'REFUND_INVALID_TARGET',
+        'VERSION_CONFLICT',
+        'ACCOUNT_NOT_FOUND',
+        'ACCOUNT_INACTIVE',
+        'BOOK_NOT_FOUND',
+        'BOOK_INACTIVE',
+      ].includes(error.code)
     )
-      return staleTarget(ctx, claim, owner, now);
+      throw new RefundRevalidationRequiredError(reply.session.id);
+    throw error;
   }
-  const result = await execute(ctx, value, original, correlationId, deps, receipt);
   await ctx.confirmations.finalizeConfirmed({
     ...owner,
     sessionId: reply.session.id,

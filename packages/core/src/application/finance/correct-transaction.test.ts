@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CorrectTransaction } from './correct-transaction.js';
+import { CorrectTransaction, prepareCorrectionLocks } from './correct-transaction.js';
+import { ConfigurationLockSetChangedError } from '../ports/master-data-ports.js';
 import type { FinancialTransactionContext } from '../ports/financial-transaction-port.js';
 import type { TransactionRecord } from '../ports/transaction-ports.js';
 
@@ -102,7 +103,7 @@ describe('M07-P01 correction input policy', () => {
         postedRefundLimits: async () => ({ total: '0', earliestDate: null }),
         correct,
       },
-      locks: { acquireLocks: async () => {} },
+      locks: { acquireLocks: vi.fn(async () => {}) },
       books: {
         findById: async () => ({
           id: record.bookId,
@@ -139,9 +140,67 @@ describe('M07-P01 correction input policy', () => {
     expect(write).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'TRANSACTION_UPDATED',
+        source: 'direct_api',
+        actorReference: null,
         oldData: expect.objectContaining({ version: 1 }),
         newData: expect.objectContaining({ version: 2 }),
       }),
     );
+    if (field === 'description') {
+      const patch = { version: 1, description: 'changed' };
+      const receipt = await prepareCorrectionLocks(ctx, record.id, patch);
+      const locks = vi.mocked(ctx.locks.acquireLocks);
+      const count = locks.mock.calls.length;
+      await new CorrectTransaction(port, () => now).executeInContext(
+        record.id,
+        patch,
+        record.id,
+        ctx,
+        { senderReference: 'validated-sender' },
+        receipt,
+      );
+      expect(locks).toHaveBeenCalledTimes(count);
+      expect(write).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          source: 'whatsapp',
+          actorReference: 'validated-sender',
+          oldData: expect.objectContaining({
+            source: 'direct_api',
+            sourceReference: null,
+            inboxMessageId: null,
+          }),
+          newData: expect.objectContaining({
+            source: 'direct_api',
+            sourceReference: null,
+            inboxMessageId: null,
+          }),
+        }),
+      );
+      await expect(
+        new CorrectTransaction(port, () => now).executeInContext(
+          record.id,
+          patch,
+          record.id,
+          { ...ctx },
+          undefined,
+          receipt,
+        ),
+      ).rejects.toBeInstanceOf(ConfigurationLockSetChangedError);
+      vi.spyOn(ctx.transactions, 'findByIdForUpdate').mockResolvedValueOnce({
+        ...record,
+        accountId: '00000000-0000-4000-8000-000000000099',
+      });
+      await expect(
+        new CorrectTransaction(port, () => now).executeInContext(
+          record.id,
+          patch,
+          record.id,
+          ctx,
+          undefined,
+          receipt,
+        ),
+      ).rejects.toBeInstanceOf(ConfigurationLockSetChangedError);
+      expect(locks).toHaveBeenCalledTimes(count);
+    }
   });
 });

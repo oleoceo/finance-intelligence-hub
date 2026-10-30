@@ -292,6 +292,7 @@ export {
 } from './application/finance/create-transaction.js';
 export {
   CorrectTransaction,
+  prepareCorrectionLocks,
   type CorrectTransactionInput,
 } from './application/finance/correct-transaction.js';
 export type {

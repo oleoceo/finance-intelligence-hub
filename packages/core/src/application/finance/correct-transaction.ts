@@ -79,6 +79,28 @@ function includesRefs(
   );
 }
 
+type CorrectionLockSet = ReturnType<typeof references> & { books: string[] };
+const correctionLockReceipts = new WeakMap<
+  object,
+  { ctx: FinancialTransactionContext; id: string; locks: CorrectionLockSet }
+>();
+
+/** Call before acquiring Sender, Session or Inbox locks in a caller-owned transaction. */
+export async function prepareCorrectionLocks(
+  ctx: FinancialTransactionContext,
+  id: string,
+  input: CorrectTransactionInput,
+): Promise<object> {
+  validateInput(input);
+  const discovered = await ctx.transactions.findById(id);
+  if (!discovered) throw new FinancialError('Transaction not found', 'TRANSACTION_NOT_FOUND');
+  const locks = { books: [discovered.bookId], ...references(discovered, input) };
+  await ctx.locks.acquireLocks(locks);
+  const receipt = Object.freeze({});
+  correctionLockReceipts.set(receipt, { ctx, id, locks });
+  return receipt;
+}
+
 export class CorrectTransaction {
   constructor(
     private readonly transactions: FinancialTransactionPort,
@@ -96,21 +118,32 @@ export class CorrectTransaction {
     );
   }
 
-  /** Reuses a caller-owned financial transaction; no nested commit. */
+  /** Reuses a caller-owned financial transaction and its verified configuration locks. */
   async executeInContext(
     id: string,
     input: CorrectTransactionInput,
     correlationId: string,
     ctx: FinancialTransactionContext,
+    provenance?: { senderReference: string },
+    lockReceipt?: object,
   ): Promise<TransactionRecord> {
     validateInput(input);
-    const discovered = await ctx.transactions.findById(id);
-    if (!discovered) throw new FinancialError('Transaction not found', 'TRANSACTION_NOT_FOUND');
-    const lockedRefs = references(discovered, input);
-    await ctx.locks.acquireLocks({ books: [discovered.bookId], ...lockedRefs });
+    const prepared = lockReceipt && correctionLockReceipts.get(lockReceipt);
+    if (lockReceipt && (!prepared || prepared.ctx !== ctx || prepared.id !== id))
+      throw new ConfigurationLockSetChangedError();
+    if (
+      provenance &&
+      (!provenance.senderReference || typeof provenance.senderReference !== 'string')
+    )
+      throw new FinancialValidationError('Invalid trusted sender reference');
+    const receipt = lockReceipt ?? (await prepareCorrectionLocks(ctx, id, input));
+    const lockedRefs = correctionLockReceipts.get(receipt)!.locks;
     const before = await ctx.transactions.findByIdForUpdate(id);
     if (!before) throw new FinancialError('Transaction not found', 'TRANSACTION_NOT_FOUND');
-    if (before.bookId !== discovered.bookId || !includesRefs(lockedRefs, references(before, input)))
+    if (
+      !lockedRefs.books.includes(before.bookId) ||
+      !includesRefs(lockedRefs, references(before, input))
+    )
       throw new ConfigurationLockSetChangedError();
     if (before.version !== input.version)
       throw new FinancialError('Stale Transaction version', 'VERSION_CONFLICT');
@@ -195,8 +228,8 @@ export class CorrectTransaction {
       entityType: 'transaction',
       entityId: result.id,
       action: 'TRANSACTION_UPDATED',
-      source: 'direct_api',
-      actorReference: null,
+      source: provenance ? 'whatsapp' : 'direct_api',
+      actorReference: provenance?.senderReference ?? null,
       oldData: transactionSnapshot(before),
       newData: transactionSnapshot(result),
       correlationId,

@@ -2,7 +2,11 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
-import { CorrectTransaction, type FinancialTransactionContext } from '@finance-hub/core';
+import {
+  CorrectTransaction,
+  prepareCorrectionLocks,
+  type FinancialTransactionContext,
+} from '@finance-hub/core';
 import { KyselyFinancialTransactionPort } from '@finance-hub/database';
 import type { DB } from '../../../packages/database/src/db-types.js';
 import { t02Database } from './t02-fixtures.js';
@@ -20,6 +24,7 @@ const ids = {
   transfer: randomUUID(),
   voided: randomUUID(),
   reference: randomUUID(),
+  internal: randomUUID(),
 };
 const correction = () =>
   new CorrectTransaction(new KyselyFinancialTransactionPort(fixture.db), () => now);
@@ -132,9 +137,40 @@ beforeAll(async () => {
   await insert(ids.transfer, 'transfer', '20.00', { destination: ids.second });
   await insert(ids.voided, 'expense', '10.00', { status: 'voided' });
   await insert(ids.reference, 'expense', '10.00');
+  await insert(ids.internal, 'expense', '10.00');
 }, 180000);
 
 describe('M07-P01 correction in real PostgreSQL', () => {
+  it('reuses prepared configuration locks and persists trusted caller audit', async () => {
+    const port = new KyselyFinancialTransactionPort(fixture.db);
+    await port.runInTransaction(async (ctx) => {
+      const input = { version: 1, description: 'internal correction' };
+      const receipt = await prepareCorrectionLocks(ctx, ids.internal, input);
+      await new CorrectTransaction(port, () => now).executeInContext(
+        ids.internal,
+        input,
+        randomUUID(),
+        ctx,
+        { senderReference: 'validated-sender' },
+        receipt,
+      );
+    });
+    const persisted = await row(ids.internal);
+    expect(persisted).toMatchObject({
+      description: 'internal correction',
+      version: 2,
+      source: 'direct_api',
+      source_reference: null,
+      inbox_message_id: null,
+    });
+    const events = await auditCount(ids.internal);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      source: 'whatsapp',
+      actor_reference: 'validated-sender',
+      action: 'TRANSACTION_UPDATED',
+    });
+  });
   it('updates permitted fields, clears nullable fields, increments once and audits complete snapshots', async () => {
     const result = await correction().execute(
       ids.expense,

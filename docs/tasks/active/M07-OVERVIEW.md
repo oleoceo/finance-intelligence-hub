@@ -1,16 +1,18 @@
 # M07 — Correction / Void / Refund
 
-**Status:** ACTIVE — M07-P01–P03 DONE / integrated via PRs #44/#46/#48; M07-P04 implementation authorized 2026-10-30 for local/WSL/CI; review pending.
+**Status:** ACTIVE — M07-P01–P03 DONE / integrated via PRs #44/#46/#48; M07-P04 REVIEW REQUIRED in Draft PR #50.
 **Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
 **Blocks:** Gate B
 
 > **Activation accepted:** [review](M07-ACTIVATION-REVIEW.md), PR #42 squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, independent REVIEW PASS head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, CI #40963187248 SUCCESS.
-> M07-P01–P03 DONE after independent REVIEW PASS and authorized merges (#44, #46, #48); P03 squash `3466d5bedf4f6d49b7b609764f98af9cf1e2f2c1`. P04 implementation authorized 2026-10-30 for local/WSL/CI; review pending, P05–P06 gated. No VPS/Production authorization.
+> M07-P01–P03 DONE after independent REVIEW PASS and authorized merges (#44, #46, #48); P03 squash `3466d5bedf4f6d49b7b609764f98af9cf1e2f2c1`. P04 is REVIEW REQUIRED in Draft PR #50, P05–P06 gated. No VPS/Production authorization.
 
 P04 local evidence: [race matrix and exact tests](M07-P04.md) cover 22 PostgreSQL
 cases with distinct backend PIDs and observed lock waits. Native WSL validation:
 1,059 unit, 501 PostgreSQL integration, 124 M06 native transport and 25 M06
-simulated acceptance tests PASS. Draft PR CI and independent review remain pending.
+simulated acceptance tests PASS. PR #50 implementation head `8330d8962d32cc7ea222d1143b11f9fc13bd1889`
+passed exact-head CI #41053262529; final documentary-head CI and independent
+review remain pending.
 
 ---
 

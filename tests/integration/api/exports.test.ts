@@ -241,11 +241,15 @@ describe('M08-P04 PostgreSQL CSV export', () => {
   it('releases the snapshot connection when a later page fails', async () => {
     const reader = new KyselyTransactionReadRepository(fixture.db);
     let pages = 0;
-    await expect(reader.exportSnapshot(
-      { bookId: book, limit: 256 },
-      async () => {},
-      async () => { if (++pages === 2) throw new Error('stream read failed'); },
-    )).rejects.toThrow('stream read failed');
+    await expect(
+      reader.exportSnapshot(
+        { bookId: book, limit: 256 },
+        async () => {},
+        async () => {
+          if (++pages === 2) throw new Error('stream read failed');
+        },
+      ),
+    ).rejects.toThrow('stream read failed');
     expect(pages).toBe(2);
     const result = await fixture.db
       .selectFrom('transactions')

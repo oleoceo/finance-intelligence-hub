@@ -4,7 +4,7 @@
 **Dependencies:** [Gate B PASS (local/CI)](../completed/GATE-B.md); Gate B closure main@539a210342b8d9235eca176f5070e68ad5b5d786, CI #187 SUCCESS. [M08 Activation Review](M08-ACTIVATION-REVIEW.md) defines execution contracts.
 **Blocks:** M09 activation
 
-> **Execution gating:** This overview is ACTIVE only after its Activation Review documentary PR is independently reviewed, green on exact head and merged. Execute one selected active task at a time (P01 first); do not infer VPS/Production permission. See linked contracts below.
+> **Execution gating:** Execute one selected active task at a time. P01 is DONE; P02 is selected. Do not infer VPS/Production permission. See linked contracts below.
 
 ---
 

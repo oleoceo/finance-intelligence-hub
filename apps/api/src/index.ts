@@ -13,6 +13,7 @@ import { registerClassificationRules } from './routes/admin/classification-rules
 import { registerAuthorizedSenders } from './routes/admin/authorized-senders.js';
 import {
   GenericCreateTransaction,
+  CorrectTransaction,
   normalizeName,
   type FinancialTransactionPort,
   type HumanRefGenerator,
@@ -46,6 +47,7 @@ export interface AppOptions extends Credentials {
   financialTransactions?: FinancialTransactionPort;
   transactionReads?: TransactionReadPort;
   genericCreate?: TransactionRouteOptions['genericCreate'];
+  correction?: TransactionRouteOptions['correction'];
   inboxTransactions?: InboxTransactionPort;
   inboxProcessing?: InboxProcessingPort;
   humanRefGenerator?: HumanRefGenerator;
@@ -142,6 +144,13 @@ function buildApp(options: AppOptions = {}) {
         now: options.now ?? (() => new Date()),
       },
     );
+  const correction =
+    options.correction ??
+    new CorrectTransaction(
+      options.financialTransactions ??
+        store?.financialTransactions ?? { runInTransaction: unavailable },
+      options.now ?? (() => new Date()),
+    );
 
   // Add correlation ID extraction hook
   app.addHook('onRequest', (request, _reply, done) => {
@@ -216,7 +225,7 @@ function buildApp(options: AppOptions = {}) {
     registerMerchants(admin, configuration);
     registerClassificationRules(admin, configuration);
     registerAuthorizedSenders(admin, configuration);
-    registerTransactions(admin, { genericCreate, transactionReads });
+    registerTransactions(admin, { genericCreate, correction, transactionReads });
   });
 
   app.register(async (ingest) => {

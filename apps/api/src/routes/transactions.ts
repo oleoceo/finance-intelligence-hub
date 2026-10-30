@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
   ConcurrencyError,
+  type CorrectTransaction,
   getLastTransaction,
   getTransaction,
   listTransactions,
@@ -14,6 +15,7 @@ import { ApiError } from '../middleware/errors.js';
 import { meta } from './admin/shared.js';
 import {
   createTransactionSchema,
+  correctTransactionSchema,
   lastTransactionQuerySchema,
   listTransactionQuerySchema,
   transactionPathSchema,
@@ -21,6 +23,7 @@ import {
 
 export interface TransactionRouteOptions {
   genericCreate: Pick<GenericCreateTransaction, 'execute'>;
+  correction: Pick<CorrectTransaction, 'execute'>;
   transactionReads: TransactionReadPort;
 }
 
@@ -85,6 +88,28 @@ function mapCreate(body: {
 
 export function registerTransactions(instance: FastifyInstance, options: TransactionRouteOptions) {
   const app = instance.withTypeProvider<TypeBoxTypeProvider>();
+  app.patch(
+    '/api/v1/transactions/:id',
+    { schema: { params: transactionPathSchema, body: correctTransactionSchema } },
+    async (request) => {
+      const body = request.body;
+      const record = await options.correction.execute(
+        request.params.id,
+        {
+          version: body.version,
+          ...('amount' in body ? { amount: body.amount } : {}),
+          ...('account_id' in body ? { accountId: body.account_id } : {}),
+          ...('category_id' in body ? { categoryId: body.category_id } : {}),
+          ...('merchant_id' in body ? { merchantId: body.merchant_id } : {}),
+          ...('description' in body ? { description: body.description } : {}),
+          ...('notes' in body ? { notes: body.notes } : {}),
+          ...('transaction_date' in body ? { transactionDate: body.transaction_date } : {}),
+        },
+        meta(request).correlation_id,
+      );
+      return { data: serializeTransaction(record), meta: meta(request) };
+    },
+  );
   app.post(
     '/api/v1/transactions',
     { schema: { body: createTransactionSchema } },

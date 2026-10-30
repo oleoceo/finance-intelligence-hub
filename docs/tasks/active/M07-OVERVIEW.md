@@ -1,6 +1,6 @@
 # M07 — Correction / Void / Refund
 
-**Status:** ACTIVE — Activation Review ACCEPTED 2026-10-29; M07-P01 authorized for local/CI implementation (not yet DONE).
+**Status:** ACTIVE — Activation Review ACCEPTED 2026-10-29; M07-P01 implementation is REVIEW REQUIRED, awaiting independent PR/CI review and human acceptance.
 **Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
 **Blocks:** Gate B
 
@@ -116,7 +116,7 @@ From M05:
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
-| **M07-P01** | Correction + optimistic locking | PATCH endpoint/use case, version validation, mutable field enforcement, immutable field rejection, stale version error |
+| **M07-P01** | REVIEW REQUIRED — Correction + optimistic locking | PATCH endpoint/use case, version validation, mutable field enforcement, immutable field rejection, stale version error |
 | **M07-P02** | Void + idempotency + audit | Void endpoint/use case, Idempotency-Key requirement, posted→voided transition, audit preservation, idempotent replay |
 | **M07-P03** | Refund creation and invariants | Refund endpoint, linked-income representation, amount/date/Book/currency validation, refund-of-refund rejection, dedicated endpoint enforcement |
 | **M07-P04** | Refund concurrency / original Expense locking | PostgreSQL FOR UPDATE or equivalent on original Expense, concurrent over-refund prevention, Expense-with-refunds void blocking, correction amount floor enforcement, correction date ceiling enforcement |

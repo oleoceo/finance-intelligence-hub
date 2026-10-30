@@ -598,3 +598,68 @@ describe('M04-T08 API with production Database store and PostgreSQL', () => {
     }
   });
 });
+
+describe('M07-P01 PATCH API with PostgreSQL', () => {
+  it('requires admin, rejects malformed fields, and returns versioned data/meta', async () => {
+    const independent = await seedBook();
+    const created = await post({
+      ...createBody(),
+      book_id: independent.book,
+      account_id: independent.account,
+      category_id: null,
+      merchant_id: null,
+    });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().data.id as string;
+    const patch = (payload: Record<string, unknown>, headers: Record<string, string> = admin) =>
+      app.inject({ method: 'PATCH', url: `/api/v1/transactions/${id}`, headers, payload });
+    for (const [headers, status, code] of [
+      [{}, 401, 'UNAUTHORIZED'],
+      [{ authorization: 'Bearer integration-ingest' }, 403, 'INSUFFICIENT_SCOPE'],
+    ] as const) {
+      const response = await patch({ version: 1, amount: '40' }, headers);
+      expect(response.statusCode).toBe(status);
+      expect(response.json().error.code).toBe(code);
+    }
+    for (const invalid of [
+      { version: 1 },
+      { version: 0, amount: '40' },
+      { version: 1, status: 'voided' },
+      { version: 1, destination_account_id: destinationId },
+      { version: 1, amount: '0' },
+      { version: 1, amount: '1.001' },
+      { version: 1, account_id: null },
+    ]) {
+      const response = await patch(invalid);
+      expect(response.statusCode, JSON.stringify(invalid) + response.body).toBe(422);
+      expect(response.json().error.code).toBe('VALIDATION_ERROR');
+    }
+    const success = await patch({ version: 1, amount: '40.01', notes: null });
+    expect(success.statusCode).toBe(200);
+    expect(success.json().data).toMatchObject({ id, amount: '40.01', version: 2 });
+    expect(success.json().meta.request_id).toBeTypeOf('string');
+    const crossBook = await patch({ version: 2, account_id: otherAccountId });
+    expect(crossBook.statusCode).toBe(422);
+    expect(crossBook.json().error.code).toBe('VALIDATION_ERROR');
+    const future = await patch({ version: 2, transaction_date: '2026-10-22' });
+    expect(future.statusCode).toBe(422);
+    expect(future.json().error.code).toBe('TRANSACTION_DATE_IN_FUTURE');
+    const stale = await patch({ version: 1, amount: '50' });
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error.code).toBe('VERSION_CONFLICT');
+    const absent = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/transactions/${randomUUID()}`,
+      headers: admin,
+      payload: { version: 1, amount: '50' },
+    });
+    expect(absent.statusCode).toBe(404);
+    expect(absent.json().error.code).toBe('TRANSACTION_NOT_FOUND');
+    const persisted = await fixture.db
+      .selectFrom('transactions')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    expect(persisted).toMatchObject({ amount: '40.01', status: 'posted', version: 2 });
+  });
+});

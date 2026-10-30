@@ -8,7 +8,7 @@
  * Source and actor are derived from the trusted direct or Inbox context.
  */
 
-export const AUDIT_ACTIONS = ['TRANSACTION_CREATED'] as const;
+export const AUDIT_ACTIONS = ['TRANSACTION_CREATED', 'TRANSACTION_UPDATED'] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 export const AUDIT_ENTITY_TYPES = ['transaction'] as const;
@@ -31,7 +31,7 @@ export interface WriteAuditEventInput {
   /** Actor reference. Null for server-controlled direct API operations. Never raw credentials. */
   actorReference: string | null;
   /** Previous state snapshot (serialized JSON). Null for creation events. */
-  oldData: null;
+  oldData: Record<string, unknown> | null;
   /** New state snapshot (serialized JSON). */
   newData: Record<string, unknown>;
   /** Correlation ID linking this audit event to the originating request. */

@@ -209,6 +209,9 @@ function createMockContext(
       create: vi.fn().mockResolvedValue(createResult),
       findById: vi.fn().mockResolvedValue(null),
       findByHumanRef: vi.fn().mockResolvedValue(null),
+      findByIdForUpdate: vi.fn().mockResolvedValue(null),
+      postedRefundLimits: vi.fn().mockResolvedValue({ total: '0', earliestDate: null }),
+      correct: vi.fn().mockResolvedValue(null),
     },
     idempotencyKeys: {
       create: vi.fn().mockRejectedValue(new Error('not implemented in T03')),

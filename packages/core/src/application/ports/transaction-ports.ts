@@ -128,6 +128,21 @@ export interface GetLastTransactionInput {
   bookId: string;
 }
 
+export interface CorrectionFields {
+  amount?: string;
+  accountId?: string;
+  categoryId?: string | null;
+  merchantId?: string | null;
+  description?: string;
+  notes?: string | null;
+  transactionDate?: string;
+}
+
+export interface PostedRefundLimits {
+  total: string;
+  earliestDate: string | null;
+}
+
 /**
  * Minimal Transaction repository contract for M04.
  * Database adapter implements this; Core consumes it.
@@ -149,6 +164,14 @@ export interface TransactionRepository {
   ): Promise<TransactionRecord | null>;
   findById(id: string): Promise<TransactionRecord | null>;
   findByHumanRef(humanRef: string): Promise<TransactionRecord | null>;
+  findByIdForUpdate(id: string): Promise<TransactionRecord | null>;
+  postedRefundLimits(originalId: string): Promise<PostedRefundLimits>;
+  correct(
+    id: string,
+    expectedVersion: number,
+    fields: Required<CorrectionFields>,
+    now: Date,
+  ): Promise<TransactionRecord | null>;
 }
 
 /**

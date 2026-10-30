@@ -90,6 +90,13 @@ export function interpretMessage(message: Pick<InboxMessage, 'rawText'>): Interp
       ? { kind: 'query_last', book: explicit('empresa', 'empresa') }
       : { kind: 'query_last' };
   }
+  const summary = /^resumo(?:\s+(pessoal|empresa))?$/iu.exec(
+    text.normalize('NFD').replace(/[\u0300-\u036f]/gu, ''),
+  );
+  if (summary)
+    return summary[1]
+      ? { kind: 'query_summary', book: explicit(summary[1].toLocaleLowerCase('pt-BR'), summary[1]) }
+      : { kind: 'query_summary' };
   if (/\b(?:resumo|corrige|cancela|apaga|reembolso)\b/iu.test(text))
     return { kind: 'unknown', reason: 'unsupported' };
 

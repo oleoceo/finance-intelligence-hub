@@ -33,6 +33,7 @@ export type Interpretation =
       amount?: string;
     }
   | { kind: 'query_last'; book?: ExplicitValue<string> }
+  | { kind: 'query_summary'; book?: ExplicitValue<string> }
   | { kind: 'reply'; response: 'yes' | 'no' | '1' | '2' }
   | { kind: 'unknown'; reason: 'empty' | 'unsupported' | 'missing_amount' | 'invalid_amount' }
   | {
@@ -49,6 +50,7 @@ export type ResolutionResult =
       dateProvenance: 'explicit_input' | 'received_local_date';
     }
   | { kind: 'query_last'; bookId: string }
+  | { kind: 'query_summary'; bookId: string }
   | {
       kind: 'clarification';
       field:

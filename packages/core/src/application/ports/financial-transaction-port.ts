@@ -40,6 +40,7 @@ import type {
 } from './confirmation-ports.js';
 import type { TransactionReadPort } from './transaction-ports.js';
 import type { Interpretation } from './interpretation-ports.js';
+import type { SummaryReadPort } from './summary-ports.js';
 
 /**
  * Extended transaction context for M04 financial writes.
@@ -89,6 +90,7 @@ export interface InboxProcessingContext extends FinancialTransactionContext {
   inbox: InboxRepository;
   confirmations: ConfirmationSessionRepository;
   reads: TransactionReadPort;
+  summaries: SummaryReadPort;
   interpretations: {
     create(input: {
       id: string;

@@ -414,6 +414,72 @@ describe('P05 Inbox API with PostgreSQL', () => {
     expect(await count('idempotency_keys')).toBe(before.keys);
   });
 
+  it('returns the exact direct API Summary per resolved Book without financial or audit writes', async () => {
+    const before = {
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+      keys: await count('idempotency_keys'),
+    };
+    for (const [command, expectedBook] of [
+      ['resumo', bookId],
+      ['resumo empresa', bookId],
+      ['resumo pessoal', secondBookId],
+    ] as const) {
+      const message = body(command);
+      const response = await post(message);
+      expect(response.statusCode, response.body).toBe(200);
+      const { result, reply, inbox_message } = response.json().data;
+      expect(inbox_message.status).toBe('processed');
+      expect(result.type).toBe('query_summary');
+      expect(result.summary.book_id).toBe(expectedBook);
+      const direct = await app.inject({
+        method: 'GET',
+        url: `/api/v1/reports/summary?book_id=${expectedBook}`,
+        headers: { authorization: 'Bearer integration-admin' },
+      });
+      expect(direct.statusCode, direct.body).toBe(200);
+      for (const key of ['ordinary_income', 'gross_expenses', 'refunds', 'net_expenses', 'net'])
+        expect(result.summary[key]).toBe(direct.json().data[key]);
+      expect(reply.should_send).toBe(true);
+      expect(reply.contract.max_code_points).toBe(500);
+      expect([...reply.text].length).toBeLessThanOrEqual(500);
+      expect(reply.text).toContain(command.endsWith('pessoal') ? 'Pessoal' : 'Empresa');
+      const replay = await post(message);
+      expect(replay.statusCode).toBe(200);
+      expect(replay.json().data).toEqual({
+        result: { type: 'duplicate_message' },
+        reply: { should_send: false },
+      });
+    }
+    expect(await count('transactions')).toBe(before.transactions);
+    expect(await count('audit_events')).toBe(before.audits);
+    expect(await count('idempotency_keys')).toBe(before.keys);
+  });
+
+  it('does not persist Summary from an unauthorized sender, group or outbound message', async () => {
+    const before = {
+      inbox: await count('inbox_messages'),
+      transactions: await count('transactions'),
+      audits: await count('audit_events'),
+    };
+    const unauthorized = await post({ ...body('resumo'), sender_reference: '5511999999999' });
+    expect(unauthorized.statusCode).toBe(403);
+    for (const context of [
+      { is_group: true, from_me: false },
+      { is_group: false, from_me: true },
+    ]) {
+      const ignored = await post(body('resumo', randomUUID(), context));
+      expect(ignored.statusCode).toBe(200);
+      expect(ignored.json().data).toEqual({
+        result: { type: 'ignored' },
+        reply: { should_send: false },
+      });
+    }
+    expect(await count('inbox_messages')).toBe(before.inbox);
+    expect(await count('transactions')).toBe(before.transactions);
+    expect(await count('audit_events')).toBe(before.audits);
+  });
+
   it('opens a clarification and cancels it with a contextual reply', async () => {
     const initial = await post(body('gastei 12', randomUUID()));
     expect(initial.statusCode, initial.body).toBe(200);
@@ -1008,7 +1074,11 @@ describe('P05 Inbox API with PostgreSQL', () => {
     const originalId = original.json().data.inbox_message.id as string;
     const sessionId = original.json().data.result.confirmation.id as string;
     const before = await count('transactions');
-    for (const text of ['oi', 'resumo', 'gastei', 'gastei 13']) {
+    const summary = await post(body('resumo'));
+    expect(summary.statusCode, summary.body).toBe(200);
+    expect(summary.json().data.result.type).toBe('query_summary');
+    expect(summary.json().data.inbox_message.status).toBe('processed');
+    for (const text of ['oi', 'gastei', 'gastei 13']) {
       const result = await post(body(text));
       expect(result.statusCode, result.body).toBe(200);
       expect(result.json().data.result.type).toBe('confirmation_required');

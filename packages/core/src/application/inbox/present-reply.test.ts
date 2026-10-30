@@ -39,6 +39,30 @@ const confirmation = (
 const expiryLine = '\nConfirmação expira em 28/10/2026 às 12:15:00 UTC.';
 
 describe('Finance-owned reply presenter', () => {
+  it('formats all Summary figures, including signed net, and hides the Book ID', () => {
+    const reply = presentInboxReply({
+      type: 'query_summary',
+      inboxMessageId: 'private-inbox',
+      status: 'processed',
+      bookName: 'Pessoal',
+      summary: {
+        bookId: 'private-book',
+        currency: 'BRL',
+        dateFrom: '2026-10-01',
+        dateTo: '2026-10-31',
+        ordinaryIncome: '1234.56',
+        grossExpenses: '2000.00',
+        refunds: '100.25',
+        netExpenses: '1899.75',
+        net: '-665.19',
+      },
+    });
+    expect(reply).toBe(
+      'Resumo Pessoal (01/10/2026 a 31/10/2026)\nReceitas ordinárias: R$ 1.234,56\nDespesas brutas: R$ 2.000,00\nEstornos: R$ 100,25\nDespesas líquidas: R$ 1.899,75\nResultado líquido: -R$ 665,19',
+    );
+    expect([...reply!].length).toBeLessThanOrEqual(REPLY_TEXT_LIMIT);
+    expect(reply).not.toContain('private-');
+  });
   it('formats persisted success values and actual currency without floating point', () => {
     expect(presentInboxReply(created())).toBe(
       '✅ Gasto registrado! R$ 1.234,56 — Almoço.\nRef: ABC123',

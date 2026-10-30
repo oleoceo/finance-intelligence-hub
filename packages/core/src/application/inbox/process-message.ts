@@ -11,6 +11,7 @@ import type {
   ResolutionResult,
 } from '../ports/interpretation-ports.js';
 import type { TransactionReadRecord, TransactionRecord } from '../ports/transaction-ports.js';
+import { getFinancialSummary } from '../finance/get-financial-summary.js';
 import {
   claimInboxMessage,
   SenderNotAuthorizedError,
@@ -50,6 +51,13 @@ export type InboxProcessingResult = (
       inboxMessageId: string;
       status: 'processed';
       transaction: TransactionReadRecord | null;
+    }
+  | {
+      type: 'query_summary';
+      inboxMessageId: string;
+      status: 'processed';
+      bookName: string;
+      summary: Awaited<ReturnType<typeof getFinancialSummary>>;
     }
   | {
       type: 'transaction_mutated';
@@ -142,7 +150,10 @@ function selectedInterpretation(
   option: ChoiceOption,
 ): Interpretation | null {
   const value = { value: option.id, raw: option.name, provenance: 'explicit_input' as const };
-  if (field === 'book' && interpretation.kind === 'query_last')
+  if (
+    field === 'book' &&
+    (interpretation.kind === 'query_last' || interpretation.kind === 'query_summary')
+  )
     return { ...interpretation, book: value };
   if (interpretation.kind !== 'create_transaction') return null;
   if (field !== 'book' && field !== 'account') return null;
@@ -289,7 +300,11 @@ async function processInboxMessageInternal(
 
       // P03 discovers, locks and re-reads the complete M03 configuration set.
       // A reply resolves the original candidate before P04 locks Inbox rows.
-      if (parsed.kind === 'create_transaction' || parsed.kind === 'query_last')
+      if (
+        parsed.kind === 'create_transaction' ||
+        parsed.kind === 'query_last' ||
+        parsed.kind === 'query_summary'
+      )
         resolution = await resolveInContext(ctx, parsed, message, now);
       else if (
         parsed.kind === 'reply' &&
@@ -297,7 +312,8 @@ async function processInboxMessageInternal(
         original &&
         replyInterpretation &&
         (replyInterpretation.kind === 'create_transaction' ||
-          replyInterpretation.kind === 'query_last')
+          replyInterpretation.kind === 'query_last' ||
+          replyInterpretation.kind === 'query_summary')
       )
         resolution = await resolveInContext(ctx, replyInterpretation, original, now);
       else await ctx.locks.acquireLocks({ authorizedSenders: [message.authorizedSenderId] });
@@ -389,6 +405,29 @@ async function processInboxMessageInternal(
               inboxMessageId: message.id,
               status: 'processed',
               transaction,
+            };
+          }
+          if (selected && resolution?.kind === 'query_summary') {
+            const summary = await getFinancialSummary(
+              { bookId: resolution.bookId },
+              { books: ctx.books, summaries: ctx.summaries, now: () => now },
+            );
+            const book = await ctx.books.findById(resolution.bookId);
+            if (!book) throw new Error('Resolved Book missing');
+            await ctx.confirmations.finalizeConfirmed({
+              ...owner,
+              sessionId: reply.session.id,
+              resolverInboxMessageId: message.id,
+              attemptCount: token.attemptCount,
+              processingStartedAt: token.processingStartedAt,
+              now,
+            });
+            return {
+              type: 'query_summary',
+              inboxMessageId: message.id,
+              status: 'processed',
+              bookName: book.name,
+              summary,
             };
           }
           if (
@@ -505,6 +544,22 @@ async function processInboxMessageInternal(
         const transaction = await ctx.reads.getLast({ bookId: resolution.bookId });
         await finish(ctx, claim, 'processed', now);
         return { type: 'query_last', inboxMessageId: message.id, status: 'processed', transaction };
+      }
+      if (resolution?.kind === 'query_summary') {
+        const summary = await getFinancialSummary(
+          { bookId: resolution.bookId },
+          { books: ctx.books, summaries: ctx.summaries, now: () => now },
+        );
+        const book = await ctx.books.findById(resolution.bookId);
+        if (!book) throw new Error('Resolved Book missing');
+        await finish(ctx, claim, 'processed', now);
+        return {
+          type: 'query_summary',
+          inboxMessageId: message.id,
+          status: 'processed',
+          bookName: book.name,
+          summary,
+        };
       }
       if (preview) {
         await finish(ctx, claim, 'processed', now);

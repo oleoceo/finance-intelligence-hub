@@ -20,6 +20,7 @@ import {
   type FinancialTransactionPort,
   type HumanRefGenerator,
   type TransactionReadPort,
+  type AuditReadPort,
   type InboxTransactionPort,
   type InboxProcessingPort,
   type ProcessMessageDependencies,
@@ -48,6 +49,7 @@ export interface AppOptions extends Credentials {
   transactions?: ConfigurationOptions['transactions'];
   financialTransactions?: FinancialTransactionPort;
   transactionReads?: TransactionReadPort;
+  auditReads?: AuditReadPort;
   genericCreate?: TransactionRouteOptions['genericCreate'];
   correction?: TransactionRouteOptions['correction'];
   voidTransaction?: TransactionRouteOptions['voidTransaction'];
@@ -131,9 +133,12 @@ function buildApp(options: AppOptions = {}) {
   const transactionReads: TransactionReadPort = options.transactionReads ??
     store?.transactionReads ?? {
       findById: unavailable,
+      listRefunds: unavailable,
       list: unavailable,
       getLast: unavailable,
     };
+  const auditReads: AuditReadPort = options.auditReads ??
+    store?.auditReads ?? { listByTransactionId: unavailable };
   const genericCreate =
     options.genericCreate ??
     new GenericCreateTransaction(
@@ -250,6 +255,7 @@ function buildApp(options: AppOptions = {}) {
       voidTransaction,
       refund,
       transactionReads,
+      auditReads,
     });
   });
 

@@ -31,6 +31,18 @@ export class KyselyTransactionReadRepository implements TransactionReadPort {
     return mapToTransactionReadRecord(result);
   }
 
+  async listRefunds(originalId: string): Promise<TransactionReadRecord[]> {
+    const rows = await this.db
+      .selectFrom('transactions')
+      .selectAll()
+      .where('refund_of_transaction_id', '=', originalId)
+      .where('type', '=', 'income')
+      .orderBy('created_at', 'asc')
+      .orderBy('id', 'asc')
+      .execute();
+    return rows.map(mapToTransactionReadRecord);
+  }
+
   async list(input: ListTransactionsInput): Promise<ListTransactionsResult> {
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 50;

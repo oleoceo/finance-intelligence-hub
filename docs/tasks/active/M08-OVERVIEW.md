@@ -1,12 +1,10 @@
 # M08 — Reports / Export / Operations
 
-**Status:** PLANNED — M08 Activation Review eligible after Gate B PASS; implementation NOT AUTHORIZED.
-**Dependencies:** [Gate B PASS (local/CI)](../completed/GATE-B.md), baseline main@dc2c86314d6e66addbceb2ce85418e890a6bfbfe, CI #185 SUCCESS.
+**Status:** ACTIVE on merge of reviewed M08 Activation Review PR — P01 selected next, local/WSL/CI only. Before merger: REVIEW REQUIRED; feature implementation forbidden.
+**Dependencies:** [Gate B PASS (local/CI)](../completed/GATE-B.md); Gate B closure main@539a210342b8d9235eca176f5070e68ad5b5d786, CI #187 SUCCESS. [M08 Activation Review](M08-ACTIVATION-REVIEW.md) defines execution contracts.
 **Blocks:** M09 activation
 
-> **This document does NOT authorize implementation.**
-> Provisional task decomposition and scope are defined here. Execution-ready
-> contracts are finalized during Activation Review.
+> **Execution gating:** This overview is ACTIVE only after its Activation Review documentary PR is independently reviewed, green on exact head and merged. Execute one selected active task at a time (P01 first); do not infer VPS/Production permission. See linked contracts below.
 
 ---
 
@@ -83,20 +81,20 @@ From M07:
 - Refund semantics (refund_of_transaction_id distinction) required for Summary formula correctness
 - Void semantics (voided exclusion) required for Summary formula correctness
 
-**ACTIVATION REVIEW REQUIRED**: Exact Summary query port interface, CSV generation approach, and WhatsApp reply formatting must be verified against actual M06/M07 implementations.
+**Activation inventory recorded:** See [M08 Activation Review](M08-ACTIVATION-REVIEW.md) for exact M06/M07 interfaces, the missing Summary read port, CSV approach, Book timezone and reply boundaries. No new migration/dependency is planned.
 
 ---
 
-## 5. Provisional Task Decomposition
+## 5. Execution Task Decomposition (P01–P06 sequential)
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
-| **M08-P01** | Summary Core/query contracts | Summary calculation logic, period handling, Book timezone support, formula unit tests |
-| **M08-P02** | Summary API | `GET /api/v1/reports/summary`, required book_id, optional date_from/date_to, current-month Book-timezone default, aggregate decimal string response |
-| **M08-P03** | WhatsApp Summary integration | Command recognition in parser, Summary orchestration through ingest pipeline, reply formatting |
-| **M08-P04** | CSV export and injection hardening | CSV generation, injection mitigation, content-type headers, download endpoint |
-| **M08-P05** | Operational endpoint/logging verification | Health/readiness verification, structured log audit, secret redaction confirmation |
-| **M08-P06** | M08 milestone E2E verification | All Summary formulas verified, WhatsApp Summary E2E, CSV correctness, pagination default 50/max 100 verified only on existing paginated API surfaces, operational checks green |
+| [**M08-P01**](M08-P01.md) | Summary Core/query contracts | Summary calculation logic, period handling, Book timezone support, formula unit tests |
+| [**M08-P02**](M08-P02.md) | Summary API | `GET /api/v1/reports/summary`, required book_id, optional date_from/date_to, current-month Book-timezone default, aggregate decimal string response |
+| [**M08-P03**](M08-P03.md) | WhatsApp Summary integration | Command recognition in parser, Summary orchestration through ingest pipeline, reply formatting |
+| [**M08-P04**](M08-P04.md) | CSV export and injection hardening | CSV generation, injection mitigation, content-type headers, download endpoint |
+| [**M08-P05**](M08-P05.md) | Operational endpoint/logging verification | Health/readiness verification, structured log audit, secret redaction confirmation |
+| [**M08-P06**](M08-P06.md) | M08 milestone E2E verification | All Summary formulas verified, WhatsApp Summary E2E, CSV correctness, pagination default 50/max 100 verified only on existing paginated API surfaces, operational checks green |
 
 ---
 
@@ -137,7 +135,7 @@ From M07:
 
 ---
 
-## 8. Known Risks Deferred to Activation Review
+## 8. Previously Deferred Risks — Reviewed in Activation Review
 
 - Whether M06 ingest pipeline supports Summary command routing without modification
 - Exact M07 refund/void query interfaces needed for Summary filtering

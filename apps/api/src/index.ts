@@ -273,7 +273,7 @@ function buildApp(options: AppOptions = {}) {
       books: options.summaryBooks ?? store?.books ?? { findById: unavailable },
       summaries: options.summaryReads ?? store?.summaryReads ?? { getSummary: unavailable },
       transactionExports: options.transactionExports ??
-        store?.transactionReads ?? { exportPage: unavailable },
+        store?.transactionReads ?? { exportPage: unavailable, exportSnapshot: unavailable },
       now: options.now ?? (() => new Date()),
     });
   });

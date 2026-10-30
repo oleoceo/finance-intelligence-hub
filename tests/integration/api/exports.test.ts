@@ -2,6 +2,8 @@ import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { buildApp } from '../../../apps/api/src/index.js';
 import { t02Database } from '../repositories/t02-fixtures.js';
+import { KyselyTransactionReadRepository } from '../../../packages/database/src/repositories/transaction-read-repository.js';
+import type { TransactionReadRecord } from '@finance-hub/core';
 
 const fixture = t02Database();
 const instant = new Date('2024-03-01T02:30:00Z');
@@ -163,6 +165,193 @@ function decimal(amount: bigint): string {
 }
 
 describe('M08-P04 PostgreSQL CSV export', () => {
+  it('keeps correction and void states from one PostgreSQL snapshot across pages', async () => {
+    const targets = await fixture.db
+      .selectFrom('transactions')
+      .selectAll()
+      .where('book_id', '=', book)
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .execute();
+    const corrected = targets[260];
+    const voided = targets[261];
+    expect(corrected).toBeDefined();
+    expect(voided).toBeDefined();
+    const reached = Promise.withResolvers<void>();
+    const resume = Promise.withResolvers<void>();
+    const exported: TransactionReadRecord[] = [];
+    let pages = 0;
+    const reader = new KyselyTransactionReadRepository(fixture.db);
+    const snapshot = reader.exportSnapshot(
+      { bookId: book, dateTo: '2024-02-29', limit: 256 },
+      async () => {},
+      async (page) => {
+        pages++;
+        if (pages === 1) {
+          reached.resolve();
+          await resume.promise;
+        }
+        exported.push(...page);
+      },
+    );
+    try {
+      await reached.promise;
+      await fixture.db
+        .updateTable('transactions')
+        .set({ amount: '9.99', transaction_date: '2024-03-02' })
+        .where('id', '=', corrected.id)
+        .execute();
+      await fixture.db
+        .updateTable('transactions')
+        .set({ status: 'voided', voided_at: instant, void_reason: 'review test' })
+        .where('id', '=', voided.id)
+        .execute();
+      resume.resolve();
+      await snapshot;
+      expect(pages).toBe(2);
+      expect(exported).toHaveLength(275);
+      expect(new Set(exported.map((row) => row.id)).size).toBe(275);
+      expect(exported.find((row) => row.id === corrected.id)?.amount).toBe(
+        String(corrected.amount),
+      );
+      expect(exported.find((row) => row.id === corrected.id)?.transactionDate).toBe('2024-02-15');
+      expect(exported.find((row) => row.id === voided.id)?.status).toBe('posted');
+      const total = exported
+        .filter((row) => row.status === 'posted' && row.type === 'income')
+        .reduce((sum, row) => sum + minorUnits(row.amount), 0n);
+      expect(decimal(total)).toBe('302.70');
+    } finally {
+      resume.resolve();
+      await fixture.db
+        .updateTable('transactions')
+        .set({ amount: corrected.amount, transaction_date: corrected.transaction_date })
+        .where('id', '=', corrected.id)
+        .execute();
+      await fixture.db
+        .updateTable('transactions')
+        .set({
+          status: voided.status,
+          voided_at: voided.voided_at,
+          void_reason: voided.void_reason,
+        })
+        .where('id', '=', voided.id)
+        .execute();
+    }
+  });
+  it('releases the snapshot connection when a later page fails', async () => {
+    const reader = new KyselyTransactionReadRepository(fixture.db);
+    let pages = 0;
+    await expect(reader.exportSnapshot(
+      { bookId: book, limit: 256 },
+      async () => {},
+      async () => { if (++pages === 2) throw new Error('stream read failed'); },
+    )).rejects.toThrow('stream read failed');
+    expect(pages).toBe(2);
+    const result = await fixture.db
+      .selectFrom('transactions')
+      .select((eb) => eb.fn.countAll().as('n'))
+      .where('book_id', '=', book)
+      .executeTakeFirstOrThrow();
+    expect(Number(result.n)).toBe(276);
+  });
+  it('fails the HTTP stream after headers when a later PostgreSQL page fails', async () => {
+    const reader = new KyselyTransactionReadRepository(fixture.db);
+    const previous = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = fixture.connectionString;
+    let failing: ReturnType<typeof buildApp>;
+    try {
+      failing = buildApp({
+        adminToken: 'export-admin',
+        ingestToken: 'export-ingest',
+        now: () => instant,
+        transactionExports: {
+          exportPage: (input) => reader.exportPage(input),
+          exportSnapshot: (input, first, page) =>
+            reader.exportSnapshot(input, first, async (rows) => {
+              await page(rows);
+              if (rows.length === 256) throw new Error('simulated PostgreSQL page failure');
+            }),
+        },
+      });
+    } finally {
+      if (previous === undefined) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = previous;
+    }
+    try {
+      await expect(
+        failing.inject({
+          method: 'GET',
+          url: `/api/v1/exports/transactions.csv?book_id=${book}`,
+          headers: admin,
+        }),
+      ).rejects.toThrow();
+      expect(
+        Number(
+          (
+            await fixture.db
+              .selectFrom('transactions')
+              .select((eb) => eb.fn.countAll().as('n'))
+              .where('book_id', '=', book)
+              .executeTakeFirstOrThrow()
+          ).n,
+        ),
+      ).toBe(276);
+    } finally {
+      await failing.close();
+    }
+  });
+  it('closes the PostgreSQL snapshot when the HTTP client disconnects', async () => {
+    const reader = new KyselyTransactionReadRepository(fixture.db);
+    const settled = Promise.withResolvers<void>();
+    const previous = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = fixture.connectionString;
+    let interrupted: ReturnType<typeof buildApp>;
+    try {
+      interrupted = buildApp({
+        adminToken: 'export-admin',
+        ingestToken: 'export-ingest',
+        now: () => instant,
+        transactionExports: {
+          exportPage: (input) => reader.exportPage(input),
+          exportSnapshot: async (input, first, page) => {
+            try {
+              await reader.exportSnapshot(input, first, page);
+            } finally {
+              settled.resolve();
+            }
+          },
+        },
+      });
+    } finally {
+      if (previous === undefined) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = previous;
+    }
+    try {
+      const address = await interrupted.listen({ host: '127.0.0.1', port: 0 });
+      const abort = new AbortController();
+      const response = await fetch(`${address}/api/v1/exports/transactions.csv?book_id=${book}`, {
+        headers: admin,
+        signal: abort.signal,
+      });
+      expect(response.status).toBe(200);
+      abort.abort();
+      await expect(response.text()).rejects.toThrow();
+      await settled.promise;
+      expect(
+        Number(
+          (
+            await fixture.db
+              .selectFrom('transactions')
+              .select((eb) => eb.fn.countAll().as('n'))
+              .where('book_id', '=', book)
+              .executeTakeFirstOrThrow()
+          ).n,
+        ),
+      ).toBe(276);
+    } finally {
+      await interrupted.close();
+    }
+  });
   it('exports complete stable pages and reconciles posted rows with Summary', async () => {
     const before = await fixture.db
       .selectFrom('audit_events')

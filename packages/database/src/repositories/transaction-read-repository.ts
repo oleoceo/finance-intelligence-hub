@@ -195,6 +195,31 @@ export class KyselyTransactionReadRepository
       await query.orderBy('created_at', 'desc').orderBy('id', 'desc').limit(input.limit).execute()
     ).map(mapToTransactionReadRecord);
   }
+
+  async exportSnapshot(
+    input: { bookId: string; dateFrom?: string; dateTo?: string; limit: number },
+    onFirstPage: (page: TransactionReadRecord[]) => Promise<void>,
+    onPage: (page: TransactionReadRecord[]) => Promise<void>,
+  ): Promise<void> {
+    await this.db
+      .transaction()
+      .setIsolationLevel('repeatable read')
+      .execute(async (tx) => {
+        await sql`SET TRANSACTION READ ONLY`.execute(tx);
+        const reader = new KyselyTransactionReadRepository(tx);
+        let page = await reader.exportPage(input);
+        await onFirstPage(page);
+        while (page.length > 0) {
+          await onPage(page);
+          if (page.length < input.limit) break;
+          const last = page[page.length - 1];
+          page = await reader.exportPage({
+            ...input,
+            before: { createdAt: last.createdAt, id: last.id },
+          });
+        }
+      });
+  }
 }
 
 function mapToTransactionReadRecord(row: DB['transactions']): TransactionReadRecord {

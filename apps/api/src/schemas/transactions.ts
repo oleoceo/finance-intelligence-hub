@@ -67,3 +67,11 @@ export const voidTransactionSchema = strict({
   version: Type.Integer({ minimum: 1 }),
   reason: Type.String({ minLength: 1, pattern: '\\S' }),
 });
+export const refundTransactionSchema = strict({
+  version: Type.Integer({ minimum: 1 }),
+  amount: money,
+  account_id: uuid,
+  transaction_date: date,
+  description: Type.String(),
+  notes: optionalNullableText,
+});

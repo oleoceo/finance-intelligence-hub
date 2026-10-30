@@ -211,6 +211,7 @@ function createMockContext(
       findByHumanRef: vi.fn().mockResolvedValue(null),
       findByIdForUpdate: vi.fn().mockResolvedValue(null),
       postedRefundLimits: vi.fn().mockResolvedValue({ total: '0', earliestDate: null }),
+      createRefund: vi.fn(),
       correct: vi.fn().mockResolvedValue(null),
       void: vi.fn().mockResolvedValue(null),
     },

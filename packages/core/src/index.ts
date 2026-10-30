@@ -210,6 +210,7 @@ export {
   type TransactionReadPort,
   type CorrectionFields,
   type PostedRefundLimits,
+  type PersistRefundInput,
 } from './application/ports/transaction-ports.js';
 
 export {
@@ -302,6 +303,13 @@ export {
   fingerprintTransactionVoid,
   type VoidTransactionInput,
 } from './application/finance/void-transaction.js';
+export {
+  CreateRefund,
+  prepareRefundLocks,
+  validateRefundInput,
+  fingerprintTransactionRefund,
+  type CreateRefundInput,
+} from './application/finance/create-refund.js';
 export type {
   InboxStatus,
   InboxIdentity,

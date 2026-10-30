@@ -34,7 +34,10 @@ export class FinancialError extends Error {
       | 'VERSION_CONFLICT'
       | 'REFUND_IMMUTABLE'
       | 'TRANSACTION_ALREADY_VOIDED'
-      | 'TRANSACTION_HAS_POSTED_REFUNDS',
+      | 'TRANSACTION_HAS_POSTED_REFUNDS'
+      | 'REFUND_INVALID_TARGET'
+      | 'REFUND_AMOUNT_EXCEEDED'
+      | 'REFUND_DATE_INVALID',
   ) {
     super(message);
     this.name = 'FinancialError';

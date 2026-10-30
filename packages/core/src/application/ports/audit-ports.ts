@@ -12,6 +12,7 @@ export const AUDIT_ACTIONS = [
   'TRANSACTION_CREATED',
   'TRANSACTION_UPDATED',
   'TRANSACTION_VOIDED',
+  'TRANSACTION_REFUND_CREATED',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

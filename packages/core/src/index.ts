@@ -245,6 +245,8 @@ export {
   type AuditSource,
   type WriteAuditEventInput,
   type AuditWriter,
+  type AuditReadRecord,
+  type AuditReadPort,
 } from './application/ports/audit-ports.js';
 
 export {
@@ -275,6 +277,9 @@ export {
   getTransaction,
   type GetTransactionDependencies,
 } from './application/finance/get-transaction.js';
+
+export { getTransactionRefunds } from './application/finance/get-transaction-refunds.js';
+export { getTransactionAudit } from './application/finance/get-transaction-audit.js';
 
 export {
   listTransactions,

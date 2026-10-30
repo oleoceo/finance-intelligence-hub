@@ -1,5 +1,5 @@
 import { Type } from '@fastify/type-provider-typebox';
-import { nullable, strict, uuid } from './configuration.js';
+import { envelope, nullable, strict, uuid } from './configuration.js';
 
 const money = Type.String({ pattern: '^[0-9]+(?:\\.[0-9]+)?$' });
 const date = Type.String({ format: 'date', pattern: '^\\d{4}-\\d{2}-\\d{2}$' });
@@ -53,6 +53,50 @@ export const listTransactionQuerySchema = strict({
 });
 export const lastTransactionQuerySchema = strict({ book_id: uuid });
 export const transactionPathSchema = strict({ id: uuid });
+export const emptyTransactionQuerySchema = strict({});
+export const transactionResponseSchema = strict({
+  id: uuid,
+  human_ref: Type.String(),
+  book_id: uuid,
+  type: Type.Union([Type.Literal('expense'), Type.Literal('income'), Type.Literal('transfer')]),
+  status: Type.Union([Type.Literal('posted'), Type.Literal('voided')]),
+  amount: money,
+  currency: Type.String(),
+  account_id: uuid,
+  destination_account_id: nullable(uuid),
+  category_id: nullable(uuid),
+  merchant_id: nullable(uuid),
+  description: Type.String(),
+  transaction_date: date,
+  source: Type.String(),
+  source_reference: nullable(Type.String()),
+  refund_of_transaction_id: nullable(uuid),
+  is_refund: Type.Boolean(),
+  version: Type.Integer(),
+  created_at: Type.String({ format: 'date-time' }),
+  updated_at: Type.String({ format: 'date-time' }),
+  voided_at: nullable(Type.String({ format: 'date-time' })),
+});
+export const refundsResponseSchema = envelope(
+  strict({ items: Type.Array(transactionResponseSchema) }),
+);
+export const auditResponseSchema = envelope(
+  strict({
+    items: Type.Array(
+      strict({
+        id: uuid,
+        entity_id: uuid,
+        action: Type.String(),
+        source: Type.String(),
+        actor_reference: nullable(Type.String()),
+        old_data: nullable(Type.Record(Type.String(), Type.Unknown())),
+        new_data: Type.Record(Type.String(), Type.Unknown()),
+        correlation_id: Type.String(),
+        created_at: Type.String({ format: 'date-time' }),
+      }),
+    ),
+  }),
+);
 export const correctTransactionSchema = strict({
   version: Type.Integer({ minimum: 1 }),
   amount: Type.Optional(money),

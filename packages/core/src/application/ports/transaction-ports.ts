@@ -203,6 +203,7 @@ export interface TransactionRepository {
  */
 export interface TransactionReadPort {
   findById(id: string): Promise<TransactionReadRecord | null>;
+  listRefunds(originalId: string): Promise<TransactionReadRecord[]>;
   list(input: ListTransactionsInput): Promise<ListTransactionsResult>;
   getLast(input: GetLastTransactionInput): Promise<TransactionReadRecord | null>;
 }

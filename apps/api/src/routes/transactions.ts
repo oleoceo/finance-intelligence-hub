@@ -7,10 +7,13 @@ import {
   type CreateRefund,
   getLastTransaction,
   getTransaction,
+  getTransactionRefunds,
+  getTransactionAudit,
   listTransactions,
   type CreateTransactionInput,
   type GenericCreateTransaction,
   type TransactionReadPort,
+  type AuditReadPort,
   type TransactionRecord,
 } from '@finance-hub/core';
 import { ApiError } from '../middleware/errors.js';
@@ -23,6 +26,9 @@ import {
   lastTransactionQuerySchema,
   listTransactionQuerySchema,
   transactionPathSchema,
+  emptyTransactionQuerySchema,
+  refundsResponseSchema,
+  auditResponseSchema,
 } from '../schemas/transactions.js';
 
 export interface TransactionRouteOptions {
@@ -31,6 +37,7 @@ export interface TransactionRouteOptions {
   voidTransaction: Pick<VoidTransaction, 'execute'>;
   refund: Pick<CreateRefund, 'execute'>;
   transactionReads: TransactionReadPort;
+  auditReads: AuditReadPort;
 }
 
 export function serializeTransaction(record: TransactionRecord) {
@@ -94,6 +101,55 @@ function mapCreate(body: {
 
 export function registerTransactions(instance: FastifyInstance, options: TransactionRouteOptions) {
   const app = instance.withTypeProvider<TypeBoxTypeProvider>();
+  app.get(
+    '/api/v1/transactions/:id/refunds',
+    {
+      schema: {
+        params: transactionPathSchema,
+        querystring: emptyTransactionQuerySchema,
+        response: { 200: refundsResponseSchema },
+      },
+    },
+    async (request) => {
+      const refunds = await getTransactionRefunds(request.params.id, options.transactionReads);
+      if (!refunds) throw new ApiError(404, 'TRANSACTION_NOT_FOUND');
+      return { data: { items: refunds.map(serializeTransaction) }, meta: meta(request) };
+    },
+  );
+  app.get(
+    '/api/v1/transactions/:id/audit',
+    {
+      schema: {
+        params: transactionPathSchema,
+        querystring: emptyTransactionQuerySchema,
+        response: { 200: auditResponseSchema },
+      },
+    },
+    async (request) => {
+      const events = await getTransactionAudit(
+        request.params.id,
+        options.transactionReads,
+        options.auditReads,
+      );
+      if (!events) throw new ApiError(404, 'TRANSACTION_NOT_FOUND');
+      return {
+        data: {
+          items: events.map((event) => ({
+            id: event.id,
+            entity_id: event.entityId,
+            action: event.action,
+            source: event.source,
+            actor_reference: event.actorReference,
+            old_data: event.oldData,
+            new_data: event.newData,
+            correlation_id: event.correlationId,
+            created_at: event.createdAt.toISOString(),
+          })),
+        },
+        meta: meta(request),
+      };
+    },
+  );
   app.post(
     '/api/v1/transactions/:id/refunds',
     { schema: { params: transactionPathSchema, body: refundTransactionSchema } },

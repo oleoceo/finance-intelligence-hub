@@ -47,7 +47,7 @@ const app = buildApp({
   adminToken: 'unit-admin',
   ingestToken: 'unit-ingest',
   genericCreate: { execute },
-  transactionReads: { findById, list, getLast },
+  transactionReads: { findById, listRefunds: vi.fn(async () => []), list, getLast },
   transactions: {
     runInTransaction: vi.fn(async () => {
       throw new Error('configuration invoked');

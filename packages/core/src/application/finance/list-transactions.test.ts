@@ -5,6 +5,7 @@ import type { TransactionReadPort, ListTransactionsInput } from '../ports/transa
 describe('ListTransactions', () => {
   const mockReadPort: TransactionReadPort = {
     findById: vi.fn(),
+    listRefunds: vi.fn(),
     list: vi.fn(),
     getLast: vi.fn(),
   };

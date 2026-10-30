@@ -54,3 +54,9 @@ export interface AuditWriter {
    */
   write(input: WriteAuditEventInput): Promise<void>;
 }
+
+export type AuditReadRecord = WriteAuditEventInput;
+
+export interface AuditReadPort {
+  listByTransactionId(transactionId: string): Promise<AuditReadRecord[]>;
+}

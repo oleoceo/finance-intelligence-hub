@@ -1,10 +1,10 @@
 # M08 — Reports / Export / Operations
 
-**Status:** ACTIVE on merge of reviewed M08 Activation Review PR — P01 selected next, local/WSL/CI only. Before merger: REVIEW REQUIRED; feature implementation forbidden.
+**Status:** ACTIVE — P01 DONE; P02 selected for local/WSL/CI implementation and review.
 **Dependencies:** [Gate B PASS (local/CI)](../completed/GATE-B.md); Gate B closure main@539a210342b8d9235eca176f5070e68ad5b5d786, CI #187 SUCCESS. [M08 Activation Review](M08-ACTIVATION-REVIEW.md) defines execution contracts.
 **Blocks:** M09 activation
 
-> **Execution gating:** This overview is ACTIVE only after its Activation Review documentary PR is independently reviewed, green on exact head and merged. Execute one selected active task at a time (P01 first); do not infer VPS/Production permission. See linked contracts below.
+> **Execution gating:** Execute one selected active task at a time. P01 is DONE; P02 is selected. Do not infer VPS/Production permission. See linked contracts below.
 
 ---
 
@@ -89,7 +89,7 @@ From M07:
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
-| [**M08-P01**](M08-P01.md) | Summary Core/query contracts | Summary calculation logic, period handling, Book timezone support, formula unit tests |
+| [**M08-P01**](../completed/M08-P01.md) | Summary Core/query contracts — DONE | Summary calculation logic, period handling, Book timezone support, formula unit tests |
 | [**M08-P02**](M08-P02.md) | Summary API | `GET /api/v1/reports/summary`, required book_id, optional date_from/date_to, current-month Book-timezone default, aggregate decimal string response |
 | [**M08-P03**](M08-P03.md) | WhatsApp Summary integration | Command recognition in parser, Summary orchestration through ingest pipeline, reply formatting |
 | [**M08-P04**](M08-P04.md) | CSV export and injection hardening | CSV generation, injection mitigation, content-type headers, download endpoint |

@@ -1,4 +1,6 @@
-**M08 activation candidate (2026-10-30):** GitHub `main@539a210342b8d9235eca176f5070e68ad5b5d786`, Gate B closure PR #56 MERGED and postmerge [CI #187](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41096817778) completed/SUCCESS at exactly this SHA. No open PRs at pre-activation inspection. Owner authorized documentary Activation Review and conditional operational merges. [M08 Activation Review](docs/tasks/active/M08-ACTIVATION-REVIEW.md) and six task contracts are promoted only upon independently reviewed, exact-head GREEN documentary PR merge; **P01 is next selected task for local/WSL/CI only, not implementation from PLANNED**. M01–M07 DONE; Gates A/B PASS (B local/CI only), Gate 0 formal PASS absent, Gate C planned, Production not homologated. This is a new current-state snapshot; prior M07/“Gate B NOT EXECUTED” paragraphs further below are historical and superseded.
+**M08-P01 closure:** PR #58 MERGED as `1da05add2259b16b0e7dab7bc8a7fc6025e6a952`; review #5717434106 PASS; post-merge CI #195 (`41112938302`) SUCCESS on that SHA. M08-P02 is the next selected task; P03-P06 remain gated. No Gate 0/C or Production acceptance.
+
+**M08 current state (2026-10-30):** `origin/main@1da05add2259b16b0e7dab7bc8a7fc6025e6a952`; M08 ACTIVE, P01 DONE and P02 selected for local/WSL/CI implementation. M01-M07 DONE; Gates A/B PASS (B local/CI only); Gate 0 formal PASS absent, Gate C planned, Production not homologated. Earlier milestone records below are historical.
 
 # PROJECT_STATE.md
 

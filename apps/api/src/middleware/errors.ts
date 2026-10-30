@@ -6,6 +6,7 @@ import {
   DependencyError,
   ConcurrencyError,
   FinancialError,
+  FinancialValidationError,
   SenderNotAuthorizedError,
   InboxIdentityConflictError,
   InvalidInboxEnvelopeError,
@@ -59,6 +60,7 @@ for (const constraint of [
 
 export function mapError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
+  if (error instanceof FinancialValidationError) return validation('invalid_request');
   if (error instanceof SenderNotAuthorizedError) return new ApiError(403, 'SENDER_NOT_AUTHORIZED');
   if (error instanceof InboxIdentityConflictError)
     return new ApiError(409, 'VALIDATION_ERROR', 'inbox_identity_conflict');
@@ -96,6 +98,8 @@ export function mapError(error: unknown): ApiError {
   }
   if (error instanceof ConcurrencyError) return validation('configuration_changed', 409);
   if (error instanceof FinancialError) {
+    if (error.code === 'TRANSACTION_NOT_FOUND') return new ApiError(404, error.code);
+    if (error.code === 'VERSION_CONFLICT') return new ApiError(409, error.code);
     if (/^(BOOK|ACCOUNT|CATEGORY|MERCHANT)_NOT_FOUND$/.test(error.code))
       return new ApiError(404, error.code);
     if (error.code === 'IDEMPOTENCY_CONFLICT') return new ApiError(409, error.code);

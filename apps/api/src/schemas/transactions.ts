@@ -53,3 +53,13 @@ export const listTransactionQuerySchema = strict({
 });
 export const lastTransactionQuerySchema = strict({ book_id: uuid });
 export const transactionPathSchema = strict({ id: uuid });
+export const correctTransactionSchema = strict({
+  version: Type.Integer({ minimum: 1 }),
+  amount: Type.Optional(money),
+  account_id: Type.Optional(uuid),
+  category_id: optionalNullableUuid,
+  merchant_id: optionalNullableUuid,
+  description: Type.Optional(Type.String()),
+  notes: optionalNullableText,
+  transaction_date: Type.Optional(date),
+});

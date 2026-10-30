@@ -29,7 +29,10 @@ export class FinancialError extends Error {
       | 'TRANSACTION_DATE_IN_FUTURE'
       | 'TRANSFER_SAME_ACCOUNT'
       | 'CROSS_BOOK_TRANSFER_NOT_SUPPORTED'
-      | 'IDEMPOTENCY_CONFLICT',
+      | 'IDEMPOTENCY_CONFLICT'
+      | 'TRANSACTION_NOT_FOUND'
+      | 'VERSION_CONFLICT'
+      | 'REFUND_IMMUTABLE',
   ) {
     super(message);
     this.name = 'FinancialError';

@@ -208,6 +208,8 @@ export {
   type GetLastTransactionInput,
   type TransactionRepository,
   type TransactionReadPort,
+  type CorrectionFields,
+  type PostedRefundLimits,
 } from './application/ports/transaction-ports.js';
 
 export {
@@ -288,6 +290,11 @@ export {
   type GenericCreateDependencies,
   type FinancialRequestContext,
 } from './application/finance/create-transaction.js';
+export {
+  CorrectTransaction,
+  prepareCorrectionLocks,
+  type CorrectTransactionInput,
+} from './application/finance/correct-transaction.js';
 export type {
   InboxStatus,
   InboxIdentity,

@@ -15,6 +15,8 @@ import type {
   TransactionRepository,
   TransactionRecord,
   CreateTransactionInput,
+  CorrectionFields,
+  PostedRefundLimits,
   TransactionCreateSource,
 } from '@finance-hub/core';
 import type { DB } from '../db-types.js';
@@ -92,6 +94,65 @@ export class KyselyTransactionRepository implements TransactionRepository {
 
     if (!result) return null;
     return this.mapToTransactionRecord(result);
+  }
+
+  async findByIdForUpdate(id: string): Promise<TransactionRecord | null> {
+    const result = await this.db
+      .selectFrom('transactions')
+      .selectAll()
+      .where('id', '=', id)
+      .forUpdate()
+      .executeTakeFirst();
+    return result ? this.mapToTransactionRecord(result) : null;
+  }
+
+  async postedRefundLimits(originalId: string): Promise<PostedRefundLimits> {
+    const result = await this.db
+      .selectFrom('transactions')
+      .select((eb) => [
+        eb.fn<string>('coalesce', [eb.fn<string>('sum', ['amount']), eb.val('0')]).as('total'),
+        eb.fn<string | null>('min', ['transaction_date']).as('earliest_date'),
+      ])
+      .where('refund_of_transaction_id', '=', originalId)
+      .where('status', '=', 'posted')
+      .executeTakeFirstOrThrow();
+    const earliest: unknown = result.earliest_date;
+    return {
+      total: String(result.total),
+      earliestDate:
+        earliest === null
+          ? null
+          : earliest instanceof Date
+            ? earliest.toISOString().slice(0, 10)
+            : String(earliest),
+    };
+  }
+
+  async correct(
+    id: string,
+    expectedVersion: number,
+    fields: Required<CorrectionFields>,
+    now: Date,
+  ): Promise<TransactionRecord | null> {
+    const result = await this.db
+      .updateTable('transactions')
+      .set({
+        amount: fields.amount,
+        account_id: fields.accountId,
+        category_id: fields.categoryId,
+        merchant_id: fields.merchantId,
+        description: fields.description,
+        notes: fields.notes,
+        transaction_date: fields.transactionDate,
+        version: expectedVersion + 1,
+        updated_at: now,
+      })
+      .where('id', '=', id)
+      .where('version', '=', expectedVersion)
+      .where('status', '=', 'posted')
+      .returningAll()
+      .executeTakeFirst();
+    return result ? this.mapToTransactionRecord(result) : null;
   }
 
   async findByHumanRef(humanRef: string): Promise<TransactionRecord | null> {

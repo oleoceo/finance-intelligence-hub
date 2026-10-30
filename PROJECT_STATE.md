@@ -2,7 +2,7 @@
 
 # Finance Intelligence Hub
 
-**Current M07 status (2026-10-30):** M07-P01–P06 technically accepted/integrated. PR #54 final head `0a07afbbaaa57c2edd94a1314f6552ca4523d24c`, independent REVIEW PASS #5715504972, exact CI #41090178258 SUCCESS (1,060 unit; 518 PostgreSQL incl 2 P06; 124 M06 native; 25 simulated; 2 synthetic leak), squash `66b95474ed5d1b1182bb220efe6ed3ec9aafe48e`, feature postmerge CI #41091824152 (SUCCESS required before documentary closure merge). M07 technical milestone complete; **Gate B remains PENDING/NOT EXECUTED**, as do Gate 0 formal PASS, Gate C and Production acceptance. M08–M09 PLANNED/NOT AUTHORIZED. Previous status rows below are historical snapshots.
+**Current Gate B status (2026-10-30):** **PASS — local/CI financial integrity**. Source: `docs/tasks/completed/GATE-B.md`; independently checked accepted M07-P01–P06, `main@dc2c86314d6e66addbceb2ce85418e890a6bfbfe`, GitHub CI #185 (`41093451586`) SUCCESS. M08 Activation Review next; M08 implementation not yet authorized. Gate 0 formal PASS, Gate C and Production remain pending. Historical status rows below are preserved as snapshots.
 
 **M07-P06 closure note (2026-10-30):** Complete scenario Expense 500.00 → Refund 200.00 → Correction 450.00 valid → Correction 100.00 invalid → Void Expense blocked → Void Refund valid → Void Expense valid. Two administrative GETs read-only with finance:admin, strict request/response and scoped histories. No live VPS, real WhatsApp or Production work.
 
@@ -764,7 +764,7 @@ Gate A — Core Independence
 ✅ PASS — `main@fed42a75a4f41eadec9e1e8ede0f41a5354b18ef`; CI `39836071361` SUCCESS
 
 Gate B — Financial Integrity
-⬜ NOT EXECUTED
+✅ PASS — isolated local/CI evidence, main@dc2c86314d6e66addbceb2ce85418e890a6bfbfe, CI #185 SUCCESS
 
 Gate C — Real Data Ready
 ⬜ NOT EXECUTED
@@ -797,7 +797,7 @@ M06 WhatsApp Integration
 DONE — technically accepted by owner for isolated Lab; PR #41 integrated; Gate 0 formal PASS and Production acceptance remain pending.
 
 M07 Correction / Void / Refund
-TECHNICAL COMPLETE — P01–P06 DONE/integrated (#44, #46, #48, #50, #52, #54); Gate B NOT EXECUTED and Production NOT ACCEPTED.
+DONE — all six M07 tasks accepted, Gate B PASS; no Gate 0 formal PASS or Production approval.
 
 M08 Reports / Export / Operations
 ⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
@@ -1355,3 +1355,5 @@ M06-P05 local closure: DONE / human accepted / integrated via PR #32. Reviewed H
 **P05 closure evidence (2026-10-30):** P05 independent REVIEW PASS #5714149479, reviewed head `bfd4ec5713a0aec9c5c948d65fb6551c5e10e41a`, exact-head CI #41074567587 SUCCESS (1,060 unit/516 PostgreSQL/M06 124 native/25 simulated/2 synthetic leak), PR #52 squash `fc169713a1089db0f20585eb25535e0e0abcd6f5`, post-merge CI #41076299512. P06 implementation authorized for local-WSL-CI; no Gate 0/Production acceptance.
 
 **M07 technical closure documentary record:** PR #54 final head `0a07afbbaaa57c2edd94a1314f6552ca4523d24c`, independent REVIEW PASS #5715504972, exact CI #41090178258 SUCCESS (1,060 unit; 518 PostgreSQL incl 2 P06; 124 M06 native; 25 simulated; 2 synthetic leak), squash `66b95474ed5d1b1182bb220efe6ed3ec9aafe48e`, feature postmerge CI #41091824152 (SUCCESS required before documentary closure merge). This is not authorization for Gate B PASS or live activity.
+
+**Gate B independent review (2026-10-30):** PASS on main@dc2c86314d6e66addbceb2ce85418e890a6bfbfe with exact CI #185 SUCCESS; tests and negative evidence mapped in `docs/tasks/completed/GATE-B.md`. M08 Activation Review eligible, feature implementation separate.

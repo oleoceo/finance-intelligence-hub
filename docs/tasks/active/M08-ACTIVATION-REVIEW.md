@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-30 (Brasília)  
 **Baseline:** `main@539a210342b8d9235eca176f5070e68ad5b5d786`; [post-merge CI #187](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41096817778) = completed/SUCCESS on this exact SHA, 2026-10-30 17:20:17 UTC.  
-**Authority:** [AGENTS](../../AGENTS.md), [runner](../../.agents/skills/finance-hub-task-runner/SKILL.md), [template](../planned/ACTIVATION-REVIEW.md), frozen M08 routing and owner authorization in the 2026-10-30 handoff.  
+**Authority:** [AGENTS](../../../AGENTS.md), [runner](../../../.agents/skills/finance-hub-task-runner/SKILL.md), [template](../planned/ACTIVATION-REVIEW.md), frozen M08 routing and owner authorization in the 2026-10-30 handoff.  
 **Disposition:** no frozen contradiction found; P01–P06 execution contracts prepared for promotion. **Effective ACTIVE only after this documentation PR passes independent review, exact-head CI and merge.** Only P01 is selected next, locally/WSL/CI. No VPS/Lab/live/Production authorization or Gate 0 PASS.
 
 ## 1. Sync Gate, dependencies and scope

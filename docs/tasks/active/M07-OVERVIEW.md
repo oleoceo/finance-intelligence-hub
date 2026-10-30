@@ -1,11 +1,11 @@
 # M07 — Correction / Void / Refund
 
-**Status:** ACTIVE — M07-P01 DONE / owner accepted and integrated via PR #44; M07-P02 authorized for local/WSL/CI implementation; REVIEW REQUIRED.
+**Status:** ACTIVE — M07-P01–P02 DONE, independently reviewed, owner accepted and integrated via PRs #44/#46; M07-P03 next but NOT AUTHORIZED.
 **Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
 **Blocks:** Gate B
 
 > **Activation accepted:** [review](M07-ACTIVATION-REVIEW.md), PR #42 squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, independent REVIEW PASS head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, CI #40963187248 SUCCESS.
-> M07-P01 DONE after independent REVIEW PASS and owner-authorized merge (#44, `be5beae71c405b900a39a75c1ee6b134ebc71dd3`). P02 is owner-authorized for local/WSL/CI on 2026-10-29; P03–P06 remain gated. No VPS/Production authorization.
+> M07-P01 DONE via PR #44 (`be5beae71c405b900a39a75c1ee6b134ebc71dd3`) and M07-P02 DONE via PR #46 (`3442ea946c72d31bcdffcaf009af19ace0eb40b8`) after independent REVIEW PASS and owner-authorized merges. P03 is next but NOT AUTHORIZED; P04–P06 remain gated. No VPS/Production authorization.
 
 ---
 
@@ -108,7 +108,7 @@ From M05:
 - Confirmation target tracking (`target_entity_id`, `target_version`)
 - Inbox finalization after confirmation resolution
 
-**Activation Review accepted:** [concrete implementation inventory and delta](M07-ACTIVATION-REVIEW.md). Schema/version/session targets exist; mutation ports, audit actions, operation idempotency scopes and mutation confirmation dispatch require bounded extensions. No migration or dependency is planned. M07-P01 has been accepted and integrated; P02 is owner-authorized for local/WSL/CI; P03–P06 remain separately gated.
+**Activation Review accepted:** [concrete implementation inventory and delta](M07-ACTIVATION-REVIEW.md). Schema/version/session targets exist; mutation ports, audit actions, operation idempotency scopes and mutation confirmation dispatch require bounded extensions. No migration or dependency is planned. M07-P01–P02 have been accepted and integrated; P03–P06 remain separately gated.
 
 ---
 
@@ -117,7 +117,7 @@ From M05:
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
 | **M07-P01** | DONE / integrated — Correction + optimistic locking | PATCH endpoint/use case, version validation, mutable field enforcement, immutable field rejection, stale version error |
-| **M07-P02** | Void + idempotency + audit | Void endpoint/use case, Idempotency-Key requirement, posted→voided transition, audit preservation, idempotent replay |
+| **M07-P02** | DONE / integrated — Void + idempotency + audit | Void endpoint/use case, Idempotency-Key requirement, posted→voided transition, audit preservation, idempotent replay |
 | **M07-P03** | Refund creation and invariants | Refund endpoint, linked-income representation, amount/date/Book/currency validation, refund-of-refund rejection, dedicated endpoint enforcement |
 | **M07-P04** | Refund concurrency / original Expense locking | PostgreSQL FOR UPDATE or equivalent on original Expense, concurrent over-refund prevention, Expense-with-refunds void blocking, correction amount floor enforcement, correction date ceiling enforcement |
 | **M07-P05** | WhatsApp Confirmation integration for correction/void/refund | Explicit Confirmation for every WhatsApp Void and Refund; clear ordinary Correction may execute directly when target, change and version are unambiguous; ambiguous Correction may use ConfirmationSession; Transaction sessions carry target_entity_id/target_version, reject stale confirmation, and finalize original Inbox |
@@ -191,14 +191,14 @@ Expense 500
 ## 9. Activation Review and execution handoff
 
 [Accepted Activation Review](M07-ACTIVATION-REVIEW.md) and active execution contracts
-[M07-P01](../completed/M07-P01.md), [M07-P02](M07-P02.md), [M07-P03](M07-P03.md),
+[M07-P01](../completed/M07-P01.md), [M07-P02](../completed/M07-P02.md), [M07-P03](M07-P03.md),
 [M07-P04](M07-P04.md), [M07-P05](M07-P05.md), [M07-P06](M07-P06.md)
 resolve the former interface/schema/locking questions against the main baseline.
 
 P01–P03 include the safety guards needed when each endpoint is introduced; P04
 consolidates cross-operation concurrency proof. P05 extends the existing Inbox
 pipeline; P06 implements both frozen administrative Transaction GETs and proves
-the exact frozen scenario and full regression. The milestone and its execution contracts are ACTIVE after documentary promotion; P01 is DONE / merged in PR #44 and P02 is owner-authorized for local/WSL/CI, status REVIEW REQUIRED. Future task authorizations and merges remain separately gated; no live infrastructure authorization is implied. Gate 0 still has no formal PASS and Production is not homologated.
+the exact frozen scenario and full regression. The milestone and its execution contracts are ACTIVE after documentary promotion; P01–P02 are DONE / merged in PRs #44 and #46; P03 awaits separate owner authorization. Future task authorizations and merges remain separately gated; no live infrastructure authorization is implied. Gate 0 still has no formal PASS and Production is not homologated.
 
 ---
 

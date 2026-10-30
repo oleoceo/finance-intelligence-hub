@@ -8,6 +8,8 @@
 
 **M07-P04 REVIEW REQUIRED (2026-10-30):** Owner-authorized local/WSL/CI concurrency verification is in Draft PR #50 on branch `m07-p04-mutation-concurrency` from baseline `27911a4f1f515e5e0d6859418f15d886eaf041d9`. The [P04 matrix](docs/tasks/active/M07-P04.md) records 22 real PostgreSQL cases with observed backend waits, both serial orderings, retry/rollback and persisted financial/audit/idempotency checks. Native WSL frozen install, lint, format, build, typecheck and diff check PASS; 1,059 unit / 501 PostgreSQL integration / 124 M06 native transport / 25 simulated M06 acceptance PASS. Implementation head `8330d8962d32cc7ea222d1143b11f9fc13bd1889` passed exact-head CI #41053262529; final documentary-head CI and independent review are pending. P04 remains active and P05 gated; no live environment or Production operation occurred.
 
+**P04 review correction (2026-10-30):** Five focused PostgreSQL cases now prove the original Expense `FOR UPDATE` row lock independently of configuration locks for Correction, Refund creation, Expense Void and Refund Void. Original Expense precedes Refund on Refund Void. Local focused 27/27, unit 1,059 and PostgreSQL integration 506/506; lint, format, build and typecheck PASS. Draft PR #50 remains REVIEW REQUIRED; exact-head CI pending. No production code or migration change.
+
 **Documento:** `PROJECT_STATE.md`
 **Versão:** 1.0
 **Status:** ACTIVE — Operational State

@@ -217,3 +217,109 @@ export async function coordinatedFinancialPair(
     await db2.destroy();
   }
 }
+
+/** Proves the original Expense row lock independently of configuration locks. */
+export async function proveOriginalExpenseRowLock(
+  connectionString: string,
+  observationPool: Pool,
+  originalId: string,
+  operation: (ctx: FinancialTransactionContext) => Promise<unknown>,
+  observe: (evidence: {
+    holderPid: number;
+    waiterPid: number;
+    blockers: number[];
+    waitType: string;
+    calls: string[];
+  }) => void,
+  rollback = false,
+): Promise<string[]> {
+  const options = '-c statement_timeout=10000 -c lock_timeout=10000';
+  const holderPool = new Pool({ connectionString, max: 1, options });
+  const waiterPool = new Pool({ connectionString, max: 1, options });
+  const holderDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: holderPool }) });
+  const waiterDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: waiterPool }) });
+  const acquired = barrier();
+  const release = barrier();
+  const calls: string[] = [];
+  let holder: Promise<unknown> | undefined;
+  let waiter: Promise<unknown> | undefined;
+  try {
+    const holderPid = (await holderPool.query('select pg_backend_pid() as pid')).rows[0]
+      .pid as number;
+    const waiterPid = (await waiterPool.query('select pg_backend_pid() as pid')).rows[0]
+      .pid as number;
+    if (holderPid === waiterPid) throw new Error('Row-lock proof requires distinct backends');
+    holder = new KyselyFinancialTransactionPort(holderDb).runInTransaction(async (ctx) => {
+      await operation({
+        ...ctx,
+        transactions: new Proxy(ctx.transactions, {
+          get(target, property, receiver) {
+            if (property === 'findByIdForUpdate')
+              return async (id: string) => {
+                calls.push(id);
+                const row = await target.findByIdForUpdate(id);
+                if (id === originalId && row) {
+                  acquired.release();
+                  await bounded(release.promise);
+                }
+                return row;
+              };
+            return Reflect.get(target, property, receiver);
+          },
+        }),
+      });
+      if (rollback) throw new Error('Expected row-lock proof rollback');
+    });
+    await bounded(acquired.promise);
+    let waiterFinished = false;
+    waiter = new KyselyFinancialTransactionPort(waiterDb)
+      .runInTransaction((ctx) => ctx.transactions.findByIdForUpdate(originalId))
+      .finally(() => {
+        waiterFinished = true;
+      });
+    await bounded(
+      (async () => {
+        for (;;) {
+          const result = await observationPool.query(
+            'select pg_blocking_pids($1) as blockers, wait_event_type from pg_stat_activity where pid=$1',
+            [waiterPid],
+          );
+          const row = result.rows[0];
+          if (row?.blockers.includes(holderPid) && row.wait_event_type === 'Lock') {
+            if (waiterFinished) throw new Error('Row-lock waiter completed before holder release');
+            observe({
+              holderPid,
+              waiterPid,
+              blockers: row.blockers,
+              waitType: row.wait_event_type,
+              calls,
+            });
+            break;
+          }
+        }
+      })(),
+    );
+    release.release();
+    if (rollback) {
+      const outcome = await bounded(Promise.allSettled([holder]));
+      if (
+        outcome[0].status !== 'rejected' ||
+        outcome[0].reason?.message !== 'Expected row-lock proof rollback'
+      )
+        throw new Error('Holder did not roll back as expected');
+    } else {
+      await bounded(holder);
+    }
+    const lockedRow = await bounded(waiter);
+    if (!lockedRow || !waiterFinished)
+      throw new Error('Row-lock waiter did not resume after commit');
+    return calls;
+  } finally {
+    release.release();
+    await Promise.allSettled(
+      [holder, waiter].filter((value): value is Promise<unknown> => !!value),
+    );
+    await holderDb.destroy();
+    await waiterDb.destroy();
+  }
+}

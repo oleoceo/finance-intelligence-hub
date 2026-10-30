@@ -13,6 +13,7 @@ import { KyselyFinancialTransactionPort } from '@finance-hub/database';
 import {
   coordinatedFinancialCreateRace,
   coordinatedFinancialPair,
+  proveOriginalExpenseRowLock,
 } from '../helpers/financial-create-race.js';
 import { t02Database } from './t02-fixtures.js';
 import type { DB } from '../../../packages/database/src/db-types.js';
@@ -147,6 +148,31 @@ function recordFinancialLockOrder(ctx: FinancialTransactionContext, observed: st
   };
 }
 
+async function proveExpenseLock(
+  id: string,
+  operation: (ctx: FinancialTransactionContext) => Promise<unknown>,
+  expectedCalls: string[],
+  rollback = false,
+) {
+  const calls = await proveOriginalExpenseRowLock(
+    fixture.connectionString,
+    fixture.pool,
+    id,
+    operation,
+    ({ holderPid, waiterPid, blockers, waitType, calls }) => {
+      expect(holderPid).not.toBe(waiterPid);
+      expect(blockers).toContain(holderPid);
+      expect(waitType).toBe('Lock');
+      expect(calls).toEqual([id]);
+      console.info(
+        `Expense FOR UPDATE holder=${holderPid} waiter=${waiterPid} blockers=${blockers.join(',')}`,
+      );
+    },
+    rollback,
+  );
+  expect(calls).toEqual(expectedCalls);
+}
+
 beforeAll(async () => {
   await fixture.run(async (ctx) => {
     await ctx.books.create({
@@ -192,6 +218,80 @@ beforeAll(async () => {
 }, 180000);
 
 describe('M07-P04 cross-operation PostgreSQL serialization', () => {
+  it('holds original Expense FOR UPDATE through Correction commit', async () => {
+    const id = await expense();
+    await proveExpenseLock(
+      id,
+      (ctx) =>
+        correct().executeInContext(
+          id,
+          { version: 1, description: 'row locked' },
+          randomUUID(),
+          ctx,
+        ),
+      [id],
+    );
+    expect((await state(id)).original.version).toBe(2);
+  });
+
+  it('holds original Expense FOR UPDATE through Refund creation commit', async () => {
+    const id = await expense();
+    await proveExpenseLock(
+      id,
+      (ctx) =>
+        refund().executeInContext(id, refundInput('100.00'), randomUUID(), randomUUID(), ctx),
+      [id],
+    );
+    expect((await state(id)).refunds).toHaveLength(1);
+  });
+
+  it('holds original Expense FOR UPDATE through Refund creation rollback', async () => {
+    const id = await expense();
+    await proveExpenseLock(
+      id,
+      (ctx) =>
+        refund().executeInContext(id, refundInput('100.00'), randomUUID(), randomUUID(), ctx),
+      [id],
+      true,
+    );
+    expect((await state(id)).refunds).toHaveLength(0);
+  });
+
+  it('holds original Expense FOR UPDATE through Expense Void commit', async () => {
+    const id = await expense();
+    await proveExpenseLock(
+      id,
+      (ctx) =>
+        voider().executeInContext(
+          id,
+          { version: 1, reason: 'row locked' },
+          randomUUID(),
+          randomUUID(),
+          ctx,
+        ),
+      [id],
+    );
+    expect((await state(id)).original.status).toBe('voided');
+  });
+
+  it('locks original Expense before Refund on Refund Void and holds until commit', async () => {
+    const id = await expense();
+    const created = await refund().execute(id, refundInput('100.00'), randomUUID(), randomUUID());
+    await proveExpenseLock(
+      id,
+      (ctx) =>
+        voider().executeInContext(
+          created.id,
+          { version: 1, reason: 'row locked' },
+          randomUUID(),
+          randomUUID(),
+          ctx,
+        ),
+      [id, created.id],
+    );
+    expect((await state(id)).refunds[0].status).toBe('voided');
+  });
+
   it('serializes two 300.00 Refunds with distinct keys against 500.00', async () => {
     const id = await expense();
     const keys = [randomUUID(), randomUUID()];

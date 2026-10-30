@@ -9,6 +9,7 @@ import type {
 } from '../ports/idempotency-ports.js';
 
 export const TRANSACTION_CREATE_SCOPE: IdempotencyScope = 'transactions:create';
+export const TRANSACTION_VOID_SCOPE: IdempotencyScope = 'transactions:void';
 
 export function resolveTransactionCreateScope(): IdempotencyScope {
   return TRANSACTION_CREATE_SCOPE;

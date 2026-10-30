@@ -295,6 +295,13 @@ export {
   prepareCorrectionLocks,
   type CorrectTransactionInput,
 } from './application/finance/correct-transaction.js';
+export {
+  VoidTransaction,
+  prepareVoidLocks,
+  validateVoidInput,
+  fingerprintTransactionVoid,
+  type VoidTransactionInput,
+} from './application/finance/void-transaction.js';
 export type {
   InboxStatus,
   InboxIdentity,

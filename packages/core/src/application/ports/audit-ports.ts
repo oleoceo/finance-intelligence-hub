@@ -8,7 +8,11 @@
  * Source and actor are derived from the trusted direct or Inbox context.
  */
 
-export const AUDIT_ACTIONS = ['TRANSACTION_CREATED', 'TRANSACTION_UPDATED'] as const;
+export const AUDIT_ACTIONS = [
+  'TRANSACTION_CREATED',
+  'TRANSACTION_UPDATED',
+  'TRANSACTION_VOIDED',
+] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 export const AUDIT_ENTITY_TYPES = ['transaction'] as const;

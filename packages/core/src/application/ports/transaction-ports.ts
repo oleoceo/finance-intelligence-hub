@@ -172,6 +172,12 @@ export interface TransactionRepository {
     fields: Required<CorrectionFields>,
     now: Date,
   ): Promise<TransactionRecord | null>;
+  void(
+    id: string,
+    expectedVersion: number,
+    reason: string,
+    now: Date,
+  ): Promise<TransactionRecord | null>;
 }
 
 /**

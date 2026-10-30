@@ -663,3 +663,72 @@ describe('M07-P01 PATCH API with PostgreSQL', () => {
     expect(persisted).toMatchObject({ amount: '40.01', status: 'posted', version: 2 });
   });
 });
+
+describe('M07-P02 Void HTTP contract on PostgreSQL', () => {
+  it('authorizes, validates, voids, replays, and preserves state after conflicts', async () => {
+    const created = await post(createBody('income'));
+    expect(created.statusCode).toBe(201);
+    const id = created.json().data.id as string;
+    const url = `/api/v1/transactions/${id}/void`;
+    const payload = { version: 1, reason: 'duplicate' };
+    const send = (
+      body: unknown,
+      key: string | null = randomUUID(),
+      headers: Record<string, string> = admin,
+    ) =>
+      app.inject({
+        method: 'POST',
+        url,
+        headers: key === null ? headers : { ...headers, 'idempotency-key': key },
+        payload: body,
+      });
+    for (const [headers, status, code] of [
+      [{}, 401, 'UNAUTHORIZED'],
+      [{ authorization: 'Bearer integration-ingest' }, 403, 'INSUFFICIENT_SCOPE'],
+    ] as const) {
+      const response = await send({ invalid: true }, null, headers);
+      expect(response.statusCode).toBe(status);
+      expect(response.json().error.code).toBe(code);
+    }
+    for (const invalid of [
+      { version: 0, reason: 'duplicate' },
+      { version: 1, reason: '  ' },
+      { version: 1, reason: 'duplicate', source: 'whatsapp' },
+    ]) {
+      const response = await send(invalid);
+      expect(response.statusCode).toBe(422);
+      expect(response.json().error.code).toBe('VALIDATION_ERROR');
+    }
+    expect((await send(payload, null)).statusCode).toBe(422);
+    const stale = await send({ version: 2, reason: 'duplicate' });
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error.code).toBe('VERSION_CONFLICT');
+    const key = randomUUID();
+    const result = await send(payload, key);
+    expect(result.statusCode).toBe(200);
+    expect(result.json().data).toMatchObject({ id, status: 'voided', version: 2 });
+    expect(result.json().meta.request_id).toBeTypeOf('string');
+    const replay = await send(payload, key);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json().data).toEqual(result.json().data);
+    const changed = await send({ version: 1, reason: 'other' }, key);
+    expect(changed.statusCode).toBe(409);
+    expect(changed.json().error.code).toBe('IDEMPOTENCY_CONFLICT');
+    const second = await send(payload);
+    expect(second.statusCode).toBe(409);
+    expect(second.json().error.code).toBe('TRANSACTION_ALREADY_VOIDED');
+    const persisted = await fixture.db
+      .selectFrom('transactions')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    expect(persisted).toMatchObject({ status: 'voided', version: 2 });
+    const audit = await fixture.db
+      .selectFrom('audit_events')
+      .selectAll()
+      .where('entity_id', '=', id)
+      .where('action', '=', 'TRANSACTION_VOIDED')
+      .execute();
+    expect(audit).toHaveLength(1);
+  });
+});

@@ -61,7 +61,7 @@ function confirmationExpiry(value: unknown): string | null {
 
 export function presentInboxReply(result: InboxProcessingResult): string | null {
   if (result.type === 'query_summary') {
-    const book = safeText(result.bookName, 120);
+    const book = safeText(result.bookName, 120) ?? 'contexto selecionado';
     const { summary } = result;
     const from = date(summary.dateFrom);
     const to = date(summary.dateTo);
@@ -72,7 +72,7 @@ export function presentInboxReply(result: InboxProcessingResult): string | null 
       summary.netExpenses,
       summary.net,
     ].map((value) => summaryMoney(value, summary.currency));
-    if (!book || !from || !to || values.some((value) => value === null)) return null;
+    if (!from || !to || values.some((value) => value === null)) return null;
     return bounded(
       `Resumo ${book} (${from} a ${to})\nReceitas ordinárias: ${values[0]}\nDespesas brutas: ${values[1]}\nEstornos: ${values[2]}\nDespesas líquidas: ${values[3]}\nResultado líquido: ${values[4]}`,
     );

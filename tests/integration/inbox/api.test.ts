@@ -516,6 +516,94 @@ describe('P05 Inbox API with PostgreSQL', () => {
     }
   });
 
+  it.each(['Empresa\nFilial', 'Empresa\u200B'])(
+    'delivers a safe Summary for a Book with an unsafe display name',
+    async (unsafeName) => {
+      const original = await fixture.db
+        .selectFrom('books')
+        .select('name')
+        .where('id', '=', bookId)
+        .executeTakeFirstOrThrow();
+      await fixture.db
+        .updateTable('books')
+        .set({ name: unsafeName })
+        .where('id', '=', bookId)
+        .execute();
+      const before = await Promise.all(
+        ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+          count(table as 'transactions'),
+        ),
+      );
+      try {
+        const request = body('resumo');
+        const response = await post(request);
+        expect(response.statusCode, response.body).toBe(200);
+        const { inbox_message, result, reply } = response.json().data;
+        expect(inbox_message.status).toBe('processed');
+        expect(result.type).toBe('query_summary');
+        expect(result.summary.book_id).toBe(bookId);
+        expect(reply.should_send).toBe(true);
+        expect(reply.text).toContain('Resumo contexto selecionado');
+        expect(reply.text).not.toContain(unsafeName);
+        expect(reply.text).not.toContain(bookId);
+        expect([...reply.text].length).toBeLessThanOrEqual(500);
+        const lines = reply.text.split('\n') as string[];
+        expect(lines).toHaveLength(6);
+        for (const line of lines) expect(line).not.toMatch(/[\p{Cc}\p{Cf}\p{Cs}]/u);
+        const direct = await app.inject({
+          method: 'GET',
+          url: `/api/v1/reports/summary?book_id=${bookId}`,
+          headers: { authorization: 'Bearer integration-admin' },
+        });
+        expect(direct.statusCode, direct.body).toBe(200);
+        const labels = [
+          'Receitas ordinárias',
+          'Despesas brutas',
+          'Estornos',
+          'Despesas líquidas',
+          'Resultado líquido',
+        ];
+        for (const [index, key] of [
+          'ordinary_income',
+          'gross_expenses',
+          'refunds',
+          'net_expenses',
+          'net',
+        ].entries()) {
+          const amount = result.summary[key] as string;
+          expect(amount).toBe(direct.json().data[key]);
+          const negative = amount.startsWith('-');
+          const [integer, cents] = (negative ? amount.slice(1) : amount).split('.');
+          const formatted = `${negative ? '-' : ''}R$ ${integer!.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${cents}`;
+          expect(lines[index + 1]).toBe(`${labels[index]}: ${formatted}`);
+        }
+        expect(
+          (
+            await fixture.db
+              .selectFrom('inbox_messages')
+              .select('processing_status')
+              .where('id', '=', inbox_message.id)
+              .executeTakeFirstOrThrow()
+          ).processing_status,
+        ).toBe('processed');
+        expect((await post(request)).json().data.reply).toEqual({ should_send: false });
+        expect(
+          await Promise.all(
+            ['transactions', 'audit_events', 'idempotency_keys'].map((table) =>
+              count(table as 'transactions'),
+            ),
+          ),
+        ).toEqual(before);
+      } finally {
+        await fixture.db
+          .updateTable('books')
+          .set({ name: original.name })
+          .where('id', '=', bookId)
+          .execute();
+      }
+    },
+  );
+
   it.each(['1', '2'])('chooses Book %s for Summary without a valid default', async (choice) => {
     const reference = choice === '1' ? '5511777000001' : '5511777000002';
     await fixture.run(async (ctx) =>

@@ -39,6 +39,36 @@ const confirmation = (
 const expiryLine = '\nConfirmação expira em 28/10/2026 às 12:15:00 UTC.';
 
 describe('Finance-owned reply presenter', () => {
+  it.each(['Empresa\nFilial', 'Empresa\u200B'])(
+    'uses a safe Summary context for an unsafe persisted Book name',
+    (bookName) => {
+      const reply = presentInboxReply({
+        type: 'query_summary',
+        inboxMessageId: 'private-inbox',
+        status: 'processed',
+        bookName,
+        summary: {
+          bookId: 'private-book',
+          currency: 'BRL',
+          dateFrom: '2026-10-01',
+          dateTo: '2026-10-31',
+          ordinaryIncome: '1.00',
+          grossExpenses: '2.00',
+          refunds: '0.50',
+          netExpenses: '1.50',
+          net: '-0.50',
+        },
+      });
+      expect(reply).toContain('Resumo contexto selecionado');
+      for (const amount of ['R$ 1,00', 'R$ 2,00', 'R$ 0,50', 'R$ 1,50', '-R$ 0,50'])
+        expect(reply).toContain(amount);
+      expect(reply!.split('\n')).toHaveLength(6);
+      for (const line of reply!.split('\n')) expect(line).not.toMatch(/[\p{Cc}\p{Cf}\p{Cs}]/u);
+      expect(reply).not.toContain(bookName);
+      expect(reply).not.toContain('private-');
+      expect([...reply!].length).toBeLessThanOrEqual(REPLY_TEXT_LIMIT);
+    },
+  );
   it('delivers all five figures for a valid 120-character Book name', () => {
     const bookName = 'B'.repeat(120);
     const reply = presentInboxReply({

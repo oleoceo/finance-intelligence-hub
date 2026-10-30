@@ -207,3 +207,14 @@ export interface TransactionReadPort {
   list(input: ListTransactionsInput): Promise<ListTransactionsResult>;
   getLast(input: GetLastTransactionInput): Promise<TransactionReadRecord | null>;
 }
+
+/** Bounded, deterministic financial export read. */
+export interface TransactionExportReadPort {
+  exportPage(input: {
+    bookId: string;
+    dateFrom?: string;
+    dateTo?: string;
+    before?: { createdAt: Date; id: string };
+    limit: number;
+  }): Promise<TransactionReadRecord[]>;
+}

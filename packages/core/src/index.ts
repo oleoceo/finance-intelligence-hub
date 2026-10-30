@@ -195,6 +195,12 @@ export {
 export { FinancialError, FinancialValidationError } from './domain/finance/errors.js';
 export { canonicalizeMoneyAmount } from './domain/finance/money.js';
 export { getFinancialSummary } from './application/finance/get-financial-summary.js';
+export {
+  TRANSACTION_CSV_COLUMNS,
+  safeCsvCell,
+  csvLine,
+  transactionCsvLine,
+} from './application/finance/export-transactions.js';
 export type {
   FinancialSummaryInput,
   FinancialSummaryDependencies,
@@ -214,6 +220,7 @@ export {
   type GetLastTransactionInput,
   type TransactionRepository,
   type TransactionReadPort,
+  type TransactionExportReadPort,
   type CorrectionFields,
   type PostedRefundLimits,
   type PersistRefundInput,

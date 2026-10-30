@@ -28,6 +28,8 @@ import {
 import { strict } from './schemas/configuration.js';
 import { registerTransactions, type TransactionRouteOptions } from './routes/transactions.js';
 import { registerInbox } from './routes/inbox.js';
+import { registerReports } from './routes/reports.js';
+import type { FinancialSummaryDependencies } from '@finance-hub/core';
 
 const ALLOWED_CORRELATION_CHARS = /^[A-Za-z0-9._:-]+$/;
 const MAX_CORRELATION_LENGTH = 128;
@@ -58,6 +60,8 @@ export interface AppOptions extends Credentials {
   inboxProcessing?: InboxProcessingPort;
   humanRefGenerator?: HumanRefGenerator;
   now?: () => Date;
+  summaryBooks?: FinancialSummaryDependencies['books'];
+  summaryReads?: FinancialSummaryDependencies['summaries'];
 }
 function buildApp(options: AppOptions = {}) {
   const app = Fastify({
@@ -256,6 +260,11 @@ function buildApp(options: AppOptions = {}) {
       refund,
       transactionReads,
       auditReads,
+    });
+    registerReports(admin, {
+      books: options.summaryBooks ?? store?.books ?? { findById: unavailable },
+      summaries: options.summaryReads ?? store?.summaryReads ?? { getSummary: unavailable },
+      now: options.now ?? (() => new Date()),
     });
   });
 

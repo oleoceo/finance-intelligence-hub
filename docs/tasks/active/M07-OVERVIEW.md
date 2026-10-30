@@ -1,8 +1,8 @@
 # M07 — Correction / Void / Refund
 
-**Status:** TECHNICAL COMPLETE — M07-P01–P06 DONE / integrated via PRs #44/#46/#48/#50/#52/#54. Gate B remains NOT EXECUTED and Production NOT ACCEPTED.
+**Status:** TECHNICAL COMPLETE; GATE B PASS (local/CI) — M07-P01–P06 DONE/integrated. Gate 0 formal PASS and Production not approved.
 **Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
-**Blocks:** Gate B
+**Blocks:** Gate B cleared for M08 Activation Review; no live/M08 implementation authorization.
 
 > **Activation accepted:** [review](M07-ACTIVATION-REVIEW.md), PR #42 squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, independent REVIEW PASS head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, CI #40963187248 SUCCESS.
 > M07-P01–P04 DONE after independent REVIEW PASS and authorized merges (#44, #46, #48, #50); P04 squash `e7392e3ff863ff226c0a6303cfa1111a42859001`. P05 accepted and integrated via PR #52 (`fc169713a1089db0f20585eb25535e0e0abcd6f5`, CI #41074567587 SUCCESS); P06 independent REVIEW PASS and integrated via PR #54. Gate B not executed. No VPS/Production authorization.
@@ -185,7 +185,7 @@ Expense 500
 |------|-----------|-------|
 | Gate A | YES | Indirectly (via M05/M06 chain) |
 | Gate 0 | Conditional | Only if WhatsApp live testing requires VPS |
-| Gate B | THIS milestone leads to Gate B | Gate B validates M07 output |
+| Gate B | PASS — isolated CI financial integrity | [Gate B evidence](../completed/GATE-B.md); M08 Activation Review eligible |
 | Gate C | NO | After M09 |
 
 ---
@@ -217,3 +217,5 @@ Per AGENTS.md §6:
 **M07-P05 acceptance addendum (2026-10-30):** P05 independent REVIEW PASS #5714149479, reviewed head `bfd4ec5713a0aec9c5c948d65fb6551c5e10e41a`, exact-head CI #41074567587 SUCCESS (1,060 unit/516 PostgreSQL/M06 124 native/25 simulated/2 synthetic leak), PR #52 squash `fc169713a1089db0f20585eb25535e0e0abcd6f5`, post-merge CI #41076299512. P06 implementation authorized for local-WSL-CI; Gate 0 and Production remain unapproved.
 
 **P06 technical acceptance record (2026-10-30):** PR #54 final head `0a07afbbaaa57c2edd94a1314f6552ca4523d24c`, independent REVIEW PASS #5715504972, exact CI #41090178258 SUCCESS (1,060 unit; 518 PostgreSQL incl 2 P06; 124 M06 native; 25 simulated; 2 synthetic leak), squash `66b95474ed5d1b1182bb220efe6ed3ec9aafe48e`, feature postmerge CI #41091824152 (SUCCESS required before documentary closure merge). See [acceptance evidence](M07-P06-ACCEPTANCE-EVIDENCE.md). All six P tasks reviewed/integrated; Gate B and Production are still pending.
+
+**Gate B closure:** PASS on main@dc2c86314d6e66addbceb2ce85418e890a6bfbfe, CI #185 SUCCESS; [evidence](../completed/GATE-B.md). Gate 0 formal PASS and Production still pending.

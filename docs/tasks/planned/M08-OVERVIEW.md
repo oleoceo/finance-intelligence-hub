@@ -1,7 +1,7 @@
 # M08 — Reports / Export / Operations
 
-**Status:** PLANNED
-**Dependencies:** Gate B PASS
+**Status:** PLANNED — M08 Activation Review eligible after Gate B PASS; implementation NOT AUTHORIZED.
+**Dependencies:** [Gate B PASS (local/CI)](../completed/GATE-B.md), baseline main@dc2c86314d6e66addbceb2ce85418e890a6bfbfe, CI #185 SUCCESS.
 **Blocks:** M09 activation
 
 > **This document does NOT authorize implementation.**

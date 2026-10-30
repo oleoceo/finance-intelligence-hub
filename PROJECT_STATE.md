@@ -2,7 +2,7 @@
 
 # Finance Intelligence Hub
 
-**M06 DONE (2026-10-29): TECHNICAL LAB ACCEPTED BY OWNER.** Five real WhatsApp acceptance commands, four posted Transactions and negative/replay/authentication tests PASS. Evolution logging PR #39 and LID PR #40 deployed in Lab; post-merge CI for #40 (#40931394789) SUCCESS. **Gate 0 has NOT obtained formal PASS and Production has NOT been accepted.** Actual transport failure/ambiguous-delivery outcomes remain simulated; retrospective operator evidence [here](docs/integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md). **M07 ACTIVE; M07-P01 REVIEW REQUIRED.** [Accepted review and P01–P06 contracts](docs/tasks/active/M07-ACTIVATION-REVIEW.md). PR #42 squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10` has post-merge CI 40973778426 SUCCESS; promotion PR #43 merged at `fe00aa86f636989ef1ebbc2aece2cac92a5a10f2` after CI 40974249854 SUCCESS. P01 local validation: 1,055 unit and 462 PostgreSQL integration PASS; M06 regressions: 84 native and 25 simulated acceptance PASS. Awaiting independent review and exact-head CI of the P01 Draft PR. No VPS/Production operation.
+**M06 DONE (2026-10-29): TECHNICAL LAB ACCEPTED BY OWNER.** Five real WhatsApp acceptance commands, four posted Transactions and negative/replay/authentication tests PASS. Evolution logging PR #39 and LID PR #40 deployed in Lab; post-merge CI for #40 (#40931394789) SUCCESS. **Gate 0 has NOT obtained formal PASS and Production has NOT been accepted.** Actual transport failure/ambiguous-delivery outcomes remain simulated; retrospective operator evidence [here](docs/integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md). **M07 ACTIVE; M07-P01 DONE / integrated; M07-P02 next but NOT AUTHORIZED.** [Accepted review and P01–P06 contracts](docs/tasks/active/M07-ACTIVATION-REVIEW.md). PR #42 squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10` has post-merge CI 40973778426 SUCCESS; promotion PR #43 merged at `fe00aa86f636989ef1ebbc2aece2cac92a5a10f2` after CI 40974249854 SUCCESS. P01 accepted: PR #44 squash `be5beae71c405b900a39a75c1ee6b134ebc71dd3`; reviewed head `2cbae6bc51bb0c677baf575b8f8208841242da68`, CI #40980277676 SUCCESS (1,055 unit / 463 PostgreSQL integration; 124 native transport / 25 simulated M06 acceptance; 2 synthetic leak). Post-merge run #40981819546. P02 awaits separate implementation authorization. No VPS/Production operation.
 
 ## Current Project State
 
@@ -60,7 +60,7 @@ FINAL-FREEZE-DECISIONS.md
 
 **M06 technically accepted for isolated Lab.** All five commands executed on dedicated WhatsApp via Evolution → n8n → Finance API → PostgreSQL and replies reconciled; negative authentication, sender identity, groups, fromMe, replay and no-duplicate tests passed. Postmigration backup isolated restore PASS. Code PRs #38/#39/#40 integrated, CI green. Operational Release set OFF and published after the test session. Owner accepted Lab functional milestone closure. [Sanitized evidence](docs/integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md).
 
-**Non-waived restrictions:** Gate 0 formal closure remains pending; current status is NOT Production acceptance. Existing Gate 0 risk ledger includes SSH/security/recovery/privilege inventory items needing closure or explicit owner risk acceptance. Do not falsely claim all logs or delivery timeouts were live-injected; tested failures remain simulations. Next: independent review of the M07-P01 Draft PR and exact-head CI; P02–P06 need separate approval after predecessor acceptance. No new live VPS operations without separate approval.
+**Non-waived restrictions:** Gate 0 formal closure remains pending; current status is NOT Production acceptance. Existing Gate 0 risk ledger includes SSH/security/recovery/privilege inventory items needing closure or explicit owner risk acceptance. Do not falsely claim all logs or delivery timeouts were live-injected; tested failures remain simulations. Next: M07-P02 — Void, idempotency and audit; implementation NOT AUTHORIZED until explicitly selected by owner. P03–P06 require sequential predecessor acceptance. No new live VPS operations without separate approval.
 
 ---
 # 2. Current overall status
@@ -780,7 +780,7 @@ M04 Transaction Core
 DONE — M04-T01 DONE / human accepted; M04-T02 DONE / accepted; PR #9 MERGED as `ad041e8ed31846794c6263596b9cf1da173d4f52` (post-merge CI `39705765258` SUCCESS); M04-T03 DONE / integrated; PR #10 MERGED as `51b3c97880d154c6543a3c753ef6e7419ea1ea0d` (post-merge CI `39777604808` SUCCESS); M04-T04 DONE / integrated; PR #11 MERGED as `5c4ef3971d411b4706265c452180185e34c84bef` (post-merge CI `39790495902` SUCCESS); M04-T05 DONE / integrated; PR #12 MERGED as `815309db057489e402db8061a9ec9fd7bab92db0` (post-merge CI `39801330979` SUCCESS); M04-T06 DONE / integrated; PR #13 MERGED as 6908ec30650ab9c8eca90a6909958d8adbb31f5d (post-merge CI 39811484800 SUCCESS); M04-T07 DONE / integrated via PR #14 MERGED as d923eb4c11790c7e901d4faee67af05ffc27f165 (post-merge CI 39818569159 attempt 2 SUCCESS); M04-T08 DONE / integrated via PR #15 MERGED as `fed42a75a4f41eadec9e1e8ede0f41a5354b18ef` (post-merge CI `39836071361` SUCCESS); Gate A PASS; Gate 0 NOT EXECUTED
 
 V0.1 Forward Planning
-M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE, P01 REVIEW REQUIRED, P02–P06 pending predecessor acceptance and separate task authorization. M08–M09 PLANNED.
+M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE; P01 DONE / human accepted / PR #44 squash `be5beae71c405b900a39a75c1ee6b134ebc71dd3` (reviewed head CI #40980277676 SUCCESS, post-merge run #40981819546); P02 is next but NOT AUTHORIZED; P03–P06 remain gated. M08–M09 PLANNED.
 
 M05 Inbox / Parser / Confirmation
 DONE / human technical acceptance — M05-P01–P06 integrated via PRs #19–#24. P06 reviewed head `6476c3e9b0f15c07eee74fe4d48472f5148d525e`; exact-head CI `40595431256` SUCCESS; squash `ca3527514df52d302746de2c779934099a98b473`; post-merge CI `40596736837` SUCCESS.
@@ -789,7 +789,7 @@ M06 WhatsApp Integration
 DONE — technically accepted by owner for isolated Lab; PR #41 integrated; Gate 0 formal PASS and Production acceptance remain pending.
 
 M07 Correction / Void / Refund
-ACTIVE — Activation Review accepted via PR #42; P01 REVIEW REQUIRED after local validation; P02–P06 contracts ACTIVE but implementation gated by predecessors and separate authorization.
+ACTIVE — Activation Review accepted via PR #42; P01 DONE / owner accepted and integrated via PR #44; P02 is next ACTIVE CONTRACT awaiting explicit authorization; P03–P06 separately gated.
 
 M08 Reports / Export / Operations
 ⬜ PLANNED (forward plan accepted; NOT ACTIVE; implementation NOT AUTHORIZED)
@@ -860,7 +860,7 @@ These belong to Gate 0.
 
 # 39. Current allowed next actions
 
-M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE, P01 REVIEW REQUIRED, P02–P06 pending predecessor acceptance and separate task authorization. M08–M09 PLANNED.
+M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE; P01 DONE / human accepted / PR #44 squash `be5beae71c405b900a39a75c1ee6b134ebc71dd3` (reviewed head CI #40980277676 SUCCESS, post-merge run #40981819546); P02 is next but NOT AUTHORIZED; P03–P06 remain gated. M08–M09 PLANNED.
 
 ---
 
@@ -1116,7 +1116,7 @@ KNOWN ISSUES:
 none
 
 NEXT:
-M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE, P01 REVIEW REQUIRED, P02–P06 pending predecessor acceptance and separate task authorization. M08–M09 PLANNED.
+M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE; P01 DONE / human accepted / PR #44 squash `be5beae71c405b900a39a75c1ee6b134ebc71dd3` (reviewed head CI #40980277676 SUCCESS, post-merge run #40981819546); P02 is next but NOT AUTHORIZED; P03–P06 remain gated. M08–M09 PLANNED.
 ```
 
 ---
@@ -1214,7 +1214,7 @@ INFRA-T01 Provision postgres-products
 
 # 60. Current next task
 
-M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE, P01 REVIEW REQUIRED, P02–P06 pending predecessor acceptance and separate task authorization. M08–M09 PLANNED.
+M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE; P01 DONE / human accepted / PR #44 squash `be5beae71c405b900a39a75c1ee6b134ebc71dd3` (reviewed head CI #40980277676 SUCCESS, post-merge run #40981819546); P02 is next but NOT AUTHORIZED; P03–P06 remain gated. M08–M09 PLANNED.
 
 ---
 
@@ -1292,7 +1292,7 @@ Documentation baseline tag
 ✅ PRESENT
 
 Implementation
-M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE, P01 REVIEW REQUIRED, P02–P06 pending predecessor acceptance and separate task authorization. M08–M09 PLANNED.
+M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE; P01 DONE / human accepted / PR #44 squash `be5beae71c405b900a39a75c1ee6b134ebc71dd3` (reviewed head CI #40980277676 SUCCESS, post-merge run #40981819546); P02 is next but NOT AUTHORIZED; P03–P06 remain gated. M08–M09 PLANNED.
 
 Gate 0
 ⬜ NOT EXECUTED
@@ -1330,7 +1330,7 @@ NONE
 
 **Finance Lab packaging, 2026-10-28:** INFRA-T01 integrated via PR #34 at `df85f58`; FINANCE-LAB-T01 packaging integrated via PR #35 at `29c2e42`. Owner reports `postgres-products` healthy (PostgreSQL 18.6, pinned digest), `finance_hub_lab`, private `finance-products-db` (`internal=true`), persistent `finance_postgres_products_data`, successful `bootstrap.sql`, separate working `finance_hub_migrations` (schema CREATE) and `finance_hub_app` (no schema CREATE), and an initial local backup under `/opt/apps/backups/databases/finance-hub/lab/`. These are owner-reported operational results; this task has not independently accessed the VPS. The Compose secret-owner UID correction is REVIEW REQUIRED. Superseded by the 2026-10-29 owner report above: five migrations and external post-migration backup are reported complete; restore and Gate 0 acceptance remain pending. No Lab deployment is authorized by this record; ADR-003 n8n route remains OPEN.
 
-M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE, P01 REVIEW REQUIRED, P02–P06 pending predecessor acceptance and separate task authorization. M08–M09 PLANNED.
+M01–M06 DONE; M06 owner-accepted for isolated Lab and closure PR #41 integrated at 645ea0193188be54ec5c9e0d988ec6348b0038ef; post-merge CI 40943150391 SUCCESS. Gate A PASS; Gate 0 has no formal PASS; Gate B/C pending; no Production acceptance. M07 Activation Review ACCEPTED in PR #42 (squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, reviewed head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, exact-head CI 40963187248 SUCCESS); M07 ACTIVE; P01 DONE / human accepted / PR #44 squash `be5beae71c405b900a39a75c1ee6b134ebc71dd3` (reviewed head CI #40980277676 SUCCESS, post-merge run #40981819546); P02 is next but NOT AUTHORIZED; P03–P06 remain gated. M08–M09 PLANNED.
 
 M06-P01 documentary closure: DONE / integrated via PR #28; accepted head `de4291b0d68298c60e34ca66e1e32f342b01a20e`, exact-head CI `40612282461` SUCCESS, squash `19e4490c671a606e1f2e43204dbc0da5d5d97615`, post-merge CI `40613174472` SUCCESS. Synthetic native Node contract suite: 35 PASS independently; not discovered by automatic Vitest CI. Historical state at P01 closure: M06 was ACTIVE; M06-P02 DONE; M06-P03 DONE / integrated via PR #30; M06-P04 DONE; M06-P05 DONE / human accepted / integrated for local acceptance only.
 

@@ -110,7 +110,7 @@ All paths below are repository relative.
 
 | Task | Deliverable | Dependency | Required proof |
 | --- | --- | --- | --- |
-| [M07-P01](M07-P01.md) | Correction API/Core/adapter, optimistic version, audit, refund-aware guards | Approved activation and P01 authorization | Mutable/immutable inputs, PostgreSQL competing PATCH, rollback and posted-refund floor/date |
+| [M07-P01](../completed/M07-P01.md) | Correction API/Core/adapter, optimistic version, audit, refund-aware guards | Approved activation and P01 authorization | Mutable/immutable inputs, PostgreSQL competing PATCH, rollback and posted-refund floor/date |
 | [M07-P02](M07-P02.md) | Void API/Core/adapter, idempotency, audit | P01 accepted/integrated | Replay/conflict, stale version, posted-refund block, Refund Void |
 | [M07-P03](M07-P03.md) | Dedicated Refund create and invariant protection | P02 accepted/integrated | Partial/full/multiple, same Book/currency, original lock, duplicate replay |
 | [M07-P04](M07-P04.md) | Cross-operation concurrency proof and bounded corrections | P03 accepted/integrated | Refund/Refund, Refund/PATCH, Refund/Void, Refund-Void races with real independent connections |
@@ -235,3 +235,6 @@ Handoff: previous milestone M06 DONE; closure PR #41; squash/main
 regression totals in §1; next task M07-P01 only after approval/promotion and explicit
 authorization. Before P01: fetch, preserve dirty work, synchronize to origin/main,
 re-read state/contract, then branch. Acceptance of this review does not preapprove future task implementation merges.
+
+
+**Implementation closure addendum (2026-10-29):** M07-P01 Correction was human accepted and squash-merged via PR #44 at `be5beae71c405b900a39a75c1ee6b134ebc71dd3` following independent REVIEW PASS on head `2cbae6bc51bb0c677baf575b8f8208841242da68` and CI #40980277676 SUCCESS. Post-merge CI run #40981819546. The original activation decision above remains historical; P02 is the next candidate, requiring separate implementation authorization. Gate 0 formal PASS and Production approval remain pending.

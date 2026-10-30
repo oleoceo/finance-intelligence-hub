@@ -1,11 +1,16 @@
 # M07 — Correction / Void / Refund
 
-**Status:** ACTIVE — M07-P01–P03 DONE / integrated via PRs #44/#46/#48; M07-P04 next, NOT AUTHORIZED.
+**Status:** ACTIVE — M07-P01–P03 DONE / integrated via PRs #44/#46/#48; M07-P04 implementation authorized 2026-10-30 for local/WSL/CI; review pending.
 **Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
 **Blocks:** Gate B
 
 > **Activation accepted:** [review](M07-ACTIVATION-REVIEW.md), PR #42 squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, independent REVIEW PASS head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, CI #40963187248 SUCCESS.
-> M07-P01–P03 DONE after independent REVIEW PASS and authorized merges (#44, #46, #48); P03 squash `3466d5bedf4f6d49b7b609764f98af9cf1e2f2c1`. P04 next but NOT AUTHORIZED, P05–P06 gated. No VPS/Production authorization.
+> M07-P01–P03 DONE after independent REVIEW PASS and authorized merges (#44, #46, #48); P03 squash `3466d5bedf4f6d49b7b609764f98af9cf1e2f2c1`. P04 implementation authorized 2026-10-30 for local/WSL/CI; review pending, P05–P06 gated. No VPS/Production authorization.
+
+P04 local evidence: [race matrix and exact tests](M07-P04.md) cover 22 PostgreSQL
+cases with distinct backend PIDs and observed lock waits. Native WSL validation:
+1,059 unit, 501 PostgreSQL integration, 124 M06 native transport and 25 M06
+simulated acceptance tests PASS. Draft PR CI and independent review remain pending.
 
 ---
 
@@ -198,7 +203,7 @@ resolve the former interface/schema/locking questions against the main baseline.
 P01–P03 include the safety guards needed when each endpoint is introduced; P04
 consolidates cross-operation concurrency proof. P05 extends the existing Inbox
 pipeline; P06 implements both frozen administrative Transaction GETs and proves
-the exact frozen scenario and full regression. The milestone and its execution contracts are ACTIVE after documentary promotion; P01–P03 are DONE / merged in PRs #44, #46, and #48; P04 is next and NOT AUTHORIZED until explicit owner task approval. Future task authorizations and merges remain separately gated; no live infrastructure authorization is implied. Gate 0 still has no formal PASS and Production is not homologated.
+the exact frozen scenario and full regression. The milestone and its execution contracts are ACTIVE after documentary promotion; P01–P03 are DONE / merged in PRs #44, #46, and #48; P04 implementation was authorized by the owner on 2026-10-30 for local/WSL/CI and requires review before completion. Future task authorizations and merges remain separately gated; no live infrastructure authorization is implied. Gate 0 still has no formal PASS and Production is not homologated.
 
 ---
 

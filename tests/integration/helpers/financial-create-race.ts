@@ -131,6 +131,13 @@ export async function coordinatedFinancialPair(
   firstOperation: (ctx: FinancialTransactionContext) => Promise<unknown>,
   secondOperation: (ctx: FinancialTransactionContext) => Promise<unknown>,
   inspectLocks: (first: string[], second: string[]) => void,
+  observeBlock?: (
+    firstPid: number,
+    secondPid: number,
+    blockers: number[],
+    waitType: string,
+  ) => void,
+  observeSecondLocks?: (accounts: string[]) => void,
 ): Promise<PromiseSettledResult<unknown>[]> {
   const pool1 = new Pool({
     connectionString,
@@ -174,6 +181,7 @@ export async function coordinatedFinancialPair(
         locks: {
           acquireLocks: async (spec) => {
             secondLocks = spec.accounts ?? [];
+            observeSecondLocks?.(secondLocks);
             started.release();
             await ctx.locks.acquireLocks(spec);
           },
@@ -193,8 +201,10 @@ export async function coordinatedFinancialPair(
           if (
             observed.rows[0]?.blockers.includes(pid1) &&
             observed.rows[0].wait_event_type === 'Lock'
-          )
+          ) {
+            observeBlock?.(pid1, pid2, observed.rows[0].blockers, observed.rows[0].wait_event_type);
             break;
+          }
         }
       })(),
     );

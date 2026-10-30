@@ -24,6 +24,14 @@ export interface CreateCandidate {
 
 export type Interpretation =
   | CreateCandidate
+  | {
+      kind: 'transaction_mutation';
+      action: 'correction' | 'void' | 'refund';
+      target: 'last' | 'reference' | 'context';
+      humanRef?: string;
+      context?: string;
+      amount?: string;
+    }
   | { kind: 'query_last'; book?: ExplicitValue<string> }
   | { kind: 'reply'; response: 'yes' | 'no' | '1' | '2' }
   | { kind: 'unknown'; reason: 'empty' | 'unsupported' | 'missing_amount' | 'invalid_amount' }

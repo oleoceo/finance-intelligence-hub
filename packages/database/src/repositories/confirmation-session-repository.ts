@@ -209,9 +209,16 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
         sessionId: string;
         action: string;
         payload: Record<string, unknown>;
+        targetEntityId?: string;
+        targetVersion?: number;
         now: Date;
       },
   ): Promise<ConfirmationSession> {
+    if (
+      input.targetEntityId &&
+      (!Number.isSafeInteger(input.targetVersion) || input.targetVersion! < 1)
+    )
+      throw new Error('Confirmation target version is required');
     if (!(await this.lockOwner(input))) throw new Error('Confirmation sender unavailable');
     const row = await this.pending(input);
     if (!row || row.id !== input.sessionId || isConfirmationExpired(row.expires_at, input.now))
@@ -224,7 +231,17 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
       throw new Error('Confirmation resolver claim is stale');
     const updated = await this.db
       .updateTable('confirmation_sessions')
-      .set({ action: input.action, payload: input.payload })
+      .set({
+        action: input.action,
+        payload: input.payload,
+        ...(input.targetEntityId
+          ? {
+              target_entity_type: 'transaction',
+              target_entity_id: input.targetEntityId,
+              target_version: input.targetVersion,
+            }
+          : {}),
+      })
       .where('id', '=', row.id)
       .where('status', '=', 'pending')
       .returningAll()
@@ -306,7 +323,17 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
   }
 
   async finalizeConfirmed(
-    input: ConfirmationOwner & ConfirmationResolverClaim & { sessionId: string; now: Date },
+    input: ConfirmationOwner &
+      ConfirmationResolverClaim & {
+        sessionId: string;
+        now: Date;
+        proof?: {
+          resultId: string;
+          action: 'TRANSACTION_UPDATED' | 'TRANSACTION_VOIDED' | 'TRANSACTION_REFUND_CREATED';
+          resultVersion: number;
+          correlationId: string;
+        };
+      },
   ): Promise<void> {
     if (!(await this.lockOwner(input))) throw new Error('Confirmation sender unavailable');
     const row = await this.pending(input);
@@ -317,6 +344,61 @@ export class KyselyConfirmationSessionRepository implements ConfirmationSessionR
     if (!this.matchesClaim(resolverRow, input))
       throw new Error('Confirmation resolver claim is stale');
     const payload = row.payload as { interpretation?: { kind?: string } } | null;
+    if (row.target_entity_type === 'transaction') {
+      const proof = input.proof;
+      if (
+        !proof ||
+        !row.target_entity_id ||
+        !row.target_version ||
+        !Number.isSafeInteger(proof.resultVersion)
+      )
+        throw new Error('Confirmation mutation proof is missing');
+      const expectedAction =
+        row.action === 'confirm_correction'
+          ? 'TRANSACTION_UPDATED'
+          : row.action === 'confirm_void'
+            ? 'TRANSACTION_VOIDED'
+            : row.action === 'confirm_refund'
+              ? 'TRANSACTION_REFUND_CREATED'
+              : null;
+      if (proof.action !== expectedAction) throw new Error('Confirmation mutation action mismatch');
+      const effect = await this.db
+        .selectFrom('transactions')
+        .select(['id', 'version', 'refund_of_transaction_id', 'inbox_message_id'])
+        .where('id', '=', proof.resultId)
+        .executeTakeFirst();
+      if (
+        !effect ||
+        effect.version !== proof.resultVersion ||
+        (proof.action === 'TRANSACTION_REFUND_CREATED'
+          ? effect.refund_of_transaction_id !== row.target_entity_id ||
+            effect.inbox_message_id !== row.inbox_message_id
+          : effect.id !== row.target_entity_id)
+      )
+        throw new Error('Confirmation mutation effect is missing');
+      if (
+        proof.action !== 'TRANSACTION_REFUND_CREATED' &&
+        proof.resultVersion !== row.target_version + 1
+      )
+        throw new Error('Confirmation mutation version did not advance');
+      const audit = await this.db
+        .selectFrom('audit_events')
+        .select(['id', 'new_data', 'created_at'])
+        .where('entity_type', '=', 'transaction')
+        .where('entity_id', '=', proof.resultId)
+        .where('action', '=', proof.action)
+        .where('correlation_id', '=', proof.correlationId)
+        .where('source', '=', 'whatsapp')
+        .where('actor_reference', '=', input.senderReference)
+        .executeTakeFirst();
+      if (
+        !audit ||
+        audit.new_data?.id !== proof.resultId ||
+        audit.new_data.version !== proof.resultVersion ||
+        audit.created_at < resolverRow.created_at
+      )
+        throw new Error('Confirmation mutation audit is missing');
+    }
     if (
       row.action === 'create_transaction' ||
       payload?.interpretation?.kind === 'create_transaction'

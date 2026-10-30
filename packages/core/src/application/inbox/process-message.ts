@@ -19,6 +19,12 @@ import {
 import { interpretMessage } from './interpret-message.js';
 import { resolveInterpretation } from './resolve-interpretation.js';
 import { presentInboxReply, REPLY_CONTRACT_VERSION, REPLY_TEXT_LIMIT } from './present-reply.js';
+import {
+  processTransactionMutation,
+  RefundRevalidationRequiredError,
+  resolveRejectedRefund,
+  type MutationDependencies,
+} from './process-transaction-mutation.js';
 
 export type InboxProcessingResult = (
   | {
@@ -46,10 +52,32 @@ export type InboxProcessingResult = (
       transaction: TransactionReadRecord | null;
     }
   | {
+      type: 'transaction_mutated';
+      inboxMessageId: string;
+      status: 'processed';
+      action: 'correction' | 'void' | 'refund';
+      transaction: TransactionRecord;
+    }
+  | { type: 'stale_target'; inboxMessageId: string; status: 'processed' }
+  | {
       type: 'confirmation_required';
       inboxMessageId: string;
       status: 'needs_confirmation';
-      confirmation: { id: string; action: string; expiresAt: Date; options?: ChoiceOption[] };
+      confirmation: {
+        id: string;
+        action: string;
+        expiresAt: Date;
+        options?: ChoiceOption[];
+        proposal?: {
+          intent: { action: 'correction' | 'void' | 'refund'; amount?: string };
+          humanRef: string;
+          amount: string;
+          currency: string;
+          description: string;
+          accountName?: string;
+          transactionDate?: string;
+        };
+      };
     }
 ) & {
   replyText?: string | null;
@@ -125,6 +153,7 @@ export interface ProcessMessageDependencies {
   inboxTransactions: InboxTransactionPort;
   processing: InboxProcessingPort;
   genericCreate: Pick<GenericCreateTransaction, 'executeInContext'>;
+  mutation?: MutationDependencies;
   now: () => Date;
   id?: () => string;
   staleTimeoutMs?: number;
@@ -229,6 +258,19 @@ async function processInboxMessageInternal(
         senderReference: message.senderReference,
         authorizedSenderId: message.authorizedSenderId,
       };
+      if (deps.mutation) {
+        const mutation = await processTransactionMutation(
+          ctx,
+          parsed,
+          claim,
+          owner,
+          correlationId,
+          now,
+          id,
+          deps.mutation,
+        );
+        if (mutation) return mutation;
+      }
       const token = claimToken(claim);
       const preview = await ctx.previewPending(owner);
       const original = preview ? await ctx.inbox.findById(preview.inboxMessageId) : null;
@@ -500,6 +542,22 @@ async function processInboxMessageInternal(
   } catch (error) {
     if (error instanceof StaleInboxClaimError)
       return { type: 'stale_claim', inboxMessageId: claim.message.id };
+    let failure = error;
+    if (error instanceof RefundRevalidationRequiredError) {
+      try {
+        const sessionId = error.sessionId;
+        const owner = {
+          channel: 'whatsapp' as const,
+          senderReference: claim.message.senderReference,
+          authorizedSenderId: claim.message.authorizedSenderId,
+        };
+        return await deps.processing.runInboxTransaction((ctx) =>
+          resolveRejectedRefund(ctx, claim, owner, sessionId, now),
+        );
+      } catch (recoveryError) {
+        failure = recoveryError;
+      }
+    }
     // The financial transaction rolled back. A separate fenced transition makes
     // this same Inbox row eligible for a future retry without recording a false effect.
     await deps.inboxTransactions.runInTransaction(async ({ inbox }) => {
@@ -510,7 +568,7 @@ async function processInboxMessageInternal(
         failureCode: 'PROCESSING_FAILED',
       });
     });
-    throw error;
+    throw failure;
   }
 }
 

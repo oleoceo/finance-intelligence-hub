@@ -44,6 +44,44 @@ export function interpretMessage(message: Pick<InboxMessage, 'rawText'>): Interp
   };
   if (reply[lower]) return { kind: 'reply', response: reply[lower] };
 
+  const mutation = text.match(/^(corrige|cancela|apaga|estorna|reembolso)\s+(.+)$/iu);
+  if (mutation) {
+    const verb = mutation[1]!.toLocaleLowerCase('pt-BR');
+    const action =
+      verb === 'corrige'
+        ? 'correction'
+        : verb === 'cancela' || verb === 'apaga'
+          ? 'void'
+          : 'refund';
+    const body = mutation[2]!.trim();
+    const correction =
+      action === 'correction' ? body.match(/^(.+?)\s+para\s+(R\$\s*)?([\d.,]+)$/iu) : null;
+    const refund =
+      action === 'refund' ? body.match(/^(R\$\s*)?([\d.,]+)\s+da\s+compra\s+(.+)$/iu) : null;
+    const targetText = correction?.[1]?.trim() ?? refund?.[3]?.trim() ?? body;
+    const rawAmount = correction?.[3] ?? refund?.[2];
+    if (action === 'correction' && !correction) return { kind: 'unknown', reason: 'unsupported' };
+    if (action === 'refund' && !refund) return { kind: 'unknown', reason: 'unsupported' };
+    let parsedAmount: string | undefined;
+    if (rawAmount) {
+      try {
+        parsedAmount = money(rawAmount);
+      } catch {
+        return { kind: 'unknown', reason: 'invalid_amount' };
+      }
+    }
+    const last = /^(?:último|ultimo)$/iu.test(targetText);
+    const reference = /^[A-Z0-9]{4,16}$/iu.test(targetText) && !last;
+    return {
+      kind: 'transaction_mutation',
+      action,
+      target: last ? 'last' : reference ? 'reference' : 'context',
+      ...(reference ? { humanRef: targetText.toUpperCase() } : {}),
+      ...(!last && !reference ? { context: targetText } : {}),
+      ...(parsedAmount ? { amount: parsedAmount } : {}),
+    };
+  }
+
   const commands = [...text.matchAll(command)];
   if (commands.length > 1 || /[;\n]/u.test(text))
     return { kind: 'ambiguous', reason: 'multiple_commands' };

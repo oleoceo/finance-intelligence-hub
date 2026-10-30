@@ -53,6 +53,15 @@ function confirmationExpiry(value: unknown): string | null {
 }
 
 export function presentInboxReply(result: InboxProcessingResult): string | null {
+  if (result.type === 'stale_target')
+    return 'O lançamento mudou. Reenvie o comando para validar os dados atuais.';
+  if (result.type === 'transaction_mutated') {
+    const ref = reference(result.transaction.humanRef);
+    const amount = money(result.transaction.amount, result.transaction.currency);
+    if (!ref || !amount) return null;
+    const verb = { correction: 'corrigido', void: 'cancelado', refund: 'estornado' }[result.action];
+    return bounded(`Lançamento ${verb}: ${amount}.\nRef: ${ref}`);
+  }
   if (result.type === 'transaction_created') {
     const transaction = result.transaction;
     const amount = money(transaction.amount, transaction.currency);
@@ -86,6 +95,47 @@ export function presentInboxReply(result: InboxProcessingResult): string | null 
     const expiry = confirmationExpiry(result.confirmation.expiresAt);
     if (!expiry) return null;
     const pending = (message: string) => bounded(`${message}\n${expiry}`);
+    if (action === 'select_transaction' && options?.length === 2) {
+      const first = reference(options[0]?.name);
+      const second = reference(options[1]?.name);
+      if (first && second)
+        return pending(
+          `Escolha o lançamento:\n1. Ref: ${first}\n2. Ref: ${second}\nResponda 1 ou 2. A escolha não confirma a operação.`,
+        );
+    }
+    if (action === 'select_refund_account' && options?.length === 2) {
+      const first = safeText(options[0]?.name, 100);
+      const second = safeText(options[1]?.name, 100);
+      if (first && second)
+        return pending(
+          `Onde o estorno foi creditado?\n1. ${first}\n2. ${second}\nResponda 1 ou 2. A escolha não confirma o estorno.`,
+        );
+    }
+    if (action === 'clarify_transaction')
+      return pending('Preciso da referência do lançamento. Reenvie o comando completo.');
+    if (action.startsWith('confirm_')) {
+      const proposal = result.confirmation.proposal;
+      const ref = reference(proposal?.humanRef);
+      const original = money(proposal?.amount, proposal?.currency);
+      const description = safeText(proposal?.description, 100);
+      const changed = money(proposal?.intent.amount, proposal?.currency);
+      if (!ref || !original || !description) return null;
+      if (action === 'confirm_void')
+        return pending(
+          `Cancelar lançamento ${ref}: ${description}, ${original}? Responda sim ou não.`,
+        );
+      if (action === 'confirm_correction' && changed)
+        return pending(
+          `Corrigir lançamento ${ref}: ${description}, de ${original} para ${changed}? Responda sim ou não.`,
+        );
+      const account = safeText(proposal?.accountName, 100);
+      const when = date(proposal?.transactionDate);
+      if (action === 'confirm_refund' && changed && account && when)
+        return pending(
+          `Estornar ${changed} da compra ${ref} (${description}, ${original}) na conta ${account} em ${when}? Responda sim ou não.`,
+        );
+      return null;
+    }
     if (['select_book', 'select_account', 'clarify_book', 'clarify_account'].includes(action)) {
       if (
         action.startsWith('select_') &&

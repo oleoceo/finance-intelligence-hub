@@ -256,6 +256,22 @@ function buildApp(options: AppOptions = {}) {
   app.register(async (ingest) => {
     ingest.addHook('onRequest', authenticateIngest);
     const deps: ProcessMessageDependencies = {
+      mutation: {
+        correction:
+          'executeInContext' in correction
+            ? (correction as NonNullable<ProcessMessageDependencies['mutation']>['correction'])
+            : { executeInContext: unavailable },
+        voidTransaction:
+          'executeInContext' in voidTransaction
+            ? (voidTransaction as NonNullable<
+                ProcessMessageDependencies['mutation']
+              >['voidTransaction'])
+            : { executeInContext: unavailable },
+        refund:
+          'executeInContext' in refund
+            ? (refund as NonNullable<ProcessMessageDependencies['mutation']>['refund'])
+            : { executeInContext: unavailable },
+      },
       inboxTransactions: options.inboxTransactions ??
         store?.inboxTransactions ?? { runInTransaction: unavailable },
       processing: options.inboxProcessing ??

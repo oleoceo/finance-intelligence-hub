@@ -39,6 +39,31 @@ const confirmation = (
 const expiryLine = '\nConfirmação expira em 28/10/2026 às 12:15:00 UTC.';
 
 describe('Finance-owned reply presenter', () => {
+  it('delivers all five figures for a valid 120-character Book name', () => {
+    const bookName = 'B'.repeat(120);
+    const reply = presentInboxReply({
+      type: 'query_summary',
+      inboxMessageId: 'private-inbox',
+      status: 'processed',
+      bookName,
+      summary: {
+        bookId: 'private-book',
+        currency: 'BRL',
+        dateFrom: '2026-10-01',
+        dateTo: '2026-10-31',
+        ordinaryIncome: '1.00',
+        grossExpenses: '2.00',
+        refunds: '0.50',
+        netExpenses: '1.50',
+        net: '-0.50',
+      },
+    });
+    expect(reply).toContain(`Resumo ${bookName}`);
+    for (const amount of ['R$ 1,00', 'R$ 2,00', 'R$ 0,50', 'R$ 1,50', '-R$ 0,50'])
+      expect(reply).toContain(amount);
+    expect([...reply!].length).toBeLessThanOrEqual(REPLY_TEXT_LIMIT);
+    expect(reply).not.toContain('private-');
+  });
   it('formats all Summary figures, including signed net, and hides the Book ID', () => {
     const reply = presentInboxReply({
       type: 'query_summary',

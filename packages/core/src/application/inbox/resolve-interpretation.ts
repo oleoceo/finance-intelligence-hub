@@ -366,8 +366,11 @@ export async function resolveInterpretation(
     if (isResult(explicit)) return explicit;
     const activeBooks = state.books.filter((b) => b.active);
     if (interpretation.kind === 'query_summary') {
-      const book = explicit ?? activeBooks.find((b) => b.id === state.sender?.defaultBookId);
-      return book ? { kind: 'query_summary', bookId: book.id } : clarification('book', 'invalid');
+      const book =
+        explicit ??
+        activeBooks.find((b) => b.id === state.sender?.defaultBookId) ??
+        chooseOne(activeBooks, 'book');
+      return isResult(book) ? book : { kind: 'query_summary', bookId: book.id };
     }
     const book =
       explicit ??

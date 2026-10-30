@@ -61,7 +61,7 @@ function confirmationExpiry(value: unknown): string | null {
 
 export function presentInboxReply(result: InboxProcessingResult): string | null {
   if (result.type === 'query_summary') {
-    const book = safeText(result.bookName, 80);
+    const book = safeText(result.bookName, 120);
     const { summary } = result;
     const from = date(summary.dateFrom);
     const to = date(summary.dateTo);

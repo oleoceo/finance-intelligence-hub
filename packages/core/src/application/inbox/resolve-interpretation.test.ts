@@ -491,6 +491,20 @@ describe('P03 configuration resolution', () => {
       reason: 'missing',
     });
   });
+  it('offers a Book choice for Summary without a valid default', async () => {
+    const state = base();
+    state.sender = sender(null, null);
+    expect(await resolve({ kind: 'query_summary' }, state)).toEqual({
+      kind: 'clarification',
+      field: 'book',
+      reason: 'ambiguous',
+    });
+    state.books = [book('empresa')];
+    expect(await resolve({ kind: 'query_summary' }, state)).toEqual({
+      kind: 'query_summary',
+      bookId: 'empresa',
+    });
+  });
   it('uses the Book-local received date and preserves explicit date provenance', async () => {
     expect(await resolve(create())).toMatchObject({
       kind: 'create',

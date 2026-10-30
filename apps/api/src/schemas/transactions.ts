@@ -63,3 +63,7 @@ export const correctTransactionSchema = strict({
   notes: optionalNullableText,
   transaction_date: Type.Optional(date),
 });
+export const voidTransactionSchema = strict({
+  version: Type.Integer({ minimum: 1 }),
+  reason: Type.String({ minLength: 1, pattern: '\\S' }),
+});

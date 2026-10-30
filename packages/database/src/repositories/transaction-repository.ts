@@ -155,6 +155,29 @@ export class KyselyTransactionRepository implements TransactionRepository {
     return result ? this.mapToTransactionRecord(result) : null;
   }
 
+  async void(
+    id: string,
+    expectedVersion: number,
+    reason: string,
+    now: Date,
+  ): Promise<TransactionRecord | null> {
+    const result = await this.db
+      .updateTable('transactions')
+      .set({
+        status: 'voided',
+        version: expectedVersion + 1,
+        voided_at: now,
+        void_reason: reason,
+        updated_at: now,
+      })
+      .where('id', '=', id)
+      .where('version', '=', expectedVersion)
+      .where('status', '=', 'posted')
+      .returningAll()
+      .executeTakeFirst();
+    return result ? this.mapToTransactionRecord(result) : null;
+  }
+
   async findByHumanRef(humanRef: string): Promise<TransactionRecord | null> {
     const result = await this.db
       .selectFrom('transactions')

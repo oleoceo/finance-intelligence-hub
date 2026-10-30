@@ -32,7 +32,9 @@ export class FinancialError extends Error {
       | 'IDEMPOTENCY_CONFLICT'
       | 'TRANSACTION_NOT_FOUND'
       | 'VERSION_CONFLICT'
-      | 'REFUND_IMMUTABLE',
+      | 'REFUND_IMMUTABLE'
+      | 'TRANSACTION_ALREADY_VOIDED'
+      | 'TRANSACTION_HAS_POSTED_REFUNDS',
   ) {
     super(message);
     this.name = 'FinancialError';

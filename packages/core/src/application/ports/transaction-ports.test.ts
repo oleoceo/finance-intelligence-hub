@@ -212,7 +212,7 @@ describe('Idempotency ports compile checks', () => {
 
   it('uses exact creation and completion inputs', () => {
     const create: CreateIdempotencyKeyInput = {} as CreateIdempotencyKeyInput;
-    expectTypeOf(create.scope).toEqualTypeOf<'transactions:create'>();
+    expectTypeOf(create.scope).toEqualTypeOf<'transactions:create' | 'transactions:void'>();
     expectTypeOf(create.requestHash).toEqualTypeOf<IdempotencyFingerprint>();
     const complete: CompleteIdempotencyKeyInput = {} as CompleteIdempotencyKeyInput;
     expectTypeOf(complete.responseStatus).toEqualTypeOf<number>();

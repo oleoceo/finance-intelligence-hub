@@ -42,7 +42,9 @@ export function transactionSnapshot(record: TransactionRecord): Record<string, u
   };
 }
 
-function hydrateTransactionSnapshot(body: Record<string, unknown> | null): TransactionRecord {
+export function hydrateTransactionSnapshot(
+  body: Record<string, unknown> | null,
+): TransactionRecord {
   if (
     !body ||
     typeof body.id !== 'string' ||

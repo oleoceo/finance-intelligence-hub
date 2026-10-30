@@ -3,6 +3,7 @@ import { type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
   ConcurrencyError,
   type CorrectTransaction,
+  type VoidTransaction,
   getLastTransaction,
   getTransaction,
   listTransactions,
@@ -16,6 +17,7 @@ import { meta } from './admin/shared.js';
 import {
   createTransactionSchema,
   correctTransactionSchema,
+  voidTransactionSchema,
   lastTransactionQuerySchema,
   listTransactionQuerySchema,
   transactionPathSchema,
@@ -24,6 +26,7 @@ import {
 export interface TransactionRouteOptions {
   genericCreate: Pick<GenericCreateTransaction, 'execute'>;
   correction: Pick<CorrectTransaction, 'execute'>;
+  voidTransaction: Pick<VoidTransaction, 'execute'>;
   transactionReads: TransactionReadPort;
 }
 
@@ -88,6 +91,22 @@ function mapCreate(body: {
 
 export function registerTransactions(instance: FastifyInstance, options: TransactionRouteOptions) {
   const app = instance.withTypeProvider<TypeBoxTypeProvider>();
+  app.post(
+    '/api/v1/transactions/:id/void',
+    { schema: { params: transactionPathSchema, body: voidTransactionSchema } },
+    async (request) => {
+      const key = request.headers['idempotency-key'];
+      if (typeof key !== 'string' || !key.trim() || [...key].length > 255)
+        throw new ApiError(422, 'VALIDATION_ERROR', 'invalid_request');
+      const record = await options.voidTransaction.execute(
+        request.params.id,
+        request.body,
+        key,
+        meta(request).correlation_id,
+      );
+      return { data: serializeTransaction(record), meta: meta(request) };
+    },
+  );
   app.patch(
     '/api/v1/transactions/:id',
     { schema: { params: transactionPathSchema, body: correctTransactionSchema } },

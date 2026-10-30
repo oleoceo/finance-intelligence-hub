@@ -100,6 +100,11 @@ export function mapError(error: unknown): ApiError {
   if (error instanceof FinancialError) {
     if (error.code === 'TRANSACTION_NOT_FOUND') return new ApiError(404, error.code);
     if (error.code === 'VERSION_CONFLICT') return new ApiError(409, error.code);
+    if (
+      error.code === 'TRANSACTION_ALREADY_VOIDED' ||
+      error.code === 'TRANSACTION_HAS_POSTED_REFUNDS'
+    )
+      return new ApiError(409, error.code);
     if (/^(BOOK|ACCOUNT|CATEGORY|MERCHANT)_NOT_FOUND$/.test(error.code))
       return new ApiError(404, error.code);
     if (error.code === 'IDEMPOTENCY_CONFLICT') return new ApiError(409, error.code);

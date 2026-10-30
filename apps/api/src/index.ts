@@ -14,6 +14,7 @@ import { registerAuthorizedSenders } from './routes/admin/authorized-senders.js'
 import {
   GenericCreateTransaction,
   CorrectTransaction,
+  VoidTransaction,
   normalizeName,
   type FinancialTransactionPort,
   type HumanRefGenerator,
@@ -48,6 +49,7 @@ export interface AppOptions extends Credentials {
   transactionReads?: TransactionReadPort;
   genericCreate?: TransactionRouteOptions['genericCreate'];
   correction?: TransactionRouteOptions['correction'];
+  voidTransaction?: TransactionRouteOptions['voidTransaction'];
   inboxTransactions?: InboxTransactionPort;
   inboxProcessing?: InboxProcessingPort;
   humanRefGenerator?: HumanRefGenerator;
@@ -151,6 +153,13 @@ function buildApp(options: AppOptions = {}) {
         store?.financialTransactions ?? { runInTransaction: unavailable },
       options.now ?? (() => new Date()),
     );
+  const voidTransaction =
+    options.voidTransaction ??
+    new VoidTransaction(
+      options.financialTransactions ??
+        store?.financialTransactions ?? { runInTransaction: unavailable },
+      options.now ?? (() => new Date()),
+    );
 
   // Add correlation ID extraction hook
   app.addHook('onRequest', (request, _reply, done) => {
@@ -225,7 +234,7 @@ function buildApp(options: AppOptions = {}) {
     registerMerchants(admin, configuration);
     registerClassificationRules(admin, configuration);
     registerAuthorizedSenders(admin, configuration);
-    registerTransactions(admin, { genericCreate, correction, transactionReads });
+    registerTransactions(admin, { genericCreate, correction, voidTransaction, transactionReads });
   });
 
   app.register(async (ingest) => {

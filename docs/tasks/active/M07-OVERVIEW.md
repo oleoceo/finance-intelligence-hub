@@ -1,11 +1,11 @@
 # M07 — Correction / Void / Refund
 
-**Status:** ACTIVE — M07-P01–P05 DONE / integrated via PRs #44/#46/#48/#50/#52; P06 implementation authorized local/WSL/CI.
+**Status:** TECHNICAL COMPLETE — M07-P01–P06 DONE / integrated via PRs #44/#46/#48/#50/#52/#54. Gate B remains NOT EXECUTED and Production NOT ACCEPTED.
 **Dependencies:** M06 DONE / owner-accepted for isolated Lab; PR #41 merged at `645ea0193188be54ec5c9e0d988ec6348b0038ef`; post-merge CI 40943150391 SUCCESS
 **Blocks:** Gate B
 
 > **Activation accepted:** [review](M07-ACTIVATION-REVIEW.md), PR #42 squash `18dd52a619c0b93ebb14d8b2a4c5335205284c10`, independent REVIEW PASS head `3bbdc4705f72fb0255f80778639f20b620ff2b02`, CI #40963187248 SUCCESS.
-> M07-P01–P04 DONE after independent REVIEW PASS and authorized merges (#44, #46, #48, #50); P04 squash `e7392e3ff863ff226c0a6303cfa1111a42859001`. P05 accepted and integrated via PR #52 (`fc169713a1089db0f20585eb25535e0e0abcd6f5`, CI #41074567587 SUCCESS); P06 implementation authorized for local-WSL-CI. No VPS/Production authorization.
+> M07-P01–P04 DONE after independent REVIEW PASS and authorized merges (#44, #46, #48, #50); P04 squash `e7392e3ff863ff226c0a6303cfa1111a42859001`. P05 accepted and integrated via PR #52 (`fc169713a1089db0f20585eb25535e0e0abcd6f5`, CI #41074567587 SUCCESS); P06 independent REVIEW PASS and integrated via PR #54. Gate B not executed. No VPS/Production authorization.
 
 P04 final evidence: [race matrix and exact tests](../completed/M07-P04.md) cover 27 PostgreSQL cases (22 A–J + 5 actual original-Expense FOR UPDATE waits). Independent REVIEW PASS #5712722020; PR #50 final head `a6339606ba60dfb7cd3cb25b4ce1b700dc291dca`, exact CI #41058232833 SUCCESS (1,059 unit; 506 PostgreSQL; M06 regressions) and squash `e7392e3ff863ff226c0a6303cfa1111a42859001`. Postmerge run #41061198756.
 
@@ -123,7 +123,7 @@ From M05:
 | **M07-P03** | DONE / integrated — Refund creation and invariants | Refund endpoint, linked-income representation, amount/date/Book/currency validation, refund-of-refund rejection, dedicated endpoint enforcement |
 | **M07-P04** | DONE / integrated — Refund concurrency / original Expense locking | PostgreSQL FOR UPDATE or equivalent on original Expense, concurrent over-refund prevention, Expense-with-refunds void blocking, correction amount floor enforcement, correction date ceiling enforcement |
 | **M07-P05** | DONE / integrated — WhatsApp Confirmation integration for correction/void/refund | Explicit Confirmation for every WhatsApp Void and Refund; clear ordinary Correction may execute directly when target, change and version are unambiguous; ambiguous Correction may use ConfirmationSession; Transaction sessions carry target_entity_id/target_version, reject stale confirmation, and finalize original Inbox |
-| **M07-P06** | Administrative reads, API integration and milestone verification | Frozen Refund/audit GET endpoints with `finance:admin`, schema/response/authorization tests; mutation endpoints verified, critical scenario proven, unit/integration suites green |
+| **M07-P06** | DONE / integrated — Administrative reads, API integration and milestone verification | Frozen Refund/audit GET endpoints with `finance:admin`, schema/response/authorization tests; mutation endpoints verified, critical scenario proven, unit/integration suites green |
 
 ---
 
@@ -194,13 +194,13 @@ Expense 500
 
 [Accepted Activation Review](M07-ACTIVATION-REVIEW.md) and active execution contracts
 [M07-P01](../completed/M07-P01.md), [M07-P02](../completed/M07-P02.md), [M07-P03](../completed/M07-P03.md),
-[M07-P04](../completed/M07-P04.md), [M07-P05](../completed/M07-P05.md), [M07-P06](M07-P06.md)
+[M07-P04](../completed/M07-P04.md), [M07-P05](../completed/M07-P05.md), [M07-P06](../completed/M07-P06.md)
 resolve the former interface/schema/locking questions against the main baseline.
 
 P01–P03 include the safety guards needed when each endpoint is introduced; P04
 consolidates cross-operation concurrency proof. P05 extends the existing Inbox
 pipeline; P06 implements both frozen administrative Transaction GETs and proves
-the exact frozen scenario and full regression. The milestone and its execution contracts are ACTIVE after documentary promotion; P01–P05 DONE / integrated in PRs #44, #46, #48, #50, #52; P06 implementation authorized by owner for local-WSL-CI. Future task authorizations and merges remain separately gated; no live infrastructure authorization is implied. Gate 0 still has no formal PASS and Production is not homologated.
+the exact frozen scenario and full regression. The milestone and its execution contracts are ACTIVE after documentary promotion; P01–P05 DONE / integrated in PRs #44, #46, #48, #50, #52; P06 independently accepted and integrated via PR #54; M07 technical delivery complete. Gate B NOT EXECUTED, future implementation tasks and gates separately controlled; no live infrastructure authorization is implied. Gate 0 still has no formal PASS and Production is not homologated.
 
 ---
 
@@ -215,3 +215,5 @@ Per AGENTS.md §6:
 - `09-ROADMAP-TESTS.md`
 
 **M07-P05 acceptance addendum (2026-10-30):** P05 independent REVIEW PASS #5714149479, reviewed head `bfd4ec5713a0aec9c5c948d65fb6551c5e10e41a`, exact-head CI #41074567587 SUCCESS (1,060 unit/516 PostgreSQL/M06 124 native/25 simulated/2 synthetic leak), PR #52 squash `fc169713a1089db0f20585eb25535e0e0abcd6f5`, post-merge CI #41076299512. P06 implementation authorized for local-WSL-CI; Gate 0 and Production remain unapproved.
+
+**P06 technical acceptance record (2026-10-30):** PR #54 final head `0a07afbbaaa57c2edd94a1314f6552ca4523d24c`, independent REVIEW PASS #5715504972, exact CI #41090178258 SUCCESS (1,060 unit; 518 PostgreSQL incl 2 P06; 124 M06 native; 25 simulated; 2 synthetic leak), squash `66b95474ed5d1b1182bb220efe6ed3ec9aafe48e`, feature postmerge CI #41091824152 (SUCCESS required before documentary closure merge). See [acceptance evidence](M07-P06-ACCEPTANCE-EVIDENCE.md). All six P tasks reviewed/integrated; Gate B and Production are still pending.

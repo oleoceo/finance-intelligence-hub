@@ -217,7 +217,7 @@ M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved
 
 # 8. Current milestone
 
-M08 — Reports / Export / Operations: DONE; P01–P06 accepted and integrated. M09 — Backup / Restore: PLANNED; Activation Review and implementation require separate authorization. Gate 0 formal, Gate C and Production remain unapproved. The earlier milestone chronology below is historical.
+M08 — Reports / Export / Operations: DONE; P01–P06 accepted and integrated. M09 — Backup / Restore: Activation Review accepted; only P01 is selected for ACTIVE local/CI work after the task-promotion PR passes exact-head and post-merge CI. P02–P06 remain PLANNED. Gate 0 formal, Gate C and Production remain unapproved. The earlier milestone chronology below is historical.
 
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
 M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
@@ -780,7 +780,7 @@ Gate C — Real Data Ready
 
 # 35. Milestone status
 
-Current M08 status: DONE; all P01–P06 completed. M09: PLANNED; no implementation authorization. Gate B: PASS (local/CI); Gate 0 formal and Gate C: no PASS; Production: unapproved.
+Current M08 status: DONE; all P01–P06 completed. M09: ACTIVE for P01 only (local/CI after activation merge and post-merge CI); P02–P06 PLANNED. Gate B: PASS (local/CI); Gate 0 formal and Gate C: no PASS; Production: unapproved.
 
 ```text
 M01 Local Bootstrap

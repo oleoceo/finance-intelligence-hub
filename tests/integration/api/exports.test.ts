@@ -174,19 +174,11 @@ describe('M08-P04 PostgreSQL CSV export', () => {
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
       .execute();
-    // The fixtures share a created_at timestamp and random UUIDs determine their
-    // sort positions. Mirror the export dateTo filter before selecting posted
-    // February 15 income rows from its actual second page (limit=256).
-    const snapshotRows = targets.filter((row) => row.transaction_date <= '2024-02-29');
-    const secondPageIncome = snapshotRows.slice(256).filter(
-      (row) =>
-        row.transaction_date === '2024-02-15' &&
-        row.type === 'income' &&
-        row.status === 'posted' &&
-        row.refund_of_transaction_id === null,
-    );
-    expect(secondPageIncome.length).toBeGreaterThanOrEqual(2);
-    const [corrected, voided] = secondPageIncome;
+    // All 270 February 15 fixtures are posted incomes. Their final two sorted
+    // positions remain on page two (limit=256), regardless of random UUID order.
+    const februaryIncomes = targets.filter((row) => row.transaction_date === '2024-02-15');
+    expect(februaryIncomes).toHaveLength(270);
+    const [corrected, voided] = februaryIncomes.slice(-2);
     const reached = Promise.withResolvers<void>();
     const resume = Promise.withResolvers<void>();
     const exported: TransactionReadRecord[] = [];

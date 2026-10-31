@@ -193,6 +193,22 @@ describe('M09-P01 real PostgreSQL backup', () => {
     }
   });
 
+  it('rejects an empty archive after a real pg_dump invocation', () => {
+    const initial = readdirSync(output);
+    const original = readFileSync(join(bin, 'pg_dump'), 'utf8');
+    writeFileSync(
+      join(bin, 'pg_dump'),
+      `#!/bin/sh\ndocker exec -i ${containerId} pg_dump -U test_admin "$@" >/dev/null\n`,
+      { mode: 0o700 },
+    );
+    try {
+      expect(run().status).not.toBe(0);
+      expect(readdirSync(output)).toEqual(initial);
+    } finally {
+      writeFileSync(join(bin, 'pg_dump'), original, { mode: 0o700 });
+    }
+  });
+
   it('leaves no artifact when staging is not writable', () => {
     const initial = readdirSync(output);
     chmodSync(output, 0o500);
@@ -207,7 +223,11 @@ describe('M09-P01 real PostgreSQL backup', () => {
   it('cleans owned staging after a terminated dump', () => {
     const initial = readdirSync(output);
     const original = readFileSync(join(bin, 'pg_dump'), 'utf8');
-    writeFileSync(join(bin, 'pg_dump'), '#!/bin/sh\nkill -TERM "$PPID"\n', { mode: 0o700 });
+    writeFileSync(
+      join(bin, 'pg_dump'),
+      `#!/bin/sh\ndocker exec -i ${containerId} pg_dump -U test_admin "$@" | head -c 100\nkill -TERM "$PPID"\n`,
+      { mode: 0o700 },
+    );
     try {
       expect(run().status).not.toBe(0);
       expect(readdirSync(output)).toEqual(initial);

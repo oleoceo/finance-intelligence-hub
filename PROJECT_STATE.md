@@ -2,6 +2,8 @@
 
 **M08 current state (2026-10-31): DONE.** P01–P06 accepted and integrated. P06 PR #63: independent review #5722309428 PASS; [CI #213](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41191101818) SUCCESS on head `2051e8a0ed7da9fd00e15d272d5d3e529a041c97`; squash/main `5a460dc6db6d603109053ae7ba4617cf61228451`; [CI #214](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41192015146) SUCCESS on that exact SHA. Documentary PR #64 merged into `main@a827d1170a0c2768bb831bb1d0956d890b9f2fad` after review #5722377012 and CI #215/#216 SUCCESS. See [completed overview](docs/tasks/completed/M08-OVERVIEW.md) and [P06 record](docs/tasks/completed/M08-P06.md). M09 Activation Review has been accepted under PR #65; this section records the preceding M08 handoff. See the current M09 local/CI activation statement above. Gate 0 formal and Gate C have no PASS; Production is not approved.
 
+**M09-P01 implementation (2026-10-31):** REVIEW REQUIRED on `m09-p01-backup-scripts`. The local/CI backup wrapper and disposable PostgreSQL restore tests are in Draft PR #67; independent review of the final head is pending. No migration, dependency, VPS, live Lab or Production change. M09-P02–P06 remain PLANNED; Gate 0 and Gate C remain pending.
+
 # PROJECT_STATE.md
 
 # Finance Intelligence Hub

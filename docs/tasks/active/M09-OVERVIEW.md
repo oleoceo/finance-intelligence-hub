@@ -1,6 +1,6 @@
 # M09 — Backup / Restore
 
-**Status:** ACTIVE — local/CI only; M09-P01 is the sole ACTIVE task; P02–P06 remain PLANNED.
+**Status:** ACTIVE — local/CI only; M09-P01 is REVIEW REQUIRED; P02–P06 remain PLANNED.
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 **Blocks:** Gate C
 
@@ -127,7 +127,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 | **M09-P05** | Executed isolated restore + validation | Actual restore performed, all validation items verified, evidence captured |
 | **M09-P06** | M09 milestone verification | Daily backup running, off-site copy confirmed, retention verified, restore evidence recorded |
 
-Current contract: [P01](M09-P01.md) ACTIVE (local/CI only). Still PLANNED: [P02](../planned/M09-P02.md), [P03](../planned/M09-P03.md), [P04](../planned/M09-P04.md), [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). Operational activity remains blocked.
+Current contract: [P01](M09-P01.md) REVIEW REQUIRED (local/CI only). Still PLANNED: [P02](../planned/M09-P02.md), [P03](../planned/M09-P03.md), [P04](../planned/M09-P04.md), [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). Operational activity remains blocked.
 
 ---
 

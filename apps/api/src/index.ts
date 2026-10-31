@@ -332,7 +332,10 @@ function buildApp(options: AppOptions = {}) {
       });
 
     if (!connectionString) {
-      request.log.warn({ msg: 'PostgreSQL readiness check unavailable' });
+      request.log.warn({
+        error_code: 'DATABASE_UNAVAILABLE',
+        msg: 'PostgreSQL readiness check unavailable',
+      });
       return unavailable();
     }
 
@@ -345,12 +348,18 @@ function buildApp(options: AppOptions = {}) {
       if (result.ready) {
         return { status: 'ready' };
       } else {
-        request.log.warn({ msg: 'PostgreSQL readiness check failed' });
+        request.log.warn({
+          error_code: 'DATABASE_UNAVAILABLE',
+          msg: 'PostgreSQL readiness check failed',
+        });
         return unavailable();
       }
     } catch {
       // Never expose raw errors; log safely and return not_ready
-      request.log.error({ msg: 'PostgreSQL readiness check encountered an error' });
+      request.log.error({
+        error_code: 'DATABASE_UNAVAILABLE',
+        msg: 'PostgreSQL readiness check encountered an error',
+      });
       return unavailable();
     }
   });

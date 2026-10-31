@@ -150,13 +150,77 @@ describe('Health and Readiness Endpoints', () => {
       const warnings = lines
         .map(
           (line) =>
-            JSON.parse(line) as { level: number; request_id?: string; correlation_id?: string },
+            JSON.parse(line) as {
+              level: number;
+              request_id?: string;
+              correlation_id?: string;
+              error_code?: string;
+            },
         )
         .filter((line) => line.level === 40);
       expect(warnings).toHaveLength(3);
       for (const warning of warnings) {
         expect(warning.request_id).toEqual(expect.any(String));
         expect(warning.correlation_id).toBe(warning.request_id);
+        expect(warning.error_code).toBe('DATABASE_UNAVAILABLE');
+      }
+    });
+
+    it.each([
+      ['unavailable', { ready: false }, 40],
+      ['exception', new Error('READINESS_SECRET_MARKER'), 50],
+    ])('logs safe metadata when the PostgreSQL check reports %s', async (_case, outcome, level) => {
+      const lines: string[] = [];
+      const testApp = buildApp({
+        logStream: {
+          write: (chunk: string | Buffer) => {
+            lines.push(String(chunk));
+          },
+        } as NodeJS.WritableStream,
+      });
+      const previous = process.env.DATABASE_URL;
+      process.env.DATABASE_URL = 'postgresql://user:DB_SECRET_MARKER@localhost:5432/test';
+      if (outcome instanceof Error) {
+        vi.mocked(databaseModule.checkPostgreSQLReadiness).mockRejectedValue(outcome);
+      } else {
+        vi.mocked(databaseModule.checkPostgreSQLReadiness).mockResolvedValue(outcome);
+      }
+      try {
+        const response = await testApp.inject({
+          method: 'GET',
+          url: '/ready',
+          headers: { 'x-correlation-id': 'p05-log-check' },
+        });
+        expect(response.statusCode).toBe(503);
+        const body = JSON.parse(response.body) as {
+          error: { code: string };
+          meta: { request_id: string; correlation_id: string };
+        };
+        expect(body.error.code).toBe('DATABASE_UNAVAILABLE');
+        const failures = lines
+          .map(
+            (line) =>
+              JSON.parse(line) as {
+                level: number;
+                request_id?: string;
+                correlation_id?: string;
+                error_code?: string;
+              },
+          )
+          .filter((line) => line.level === level);
+        expect(failures).toHaveLength(1);
+        expect(failures[0]).toMatchObject({
+          request_id: body.meta.request_id,
+          correlation_id: 'p05-log-check',
+          error_code: 'DATABASE_UNAVAILABLE',
+        });
+        expect(body.meta.correlation_id).toBe('p05-log-check');
+        expect(lines.join('')).not.toContain('DB_SECRET_MARKER');
+        expect(lines.join('')).not.toContain('READINESS_SECRET_MARKER');
+      } finally {
+        await testApp.close();
+        if (previous === undefined) delete process.env.DATABASE_URL;
+        else process.env.DATABASE_URL = previous;
       }
     });
 

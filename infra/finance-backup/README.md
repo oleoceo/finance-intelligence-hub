@@ -46,3 +46,36 @@ and `restic restore <snapshot-id> --target <private-restore-directory>`.
 Compare the restored `archive.dump` to its `manifest.json` SHA-256 before any
 database restore. Operational remote configuration and live restore are outside
 M09-P02 authorization.
+
+## M09-P03 disposable scheduler and retention design
+
+The versioned backup timer schedules daily at 03:00 America/Sao_Paulo; the
+check timer schedules every Sunday at 04:00 in that zone. Both are persistent
+systemd templates only. Their services use a dedicated `finance-backup` user,
+external `/etc/finance-hub/backup-%i.env`, private umask, and `OnFailure`
+journal marker. Paths, connection settings, password files and remote access
+credentials must be provisioned outside Git. Service paths are deployment
+placeholders and do not authorize installation.
+
+The P03 runner requires a private disposable fixture root containing
+`.finance-backup-test-fixture` and `FINANCE_BACKUP_FIXTURE_ONLY=yes`. It cannot
+run on the operational Lab or Production layout. The caller supplies P01/P02
+settings and runs `finance-hub-scheduled.sh daily` or `weekly-check`. One
+`flock` file serializes scheduled, manual and retry runs; process exit releases
+the lock. P01 staging and prior published artifacts survive interruption.
+
+Before deletion, the runner checks the repository, rejects unowned snapshots
+and unexpected artifact entries, then runs Restic `forget --keep-daily 14
+--keep-weekly 8 --keep-monthly 12 --prune` solely inside the owned fixture.
+It checks again, syncs and compares the encrypted disposable remote copy,
+then keeps the three newest validated local artifacts. Cleanup refuses invalid
+manifests, checksums, links and unrelated entries. The weekly run performs
+`restic check` without retention.
+
+Logs distinguish `LOCAL_BACKUP_COMPLETE`, P02 `OFFSITE_COMPLETE`,
+`OFFSITE_RETENTION_VERIFIED`, `REMOTE_INCOMPLETE`, integrity and retention
+failures, interruption, and final `SUCCESS`. `finance-hub-status.sh` alerts
+when a run failed, no verified remote copy exists, or the last verified
+off-site run is older than 24 hours. It prints no credentials. RPO of 24 hours
+and same-day RTO remain unmeasured targets. No operational alert delivery,
+host activation, real destination or real retention is part of P03.

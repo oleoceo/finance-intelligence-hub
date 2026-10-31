@@ -1,0 +1,8 @@
+[Unit]
+Description=Finance Hub backup failure marker (%i)
+
+[Service]
+Type=oneshot
+User=finance-backup
+Group=finance-backup
+ExecStart=/usr/bin/logger -t finance-hub-backup FAILURE instance=%i

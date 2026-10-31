@@ -1,0 +1,16 @@
+[Unit]
+Description=Finance Hub disposable repository check (%i)
+OnFailure=finance-hub-backup-failure@%i.service
+
+[Service]
+Type=oneshot
+User=finance-backup
+Group=finance-backup
+EnvironmentFile=/etc/finance-hub/backup-%i.env
+ExecStart=/usr/bin/bash /opt/finance-hub/scripts/backup/finance-hub-scheduled.sh weekly-check
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/finance-hub-backup

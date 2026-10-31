@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly Finance Hub repository check (%i)
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00 America/Sao_Paulo
+Persistent=true
+Unit=finance-hub-check@%i.service
+
+[Install]
+WantedBy=timers.target

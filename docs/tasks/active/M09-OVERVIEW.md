@@ -1,6 +1,6 @@
 # M09 — Backup / Restore
 
-**Status:** ACTIVE — local/CI only; P01 DONE, P02 accepted (documentary closure subject to exact main CI #234); P03 sole ACTIVE task only after its promotion merge and post-merge CI. P04–P06 remain PLANNED.
+**Status:** ACTIVE — local/CI only; P01/P02 DONE; P03 implementation REVIEW REQUIRED. P04–P06 remain PLANNED.
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 **Blocks:** Gate C
 

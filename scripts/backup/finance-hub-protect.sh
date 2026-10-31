@@ -20,7 +20,11 @@ command -v node >/dev/null || fail 'Node is unavailable'
 artifact=$(cd -- "$artifact" && pwd -P)
 repository=$(cd -- "$FINANCE_RESTIC_REPOSITORY" && pwd -P)
 destination=$(cd -- "$FINANCE_RCLONE_DESTINATION" && pwd -P)
+password_file=$(realpath -e -- "$RESTIC_PASSWORD_FILE") || fail 'invalid Restic password path'
 [[ $artifact != "$repository" && $artifact != "$repository/"* && $artifact != "$destination" && $artifact != "$destination/"* && $repository != "$destination" && $repository != "$destination/"* && $destination != "$repository/"* ]] || fail 'paths must be isolated'
+for copied_tree in "$artifact" "$repository" "$destination"; do
+  [[ $password_file != "$copied_tree" && $password_file != "$copied_tree/"* ]] || fail 'Restic password path must be outside copied trees'
+done
 [[ -s $artifact/archive.dump && $(head -c 5 "$artifact/archive.dump") == PGDMP ]] || fail 'invalid dump format'
 expected=$(node -e '
 const fs = require("node:fs");
@@ -48,9 +52,22 @@ restic backup --quiet --tag finance-hub -- "$artifact" >/dev/null 2>&1 || fail '
 restic check --quiet >/dev/null 2>&1 || fail 'local repository integrity check failed'
 printf 'finance protection: LOCAL_SNAPSHOT_COMPLETE\n'
 
-# copy never removes unrelated remote objects; check proves byte equality before success.
+# Only Restic's repository layout may be transferred. Reject unrelated files and links.
+while IFS= read -r -d '' entry; do
+  relative=${entry#"$repository"/}
+  [[ ! -L $entry ]] || fail 'unexpected repository entry'
+  if [[ -d $entry ]]; then
+    [[ $relative =~ ^(data|index|keys|locks|snapshots)$ || $relative =~ ^data/[a-f0-9]{2}$ ]] || fail 'unexpected repository entry'
+  elif [[ -f $entry ]]; then
+    [[ $relative == config || $relative =~ ^(index|keys|locks|snapshots)/[a-f0-9]{64}$ || $relative =~ ^data/[a-f0-9]{2}/[a-f0-9]{64}$ ]] || fail 'unexpected repository entry'
+  else
+    fail 'unexpected repository entry'
+  fi
+done < <(find "$repository" -mindepth 1 -print0)
+
+# copy never removes unrelated remote objects; check requires exact byte equality before success.
 if ! rclone copy "$repository" "$destination" --quiet >/dev/null 2>&1 ||
-   ! rclone check "$repository" "$destination" --one-way --quiet >/dev/null 2>&1; then
+   ! rclone check "$repository" "$destination" --quiet >/dev/null 2>&1; then
   printf 'finance protection: REMOTE_INCOMPLETE; local snapshot retained\n' >&2
   exit 2
 fi

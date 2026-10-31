@@ -8,7 +8,9 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -30,6 +32,20 @@ describe('M09-P02 encrypted local and off-site protection', () => {
   let container: Awaited<ReturnType<GenericContainer['start']>>;
   let artifact: string;
   let env: NodeJS.ProcessEnv;
+  const snapshots = () => {
+    const list = docker(
+      'restic/restic:0.18.1',
+      ['snapshots', '--json'],
+      ['-e', `RESTIC_REPOSITORY=${repository}`, '-e', `RESTIC_PASSWORD_FILE=${passwordFile}`],
+    );
+    expect(list.status, list.stderr).toBe(0);
+    return JSON.parse(list.stdout).length as number;
+  };
+  const remoteFiles = (directory: string): string[] =>
+    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(directory, entry.name);
+      return entry.isDirectory() ? remoteFiles(path) : [path];
+    });
 
   const run = (path = artifact, changes: NodeJS.ProcessEnv = {}) =>
     spawnSync('bash', [protectScript, path], { env: { ...env, ...changes }, encoding: 'utf8' });
@@ -154,9 +170,16 @@ describe('M09-P02 encrypted local and off-site protection', () => {
     expect(readdirSync(remote).sort()).toEqual(['config', 'data', 'index', 'keys', 'snapshots']);
     expect(readdirSync(remote, { recursive: true }).join(' ')).not.toContain('archive.dump');
     expect(readdirSync(remote, { recursive: true }).join(' ')).not.toContain('manifest.json');
+    const marker = database;
+    for (const file of remoteFiles(remote)) {
+      const bytes = readFileSync(file);
+      expect(bytes.includes(Buffer.from('PGDMP')), file).toBe(false);
+      expect(bytes.includes(Buffer.from(marker)), file).toBe(false);
+    }
   }, 120_000);
 
   it('rejects corrupt, truncated, and incomplete P01 artifacts without a new snapshot', () => {
+    const before = snapshots();
     const bad = join(root, 'bad-artifact');
     cpSync(artifact, bad, { recursive: true });
     writeFileSync(join(bad, 'archive.dump'), 'PGDMPcorrupt');
@@ -167,7 +190,57 @@ describe('M09-P02 encrypted local and off-site protection', () => {
     rmSync(join(bad, 'manifest.json'));
     expect(run(bad).status).not.toBe(0);
     expect(run(join(output, '.staging.fake')).status).not.toBe(0);
+    expect(snapshots()).toBe(before);
   });
+
+  it('rejects unexpected plaintext at the destination without deleting it', () => {
+    const extra = join(remote, 'archive.dump');
+    const plaintext = 'PGDMP-unexpected-plaintext';
+    writeFileSync(extra, plaintext);
+    const result = run();
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('REMOTE_INCOMPLETE');
+    expect(result.stdout + result.stderr).not.toContain('OFFSITE_COMPLETE');
+    expect(readFileSync(extra, 'utf8')).toBe(plaintext);
+    rmSync(extra);
+  }, 120_000);
+
+  it('does not transfer an unexpected plaintext file in the repository', () => {
+    const extra = join(repository, 'archive.dump');
+    writeFileSync(extra, 'PGDMP-local-plaintext');
+    const result = run();
+    expect(result.status).not.toBe(0);
+    expect(result.stdout + result.stderr).not.toContain('OFFSITE_COMPLETE');
+    expect(readFileSync(extra, 'utf8')).toBe('PGDMP-local-plaintext');
+    expect(existsSync(join(remote, 'archive.dump'))).toBe(false);
+    rmSync(extra);
+  }, 120_000);
+
+  it('rejects password paths in copied trees before snapshot or transfer', () => {
+    const before = snapshots();
+    for (const tree of [repository, remote, artifact]) {
+      const nested = join(tree, 'nested');
+      mkdirSync(nested);
+      const exposed = join(nested, 'password');
+      writeFileSync(exposed, password, { mode: 0o600 });
+      const result = run(artifact, { RESTIC_PASSWORD_FILE: exposed });
+      expect(result.status).not.toBe(0);
+      expect(result.stdout + result.stderr).not.toContain('OFFSITE_COMPLETE');
+      expect(result.stdout + result.stderr).not.toContain(password);
+      expect(readFileSync(exposed, 'utf8')).toBe(password);
+      expect(snapshots()).toBe(before);
+      rmSync(nested, { recursive: true });
+    }
+    const alias = join(root, 'repository-alias');
+    symlinkSync(realpathSync(repository), alias, 'dir');
+    const exposed = join(repository, 'password');
+    writeFileSync(exposed, password, { mode: 0o600 });
+    const result = run(artifact, { RESTIC_PASSWORD_FILE: join(alias, 'password') });
+    expect(result.status).not.toBe(0);
+    expect(snapshots()).toBe(before);
+    rmSync(exposed);
+    rmSync(alias);
+  }, 120_000);
 
   it('rejects missing and wrong passwords without remote success', () => {
     expect(run(artifact, { RESTIC_PASSWORD_FILE: '' }).status).not.toBe(0);

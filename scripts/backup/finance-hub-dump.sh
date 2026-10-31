@@ -23,10 +23,7 @@ target=$root/databases/finance-hub/$environment
 [[ -d $root/databases && ! -L $root/databases && -d $root/databases/finance-hub && ! -L $root/databases/finance-hub && -d $target && ! -L $target ]] || fail 'expected layout is missing or linked'
 [[ $(stat -c %a "$target") == 700 ]] || fail 'target directory must have mode 700'
 stage=$(mktemp -d "$target/.staging.XXXXXXXX") || fail 'cannot create staging'
-published=0
-complete=0
 cleanup() {
-  if [[ $published == 1 && $complete == 0 ]]; then rm -f -- "$dump"; fi
   rm -f -- "$stage/archive.dump" "$stage/manifest.json" "$stage/archive.list"
   rmdir -- "$stage" 2>/dev/null || true
 }
@@ -36,17 +33,16 @@ trap 'exit 143' TERM
 
 stamp=$(date -u +%Y-%m-%d_%H%M%S)
 name="finance-hub_${environment}_${database}_${stamp}_$$_$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
-dump=$target/$name.dump
-manifest=$target/$name.sha256.json
-[[ ! -e $dump && ! -e $manifest ]] || fail 'artifact collision'
+published=$target/$name
+[[ ! -e $published ]] || fail 'artifact collision'
 
 # The connection is supplied by PG* environment variables; no URI or password is an argument.
-if ! pg_dump --format=custom --no-password --dbname="$database" >"$stage/archive.dump" 2>/dev/null; then
+if ! env -i PATH="$PATH" PGHOST="$PGHOST" PGPORT="$PGPORT" PGUSER="$PGUSER" PGPASSFILE="$PGPASSFILE" PGCONNECT_TIMEOUT=5 pg_dump --format=custom --no-password --dbname="$database" >"$stage/archive.dump" 2>/dev/null; then
   fail 'pg_dump failed'
 fi
 [[ -s $stage/archive.dump && ! -L $stage/archive.dump ]] || fail 'empty dump'
 chmod 600 "$stage/archive.dump"
-if ! pg_restore --list "$stage/archive.dump" >"$stage/archive.list" 2>/dev/null; then
+if ! env -i PATH="$PATH" pg_restore --list "$stage/archive.dump" >"$stage/archive.list" 2>/dev/null; then
   fail 'archive inspection failed'
 fi
 [[ -s $stage/archive.list ]] || fail 'empty archive listing'
@@ -55,10 +51,8 @@ size=$(stat -c %s "$stage/archive.dump")
 printf '{"format":"pg_dump-custom","environment":"%s","database":"%s","created_at_utc":"%s","bytes":%s,"sha256":"%s"}\n' "$environment" "$database" "$stamp" "$size" "$checksum" > "$stage/manifest.json"
 chmod 600 "$stage/manifest.json"
 
-# Both artifacts live on the same filesystem. Hard links publish atomically and
-# fail closed on a collision; the manifest is the completion marker.
-ln -- "$stage/archive.dump" "$dump" || fail 'dump publication failed'
-published=1
-ln -- "$stage/manifest.json" "$manifest" || fail 'manifest publication failed'
-complete=1
+# Rename the complete directory in one filesystem operation. An interruption
+# before this point leaves only hidden, incomplete staging.
+rm -f -- "$stage/archive.list"
+mv -T -- "$stage" "$published" || fail 'publication failed'
 printf 'finance backup: complete %s\n' "$name"

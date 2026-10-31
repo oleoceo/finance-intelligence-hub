@@ -55,12 +55,12 @@ describe('M09-P01 real PostgreSQL backup', () => {
     writeFileSync(join(root, 'pgpass'), `*:*:*:test_admin:${password}\n`, { mode: 0o600 });
     writeFileSync(
       join(bin, 'pg_dump'),
-      `#!/bin/sh\nexec docker exec -i ${containerId} pg_dump -U test_admin "$@"\n`,
+      `#!/bin/sh\nexec docker run --rm --network host -v '${root}:${root}:ro' -e PGHOST -e PGPORT -e PGUSER -e PGPASSFILE -e PGCONNECT_TIMEOUT postgres:18.6-bookworm pg_dump "$@"\n`,
       { mode: 0o700 },
     );
     writeFileSync(
       join(bin, 'pg_restore'),
-      `#!/bin/sh\nif [ "$1" = '--list' ]; then cat "$2" | docker exec -i ${containerId} pg_restore --list; else exit 2; fi\n`,
+      `#!/bin/sh\nexec docker run --rm --network host -v '${root}:${root}:ro' postgres:18.6-bookworm pg_restore "$@"\n`,
       { mode: 0o700 },
     );
     env = {
@@ -68,8 +68,8 @@ describe('M09-P01 real PostgreSQL backup', () => {
       PATH: `${bin}:${process.env.PATH}`,
       FINANCE_BACKUP_ROOT: root,
       FINANCE_BACKUP_ALLOWED_DATABASE: database,
-      PGHOST: 'localhost',
-      PGPORT: '5432',
+      PGHOST: container.getHost(),
+      PGPORT: String(container.getMappedPort(5432)),
       PGUSER: 'test_admin',
       PGPASSFILE: join(root, 'pgpass'),
     };
@@ -89,15 +89,15 @@ describe('M09-P01 real PostgreSQL backup', () => {
     expect(result.status).toBe(0);
     expect(result.stderr).not.toContain(env.PGPASSFILE);
     const files = readdirSync(output);
-    const dump = files.find((name) => name.endsWith('.dump'))!;
-    const manifest = files.find((name) => name.endsWith('.sha256.json'))!;
-    const bytes = readFileSync(join(output, dump));
+    expect(files).toHaveLength(1);
+    const artifact = join(output, files[0]);
+    const bytes = readFileSync(join(artifact, 'archive.dump'));
     expect(bytes.subarray(0, 5).toString()).toBe('PGDMP');
-    expect(JSON.parse(readFileSync(join(output, manifest), 'utf8')).sha256).toBe(
+    expect(JSON.parse(readFileSync(join(artifact, 'manifest.json'), 'utf8')).sha256).toBe(
       createHash('sha256').update(bytes).digest('hex'),
     );
-    expect(statSync(join(output, dump)).mode & 0o777).toBe(0o600);
-    expect(statSync(join(output, manifest)).mode & 0o777).toBe(0o600);
+    expect(statSync(join(artifact, 'archive.dump')).mode & 0o777).toBe(0o600);
+    expect(statSync(join(artifact, 'manifest.json')).mode & 0o777).toBe(0o600);
     execFileSync('docker', [
       'exec',
       containerId,
@@ -167,7 +167,7 @@ describe('M09-P01 real PostgreSQL backup', () => {
         .toString()
         .trim(),
     ).toBe('0');
-  });
+  }, 30_000);
 
   it('rejects unexpected and Production targets without publishing', () => {
     const initial = readdirSync(output);
@@ -176,6 +176,54 @@ describe('M09-P01 real PostgreSQL backup', () => {
     expect(run('finance_hub_prod').status).not.toBe(0);
     expect(readdirSync(output)).toEqual(initial);
   });
+
+  it('uses the external host, port and password file and ignores inherited libpq redirects', async () => {
+    const initial = readdirSync(output);
+    for (const change of [
+      { PGHOST: 'invalid.finance.test' },
+      { PGPORT: '1' },
+      { PGPASSFILE: join(root, 'wrong-pgpass') },
+    ]) {
+      if (change.PGPASSFILE) {
+        writeFileSync(change.PGPASSFILE, '*:*:*:test_admin:wrong-password\n', { mode: 0o600 });
+      }
+      const result = spawnSync('bash', [script, 'local', database], {
+        env: { ...env, ...change },
+        encoding: 'utf8',
+      });
+      expect(result.status).not.toBe(0);
+      expect(readdirSync(output)).toEqual(initial);
+    }
+    expect((await pool.query('SELECT value FROM proof')).rows[0].value).toBe('expected');
+    expect(
+      (await pool.query("SELECT datname FROM pg_database WHERE datname='second_database'"))
+        .rowCount,
+    ).toBe(1);
+    const redirected = spawnSync('bash', [script, 'local', database], {
+      env: {
+        ...env,
+        PGHOSTADDR: '127.0.0.2',
+        PGSERVICE: 'invalid-service',
+        PGDATABASE: 'second_database',
+      },
+      encoding: 'utf8',
+    });
+    expect(redirected.status).toBe(0);
+  }, 30_000);
+
+  it('publishes only a complete directory when interrupted at publication', () => {
+    const initial = readdirSync(output);
+    writeFileSync(join(bin, 'mv'), '#!/bin/sh\nkill -TERM "$PPID"\nexit 1\n', { mode: 0o700 });
+    try {
+      expect(run().status).not.toBe(0);
+      expect(readdirSync(output)).toEqual(initial);
+      for (const name of initial) {
+        expect(readdirSync(join(output, name))).toEqual(['archive.dump', 'manifest.json']);
+      }
+    } finally {
+      rmSync(join(bin, 'mv'));
+    }
+  }, 30_000);
 
   it('rejects an invalid archive and clears only its staging', () => {
     const initial = readdirSync(output);

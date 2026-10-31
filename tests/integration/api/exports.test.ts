@@ -175,9 +175,10 @@ describe('M08-P04 PostgreSQL CSV export', () => {
       .orderBy('id', 'desc')
       .execute();
     // The fixtures share a created_at timestamp and random UUIDs determine their
-    // sort positions. Select posted February 15 income rows from page two instead
-    // of assuming fixed indices belong to that fixture type.
-    const secondPageIncome = targets.slice(256).filter(
+    // sort positions. Mirror the export dateTo filter before selecting posted
+    // February 15 income rows from its actual second page (limit=256).
+    const snapshotRows = targets.filter((row) => row.transaction_date <= '2024-02-29');
+    const secondPageIncome = snapshotRows.slice(256).filter(
       (row) =>
         row.transaction_date === '2024-02-15' &&
         row.type === 'income' &&

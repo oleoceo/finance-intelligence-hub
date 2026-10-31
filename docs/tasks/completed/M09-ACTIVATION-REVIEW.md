@@ -1,9 +1,9 @@
 # M09 Activation Review — Backup / Restore
 
-**Status:** REVIEW REQUIRED — documentary review only
+**Status:** ACCEPTED — documentary review only; M09-P01 activation is a separate process
 **Baseline:** `origin/main@a827d1170a0c2768bb831bb1d0956d890b9f2fad`
 **Date:** 2026-10-31
-**Independent reviewer:** ChatGPT (pending)
+**Independent reviewer:** ChatGPT — REVIEW PASS #5722893309 on `d9a1a25e65ecced3318e5af08f5282d512e5af0a`; CI #217 SUCCESS; PR #65 squash `9fb29569bb5acc8ecd73220d8dca844a51205ac2`.
 
 ## 1. Upstream and decision
 
@@ -64,9 +64,9 @@ No schema migration or dependency change is authorized by this review. P01–P04
 
 ## 6. Approval and promotion
 
-- [ ] Forward plan and assumption delta independently accepted
-- [ ] P01–P06 contracts accepted
-- [ ] Local/CI task activation explicitly selected
+- [x] Forward plan and assumption delta independently accepted (PR #65)
+- [x] P01–P06 proposed contracts accepted as PLANNED (PR #65)
+- [x] M09-P01 local/CI activation selected for a separate review/CI/merge; selection is not live authorization
 - [ ] Gate 0 evidence accepted before operational tasks
 - [ ] Specific operational action authorized before P05/real deployment
 

@@ -1,14 +1,12 @@
 # M09 — Backup / Restore
 
-**Status:** PLANNED
+**Status:** ACTIVE — local/CI only; M09-P01 is the sole ACTIVE task; P02–P06 remain PLANNED.
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 **Blocks:** Gate C
 
-**Activation Review:** [Draft for independent review](M09-ACTIVATION-REVIEW.md). M09 remains PLANNED; P01–P04 local/CI eligibility is proposed only. P05–P06 require formal Gate 0 PASS and separate operational authorization. No M09 implementation is authorized by this documentary review.
+**Activation Review:** [ACCEPTED PR #65, independent REVIEW PASS #5722893309, squash 9fb29569](../completed/M09-ACTIVATION-REVIEW.md). M09-P01 is selected for local/CI implementation only after this task-specific activation PR has independently passed review, exact-head CI, squash merge and post-merge CI. P02–P04 are PLANNED and require their own selection/dependencies; P05–P06 require formal Gate 0 PASS and separate operational authorization. No live action is authorized.
 
-> **This document does NOT authorize implementation.**
-> Provisional task decomposition and scope are defined here. Execution-ready
-> contracts are finalized during Activation Review.
+> **Authorized scope:** only [M09-P01](M09-P01.md) in local disposable/CI environments after this promotion merges and its post-merge CI succeeds. The provisional P02–P06 contracts are not implementation authorization.
 
 ---
 
@@ -114,11 +112,11 @@ Make Finance Hub recoverable:
 - Actual Google Drive rclone remote configuration
 - Systemd timer installation on real host
 
-Do NOT freeze concrete container names, network names, host UID/GID, filesystem ownership, real secrets, or postgres-products runtime details until Gate 0 evidence and M09 Activation Review.
+Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real secrets, or live postgres-products runtime details without Gate 0 evidence and specific approval. Repository network contract is not evidence of actual host topology.
 
 ---
 
-## 5. Provisional Task Decomposition
+## 5. Task Decomposition (only P01 active)
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
@@ -129,7 +127,7 @@ Do NOT freeze concrete container names, network names, host UID/GID, filesystem 
 | **M09-P05** | Executed isolated restore + validation | Actual restore performed, all validation items verified, evidence captured |
 | **M09-P06** | M09 milestone verification | Daily backup running, off-site copy confirmed, retention verified, restore evidence recorded |
 
-Execution-ready proposed contracts: [P01](M09-P01.md), [P02](M09-P02.md), [P03](M09-P03.md), [P04](M09-P04.md), [P05](M09-P05.md), [P06](M09-P06.md). These remain PLANNED pending independent acceptance and task-specific activation.
+Current contract: [P01](M09-P01.md) ACTIVE (local/CI only). Still PLANNED: [P02](../planned/M09-P02.md), [P03](../planned/M09-P03.md), [P04](../planned/M09-P04.md), [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). Operational activity remains blocked.
 
 ---
 

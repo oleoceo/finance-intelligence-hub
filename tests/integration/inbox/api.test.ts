@@ -440,6 +440,46 @@ describe('P05 Inbox API with PostgreSQL', () => {
       expect(direct.statusCode, direct.body).toBe(200);
       for (const key of ['ordinary_income', 'gross_expenses', 'refunds', 'net_expenses', 'net'])
         expect(result.summary[key]).toBe(direct.json().data[key]);
+      const csv = await app.inject({
+        method: 'GET',
+        url: `/api/v1/exports/transactions.csv?book_id=${expectedBook}`,
+        headers: { authorization: 'Bearer integration-admin' },
+      });
+      expect(csv.statusCode, csv.body).toBe(200);
+      const persisted = await fixture.db
+        .selectFrom('transactions')
+        .selectAll()
+        .where('book_id', '=', expectedBook)
+        .where('status', '=', 'posted')
+        .where('transaction_date', '>=', '2026-10-01')
+        .where('transaction_date', '<=', '2026-10-31')
+        .execute();
+      for (const transaction of persisted) expect(csv.body).toContain(transaction.id);
+      const minor = (value: string) => {
+        const [whole, fraction] = value.split('.');
+        return BigInt(whole) * 100n + BigInt(fraction);
+      };
+      const format = (value: bigint) => {
+        const sign = value < 0n ? '-' : '';
+        const absolute = value < 0n ? -value : value;
+        return `${sign}${absolute / 100n}.${String(absolute % 100n).padStart(2, '0')}`;
+      };
+      const sum = (rows: typeof persisted) =>
+        rows.reduce((total, row) => total + minor(row.amount), 0n);
+      const ordinary = sum(
+        persisted.filter((row) => row.type === 'income' && row.refund_of_transaction_id === null),
+      );
+      const gross = sum(persisted.filter((row) => row.type === 'expense'));
+      const refunds = sum(
+        persisted.filter((row) => row.type === 'income' && row.refund_of_transaction_id !== null),
+      );
+      expect(result.summary).toMatchObject({
+        ordinary_income: format(ordinary),
+        gross_expenses: format(gross),
+        refunds: format(refunds),
+        net_expenses: format(gross - refunds),
+        net: format(ordinary - gross + refunds),
+      });
       expect(reply.should_send).toBe(true);
       expect(reply.contract.max_code_points).toBe(500);
       expect([...reply.text].length).toBeLessThanOrEqual(500);

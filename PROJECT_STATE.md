@@ -1,18 +1,10 @@
-**M08-P04 closure:** PR #61 MERGED as `20e761585e79e4a4b821d63715fea5a82655d0b3`; independent review #5719423550 PASS; postmerge CI #207 (`41139440804`) SUCCESS on the exact squash SHA. M08-P05 selected for local/WSL/CI; P06 gated.
-
-**M08-P03 closure:** PR #60 MERGED as `442e9ad56cb6873558d9020711574adf210136ed`; independent review #5718701193 PASS; premerge CI #201 SUCCESS; postmerge CI #202 (`41129277776`) SUCCESS on the exact squash SHA. M08-P04 selected for local/WSL/CI; P05-P06 gated.
-
-**M08-P02 closure:** PR #59 MERGED as `2406b89ad4c2e61aec28903ed3c82d6f447611ee`; independent review #5717961714 PASS; premerge CI #197 SUCCESS; postmerge CI #198 (`41119383533`) SUCCESS on the exact squash SHA. M08-P03 selected for local/WSL/CI; P04-P06 gated.
-
-**M08-P01 closure:** PR #58 MERGED as `1da05add2259b16b0e7dab7bc8a7fc6025e6a952`; review #5717434106 PASS; post-merge CI #195 (`41112938302`) SUCCESS on that SHA. M08-P02 is DONE; M08-P03 is selected; P04-P06 remain gated. No Gate 0/C or Production acceptance.
-
-**M08 current state (2026-10-30):** `origin/main@20e761585e79e4a4b821d63715fea5a82655d0b3`; M08 ACTIVE, P01-P04 DONE and P05 REVIEW REQUIRED after local/WSL/CI implementation. M01-M07 DONE; Gates A/B PASS (B local/CI only); Gate 0 formal PASS absent, Gate C planned, Production not homologated. Earlier milestone records below are historical.
+**M08 current state (2026-10-31):** M08 ACTIVE; P01–P05 DONE, P06 selected for local/WSL/CI acceptance. PR #62 REVIEW PASS #5720123467, premerge CI #209 SUCCESS, squash `e93527574cbbb68a3b95531d2ef929087c007e93`, postmerge CI #210 (`41150793329`) SUCCESS on the exact squash SHA. `origin/main` matches the squash. M09 PLANNED; Gate 0 formal and Gate C have no PASS; Production is not approved.
 
 # PROJECT_STATE.md
 
 # Finance Intelligence Hub
 
-**Current Gate B status (2026-10-30):** **PASS — local/CI financial integrity**. Source: `docs/tasks/completed/GATE-B.md`; independently checked accepted M07-P01–P06, `main@dc2c86314d6e66addbceb2ce85418e890a6bfbfe`, GitHub CI #185 (`41093451586`) SUCCESS. M08 Activation Review next; M08 implementation not yet authorized. Gate 0 formal PASS, Gate C and Production remain pending. Historical status rows below are preserved as snapshots.
+**Current Gate B status (2026-10-30):** **PASS — local/CI financial integrity**. Source: `docs/tasks/completed/GATE-B.md`; independently checked accepted M07-P01–P06, `main@dc2c86314d6e66addbceb2ce85418e890a6bfbfe`, GitHub CI #185 (`41093451586`) SUCCESS. M08 Activation Review later passed. Gate 0 formal PASS remains absent; Gate C and Production remain pending. This Gate B record is historical.
 
 **M07-P06 closure note (2026-10-30):** Complete scenario Expense 500.00 → Refund 200.00 → Correction 450.00 valid → Correction 100.00 invalid → Void Expense blocked → Void Refund valid → Void Expense valid. Two administrative GETs read-only with finance:admin, strict request/response and scoped histories. No live VPS, real WhatsApp or Production work.
 

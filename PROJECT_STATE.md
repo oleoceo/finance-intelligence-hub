@@ -1,4 +1,4 @@
-**M09 current state (2026-10-31):** M09-P01 local/CI backup runner accepted by independent REVIEW PASS #5723448228 at `5f1f5fe1bcf819c09d0a9ce6954862570b232ae6`; PR #67 squash `0cddd8e92b1b64182eccad47df47a19d25f2621c`. CI #228 on exact squash SHA must finish SUCCESS before this documentary closure/P02 activation is merged. Following a separately accepted transition, M09-P01 is DONE and M09-P02 is **REVIEW REQUIRED** in Draft PR #69, local disposable/CI only; P03–P06 remain PLANNED. Gate 0 formal, Gate C and Production remain unapproved. P05/P06 require dated host evidence and separate operational permission.
+**M09 current state (2026-10-31):** P01 DONE. P02 implementation accepted by independent REVIEW PASS #5723754300 on `abb4ab500a77c8cb224e380d287786a2b219bc32`, CI #233 SUCCESS (1,099 unit, 566 PostgreSQL integration incl. 7 P02); PR #69 squash `51b9e7789dfce9bd3c00590a90c7bb3b1f932ad8`. **Prerequisite before this documentary promotion merges:** exact-SHA post-merge CI #234 SUCCESS. After separately reviewed transition and its post-merge CI, P02 will be DONE and P03 the **sole ACTIVE local/disposable/CI** task. P04–P06 remain PLANNED; P05/P06 operationally blocked pending formal Gate 0 PASS, dated actual host evidence, and specific live approval. Gate C and Production remain unapproved.
 
 **M08 current state (2026-10-31): DONE.** P01–P06 accepted and integrated. P06 PR #63: independent review #5722309428 PASS; [CI #213](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41191101818) SUCCESS on head `2051e8a0ed7da9fd00e15d272d5d3e529a041c97`; squash/main `5a460dc6db6d603109053ae7ba4617cf61228451`; [CI #214](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41192015146) SUCCESS on that exact SHA. Documentary PR #64 merged into `main@a827d1170a0c2768bb831bb1d0956d890b9f2fad` after review #5722377012 and CI #215/#216 SUCCESS. See [completed overview](docs/tasks/completed/M08-OVERVIEW.md) and [P06 record](docs/tasks/completed/M08-P06.md). M09 Activation Review has been accepted under PR #65; this section records the preceding M08 handoff. See the current M09 local/CI activation statement above. Gate 0 formal and Gate C have no PASS; Production is not approved.
 
@@ -219,7 +219,7 @@ M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved
 
 # 8. Current milestone
 
-M08 — Reports / Export / Operations: DONE; P01–P06 accepted and integrated. M09 — Backup / Restore: P01 accepted and integrated; after P01 squash/main CI #228 SUCCESS and separate reviewed transition, P01 is DONE, P02 ACTIVE local/CI only, P03–P06 PLANNED. Gate 0 formal, Gate C and Production remain unapproved. Earlier milestone chronology is historical.
+M08 — Reports / Export / Operations: DONE; P01–P06 accepted. M09 — Backup / Restore: P01 DONE, P02 independently accepted via PR #69. After CI #234 SUCCESS on P02 squash and this separately reviewed documentary promotion/post-merge CI, P02 DONE and P03 ACTIVE local/CI ONLY; P04–P06 PLANNED. Gate 0 formal, Gate C and Production unapproved. Earlier milestone chronology is historical.
 
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
 M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
@@ -782,7 +782,7 @@ Gate C — Real Data Ready
 
 # 35. Milestone status
 
-Current M08 status: DONE; P01–P06 complete. M09: P01 accepted, P02 selected for local/CI ONLY subject to separate promotion's merge and post-merge CI; P03–P06 PLANNED. Gate B: PASS local/CI; Gate 0 and Gate C: no formal PASS; Production: unapproved.
+Current M08 status: DONE. M09: P01 DONE, P02 accepted PR #69, P03 selected for local/CI ONLY subject to PR #69 post-merge CI #234 SUCCESS plus separate promotional review/merge/post-merge CI. P04–P06 PLANNED. Gate B PASS local/CI, Gate 0/Gate C no formal PASS, Production unapproved.
 
 ```text
 M01 Local Bootstrap
@@ -1349,7 +1349,7 @@ NONE
 
 # 63. Next action
 
-**Current handoff (2026-10-31):** M09-P01 independent REVIEW PASS #5723448228 at head `5f1f5fe1bcf819c09d0a9ce6954862570b232ae6`; exact CI #227 SUCCESS (1,099 unit / 559 real PostgreSQL incl. 8 M09-P01). PR #67 squash/main `0cddd8e92b1b64182eccad47df47a19d25f2621c`; CI #228 on that SHA REQUIRED SUCCESS before documentary closure/P02 promotion. Selected next M09-P02 ONLY local/CI upon separate independently reviewed PR and post-merge CI. Gate 0 formal, Gate C and Production unapproved. Earlier notes are historical.
+**Current handoff (2026-10-31):** M09-P02 independent REVIEW PASS #5723754300 on `abb4ab500a77c8cb224e380d287786a2b219bc32`, exact CI #233 SUCCESS (1,099 unit, 566 PostgreSQL integration including 7 P02); PR #69 squash/main `51b9e7789dfce9bd3c00590a90c7bb3b1f932ad8`. Await exact main post-merge CI #234 SUCCESS. P03 is next eligible for separately reviewed documentary activation local/CI only; P04–P06 remain PLANNED, with P05/P06 blocked operationally. Gate 0/Gate C/Production unapproved. Historical entries retain their own dates.
 
 **M06 logging security, 2026-10-29:** M06-LIVE-T02 is REVIEW REQUIRED. The official Evolution tag 2.3.7 has a direct raw Baileys message log and webhook logs that can contain `apikey`. A pinned-source patch, synthetic leak tests and exact Evolution Compose deployment/rollback procedure are prepared in a Draft PR. The reported deployed `latest` image ID has not been proven to correspond to that source, and no VPS change, restart, webhook activation, workflow activation, WhatsApp connection or real-message test has been performed. Finance backup isolated restore remains pending. Next: independent review and separate operational release for any service change.
 

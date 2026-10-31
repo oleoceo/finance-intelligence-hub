@@ -70,6 +70,7 @@ describe('M09-P04 isolated PostgreSQL restore', () => {
         ...env,
         FINANCE_RESTORE_ALLOWED_DATABASE: target,
         FINANCE_RESTORE_SOURCE_DATABASE: source,
+        FINANCE_RESTORE_SOURCE_ENVIRONMENT: 'local',
         FINANCE_RESTORE_BOOTSTRAP: bootstrap,
         ...extra,
       },
@@ -344,10 +345,11 @@ describe('M09-P04 isolated PostgreSQL restore', () => {
       net_expenses: '300.00',
       net: '-199.90',
     });
-    expect(
-      (await call(restoredApp, 'POST', '/api/v1/transactions', replayBody, replayKey)).json().data
-        .id,
-    ).toBe(expenseId);
+    const beforeReplay = await snapshot(restored);
+    const replay = await call(restoredApp, 'POST', '/api/v1/transactions', replayBody, replayKey);
+    expect(replay.statusCode).toBe(201);
+    expect(replay.json().data.id).toBe(expenseId);
+    expect(await snapshot(restored)).toEqual(beforeReplay);
     expect(await snapshot(admin)).toEqual(before);
     expect(durationMs).toBeGreaterThan(0);
   }, 120_000);
@@ -365,6 +367,66 @@ describe('M09-P04 isolated PostgreSQL restore', () => {
     expect(restore(target, bad).status).not.toBe(0);
     expect((await admin.query('SELECT count(*) FROM transactions')).rows[0].count).toBe('5');
   });
+  it('rejects valid archives with wrong or missing source identity before touching the target', async () => {
+    const fresh = `finance_restore_${randomUUID().replaceAll('-', '')}`;
+    await admin.query(`CREATE DATABASE ${fresh}`);
+    const manifest = JSON.parse(readFileSync(join(artifact, 'manifest.json'), 'utf8'));
+    for (const change of [
+      { database: other },
+      { environment: 'lab' },
+      { database: undefined },
+      { environment: undefined },
+    ]) {
+      const altered = join(root, `wrong-identity-${randomUUID()}`);
+      mkdirSync(altered);
+      writeFileSync(join(altered, 'archive.dump'), readFileSync(join(artifact, 'archive.dump')));
+      writeFileSync(join(altered, 'manifest.json'), JSON.stringify({ ...manifest, ...change }));
+      const result = restore(fresh, altered, { FINANCE_RESTORE_ALLOWED_DATABASE: fresh });
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain('unauthorized archive identity');
+      const pool = new Pool({ connectionString: url(fresh) });
+      try {
+        expect(
+          (await pool.query("SELECT count(*) FROM pg_roles WHERE rolname='finance_hub_app'"))
+            .rows[0].count,
+        ).toBe('1');
+        expect(
+          (
+            await pool.query(
+              "SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace",
+            )
+          ).rows[0].count,
+        ).toBe('0');
+      } finally {
+        await pool.end();
+      }
+    }
+  });
+  it('rejects a target with an existing function and preserves it before bootstrap', async () => {
+    const occupied = `finance_restore_${randomUUID().replaceAll('-', '')}`;
+    await admin.query(`CREATE DATABASE ${occupied}`);
+    const pool = new Pool({ connectionString: url(occupied) });
+    try {
+      await pool.query(
+        'CREATE FUNCTION public.keep_me() RETURNS integer LANGUAGE SQL AS $$ SELECT 42 $$',
+      );
+      const before = await snapshot(admin);
+      const result = restore(occupied, artifact, { FINANCE_RESTORE_ALLOWED_DATABASE: occupied });
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain('target database must be empty');
+      expect((await pool.query('SELECT public.keep_me() AS value')).rows[0].value).toBe(42);
+      expect(
+        (
+          await pool.query(
+            "SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace",
+          )
+        ).rows[0].count,
+      ).toBe('0');
+      expect(await snapshot(admin)).toEqual(before);
+    } finally {
+      await pool.end();
+    }
+  });
   it('reports an interrupted pg_restore as failure and leaves source and independent database intact', async () => {
     const interrupted = `finance_restore_${randomUUID().replaceAll('-', '')}`;
     await admin.query(`CREATE DATABASE ${interrupted}`);
@@ -372,7 +434,7 @@ describe('M09-P04 isolated PostgreSQL restore', () => {
     mkdirSync(wrapper);
     writeFileSync(
       join(wrapper, 'pg_restore'),
-      `#!/bin/sh\nif [ "$1" = "--list" ]; then exec '${join(bin, 'pg_restore')}' "$@"; fi\nexit 143\n`,
+      `#!/bin/sh\nif [ "$1" = "--list" ]; then exec '${join(bin, 'pg_restore')}' "$@"; fi\n'${join(bin, 'psql')}' -d '${interrupted}' -X -v ON_ERROR_STOP=1 -c "CREATE FUNCTION public.interrupt_restore() RETURNS event_trigger LANGUAGE plpgsql AS \\\$\\\$ BEGIN RAISE EXCEPTION 'controlled restore interruption'; END \\\$\\\$; CREATE EVENT TRIGGER interrupt_restore ON ddl_command_end WHEN TAG IN ('CREATE TABLE') EXECUTE FUNCTION public.interrupt_restore();" >/dev/null || exit 1\nexec '${join(bin, 'pg_restore')}' "$@" 2>'${join(root, 'restore-interruption.log')}'\n`,
       { mode: 0o700 },
     );
     const before = await snapshot(admin);
@@ -383,8 +445,27 @@ describe('M09-P04 isolated PostgreSQL restore', () => {
     expect(result.status).not.toBe(0);
     expect(result.stdout).not.toContain('complete');
     expect(result.stderr).toContain('pg_restore failed');
+    expect(readFileSync(join(root, 'restore-interruption.log'), 'utf8')).toContain(
+      'controlled restore interruption',
+    );
     expect(`${result.stdout}${result.stderr}`).not.toContain(password);
     expect(await snapshot(admin)).toEqual(before);
+    const partial = new Pool({ connectionString: url(interrupted) });
+    try {
+      expect(
+        (await partial.query("SELECT count(*) FROM pg_tables WHERE schemaname='public'")).rows[0]
+          .count,
+      ).toBe('0');
+      expect(
+        (
+          await partial.query(
+            "SELECT count(*) FROM pg_event_trigger WHERE evtname='interrupt_restore'",
+          )
+        ).rows[0].count,
+      ).toBe('1');
+    } finally {
+      await partial.end();
+    }
     const unrelated = new Pool({ connectionString: url(other) });
     try {
       expect(

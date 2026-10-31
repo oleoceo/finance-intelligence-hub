@@ -1,6 +1,6 @@
 **M09 local/CI activation (2026-10-31):** Activation Review PR #65 REVIEW PASS #5722893309, squash `9fb29569bb5acc8ecd73220d8dca844a51205ac2`. Post-merge CI #218 SUCCESS is a prerequisite for merging this activation. Following independent review and successful CI for this separate promotion, M09 is ACTIVE for local/CI work **only**, with M09-P01 the sole ACTIVE implementation task. M09-P02–P06 remain PLANNED; P05/P06 require formal Gate 0 PASS, dated host evidence and specific live authorization. Gate C and Production remain NOT APPROVED.
 
-**M08 current state (2026-10-31): DONE.** P01–P06 accepted and integrated. P06 PR #63: independent review #5722309428 PASS; [CI #213](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41191101818) SUCCESS on head `2051e8a0ed7da9fd00e15d272d5d3e529a041c97`; squash/main `5a460dc6db6d603109053ae7ba4617cf61228451`; [CI #214](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41192015146) SUCCESS on that exact SHA. Documentary PR #64 merged into `main@a827d1170a0c2768bb831bb1d0956d890b9f2fad` after review #5722377012 and CI #215/#216 SUCCESS. See [completed overview](docs/tasks/completed/M08-OVERVIEW.md) and [P06 record](docs/tasks/completed/M08-P06.md). M09 remains PLANNED; [Activation Review](docs/tasks/planned/M09-ACTIVATION-REVIEW.md) is REVIEW REQUIRED. No implementation is authorized. Gate 0 formal and Gate C have no PASS; Production is not approved.
+**M08 current state (2026-10-31): DONE.** P01–P06 accepted and integrated. P06 PR #63: independent review #5722309428 PASS; [CI #213](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41191101818) SUCCESS on head `2051e8a0ed7da9fd00e15d272d5d3e529a041c97`; squash/main `5a460dc6db6d603109053ae7ba4617cf61228451`; [CI #214](https://github.com/oleoceo/finance-intelligence-hub/actions/runs/41192015146) SUCCESS on that exact SHA. Documentary PR #64 merged into `main@a827d1170a0c2768bb831bb1d0956d890b9f2fad` after review #5722377012 and CI #215/#216 SUCCESS. See [completed overview](docs/tasks/completed/M08-OVERVIEW.md) and [P06 record](docs/tasks/completed/M08-P06.md). M09 Activation Review has been accepted under PR #65; this section records the preceding M08 handoff. See the current M09 local/CI activation statement above. Gate 0 formal and Gate C have no PASS; Production is not approved.
 
 # PROJECT_STATE.md
 
@@ -1276,7 +1276,7 @@ Exact decomposition may be adjusted without reopening architecture if acceptance
 
 # 62. Final current-state summary
 
-M08 DONE after PR #63 and exact-SHA post-merge CI #214 SUCCESS. M09 remains PLANNED; next possible action is a separately authorized Activation Review. Gate 0 formal/Gate C/Production are unapproved.
+M08 DONE after PR #63 and exact-SHA post-merge CI #214 SUCCESS. M09 Activation Review accepted in PR #65; local/CI task-specific activation is documented at the top of this file. Gate 0 formal/Gate C/Production are unapproved.
 
 ```text
 Architecture
@@ -1347,7 +1347,7 @@ NONE
 
 # 63. Next action
 
-**Current handoff (2026-10-31):** M08-P06 DONE via PR #63, squash `5a460dc6db6d603109053ae7ba4617cf61228451`, post-merge CI #214 SUCCESS on exact `origin/main`. Regression evidence: 1,099 unit and 551 PostgreSQL integration tests in the accepted local rerun; CI #213 and #214 SUCCESS. M09 remains PLANNED. No M09 task is selected or authorized; separate Activation Review and authorization are required before implementation. Gate 0 formal, Gate C and Production remain unapproved. Historical notes below describe their dates only.
+**Current handoff (2026-10-31):** M08-P06 DONE via PR #63, squash `5a460dc6db6d603109053ae7ba4617cf61228451`, post-merge CI #214 SUCCESS on exact `origin/main`. Regression evidence: 1,099 unit and 551 PostgreSQL integration tests in the accepted local rerun; CI #213 and #214 SUCCESS. M09 Activation Review accepted in PR #65; M09-P01 is the selected local/CI-only task, pending completion of this separate promotion PR and its post-merge CI. Gate 0 formal, Gate C and Production remain unapproved. Historical notes below describe their dates only.
 
 **M06 logging security, 2026-10-29:** M06-LIVE-T02 is REVIEW REQUIRED. The official Evolution tag 2.3.7 has a direct raw Baileys message log and webhook logs that can contain `apikey`. A pinned-source patch, synthetic leak tests and exact Evolution Compose deployment/rollback procedure are prepared in a Draft PR. The reported deployed `latest` image ID has not been proven to correspond to that source, and no VPS change, restart, webhook activation, workflow activation, WhatsApp connection or real-message test has been performed. Finance backup isolated restore remains pending. Next: independent review and separate operational release for any service change.
 

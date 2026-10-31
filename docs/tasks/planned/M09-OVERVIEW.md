@@ -4,6 +4,8 @@
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 **Blocks:** Gate C
 
+**Activation Review:** [Draft for independent review](M09-ACTIVATION-REVIEW.md). M09 remains PLANNED; P01–P04 local/CI eligibility is proposed only. P05–P06 require formal Gate 0 PASS and separate operational authorization. No M09 implementation is authorized by this documentary review.
+
 > **This document does NOT authorize implementation.**
 > Provisional task decomposition and scope are defined here. Execution-ready
 > contracts are finalized during Activation Review.
@@ -126,6 +128,8 @@ Do NOT freeze concrete container names, network names, host UID/GID, filesystem 
 | **M09-P04** | Restore runbook and isolated environment procedure | Step-by-step restore instructions, isolated DB creation, bootstrap execution, validation checklist |
 | **M09-P05** | Executed isolated restore + validation | Actual restore performed, all validation items verified, evidence captured |
 | **M09-P06** | M09 milestone verification | Daily backup running, off-site copy confirmed, retention verified, restore evidence recorded |
+
+Execution-ready proposed contracts: [P01](M09-P01.md), [P02](M09-P02.md), [P03](M09-P03.md), [P04](M09-P04.md), [P05](M09-P05.md), [P06](M09-P06.md). These remain PLANNED pending independent acceptance and task-specific activation.
 
 ---
 

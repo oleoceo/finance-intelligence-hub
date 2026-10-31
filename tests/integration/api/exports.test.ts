@@ -174,10 +174,18 @@ describe('M08-P04 PostgreSQL CSV export', () => {
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
       .execute();
-    const corrected = targets[260];
-    const voided = targets[261];
-    expect(corrected).toBeDefined();
-    expect(voided).toBeDefined();
+    // The fixtures share a created_at timestamp and random UUIDs determine their
+    // sort positions. Select posted February 15 income rows from page two instead
+    // of assuming fixed indices belong to that fixture type.
+    const secondPageIncome = targets.slice(256).filter(
+      (row) =>
+        row.transaction_date === '2024-02-15' &&
+        row.type === 'income' &&
+        row.status === 'posted' &&
+        row.refund_of_transaction_id === null,
+    );
+    expect(secondPageIncome.length).toBeGreaterThanOrEqual(2);
+    const [corrected, voided] = secondPageIncome;
     const reached = Promise.withResolvers<void>();
     const resume = Promise.withResolvers<void>();
     const exported: TransactionReadRecord[] = [];

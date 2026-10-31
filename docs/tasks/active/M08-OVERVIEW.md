@@ -1,10 +1,10 @@
 # M08 — Reports / Export / Operations
 
-**Status:** ACTIVE — P01-P05 DONE; P06 selected for implementation.
+**Status:** ACTIVE — P01-P05 DONE; P06 REVIEW REQUIRED.
 **Dependencies:** [Gate B PASS (local/CI)](../completed/GATE-B.md); Gate B closure main@539a210342b8d9235eca176f5070e68ad5b5d786, CI #187 SUCCESS. [M08 Activation Review](M08-ACTIVATION-REVIEW.md) defines execution contracts.
 **Blocks:** M09 activation
 
-> **Execution gating:** Execute one selected active task at a time. P01-P05 are DONE; P06 is selected. Do not infer VPS/Production permission. See linked contracts below.
+> **Execution gating:** Execute one selected active task at a time. P01-P05 are DONE; P06 is REVIEW REQUIRED. Do not infer VPS/Production permission. See linked contracts below.
 
 ---
 

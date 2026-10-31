@@ -1,4 +1,4 @@
-**M08 current state (2026-10-31):** M08 ACTIVE; P01–P05 DONE, P06 selected for local/WSL/CI acceptance. PR #62 REVIEW PASS #5720123467, premerge CI #209 SUCCESS, squash `e93527574cbbb68a3b95531d2ef929087c007e93`, postmerge CI #210 (`41150793329`) SUCCESS on the exact squash SHA. `origin/main` matches the squash. M09 PLANNED; Gate 0 formal and Gate C have no PASS; Production is not approved.
+**M08 current state (2026-10-31):** M08 ACTIVE; P01–P05 DONE, P06 REVIEW REQUIRED after local/WSL acceptance; exact-head CI and independent review pending. PR #62 REVIEW PASS #5720123467, premerge CI #209 SUCCESS, squash `e93527574cbbb68a3b95531d2ef929087c007e93`, postmerge CI #210 (`41150793329`) SUCCESS on the exact squash SHA. `origin/main` matches the squash. M09 PLANNED; Gate 0 formal and Gate C have no PASS; Production is not approved.
 
 # PROJECT_STATE.md
 

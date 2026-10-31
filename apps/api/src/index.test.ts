@@ -444,7 +444,15 @@ describe('Logging and Request Correlation', () => {
 
       // Without DATABASE_URL, readiness should return 503
       expect(response.statusCode).toBe(503);
-      expect(JSON.parse(response.body)).toEqual({ status: 'not_ready' });
+      expect(JSON.parse(response.body)).toEqual({
+        status: 'not_ready',
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'The service could not complete the request.',
+          details: {},
+        },
+        meta: { request_id: expect.any(String), correlation_id: expect.any(String) },
+      });
     });
 
     it('test endpoint returns message', async () => {

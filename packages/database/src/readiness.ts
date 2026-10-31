@@ -1,4 +1,4 @@
-import { Client } from 'pg';
+import { Client, type QueryConfig } from 'pg';
 
 export interface ReadinessCheckOptions {
   connectionString: string;
@@ -32,6 +32,8 @@ export async function checkPostgreSQLReadiness(
   const client = new Client({
     connectionString: options.connectionString,
     connectionTimeoutMillis: connectBudget,
+    query_timeout: totalBudget,
+    statement_timeout: totalBudget,
   });
 
   try {
@@ -43,9 +45,12 @@ export async function checkPostgreSQLReadiness(
       return { ready: false };
     }
 
-    // Use statement_timeout to bound the query execution within the remaining budget
-    await client.query(`SET statement_timeout = ${queryBudget}`);
-    await client.query('SELECT 1');
+    // Bound the query by the remaining total deadline, including a stalled response.
+    const query: QueryConfig & { query_timeout: number } = {
+      text: 'SELECT 1',
+      query_timeout: queryBudget,
+    };
+    await client.query(query);
 
     return { ready: true };
   } catch {

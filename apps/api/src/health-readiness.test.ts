@@ -27,6 +27,19 @@ describe('Health and Readiness Endpoints', () => {
   });
 
   describe('GET /health', () => {
+    it('is independent of database configuration', async () => {
+      const previous = process.env.DATABASE_URL;
+      delete process.env.DATABASE_URL;
+      try {
+        const response = await app.inject({ method: 'GET', url: '/health' });
+        expect(response.statusCode).toBe(200);
+        expect(JSON.parse(response.body)).toEqual({ status: 'ok' });
+        expect(databaseModule.checkPostgreSQLReadiness).not.toHaveBeenCalled();
+      } finally {
+        if (previous === undefined) delete process.env.DATABASE_URL;
+        else process.env.DATABASE_URL = previous;
+      }
+    });
     it('returns 200 with status ok', async () => {
       const response = await app.inject({
         method: 'GET',
@@ -52,6 +65,165 @@ describe('Health and Readiness Endpoints', () => {
   });
 
   describe('GET /ready', () => {
+    it('does not log sensitive query strings or headers', async () => {
+      const lines: string[] = [];
+      const stream = {
+        write: (chunk: string | Buffer) => {
+          lines.push(String(chunk));
+        },
+      };
+      const testApp = buildApp({ logStream: stream as NodeJS.WritableStream });
+      const previous = process.env.DATABASE_URL;
+      try {
+        delete process.env.DATABASE_URL;
+        const response = await testApp.inject({
+          method: 'GET',
+          url: '/ready?token=URL_SECRET_MARKER&csv=CSV_SECRET_MARKER',
+          headers: {
+            authorization: 'Bearer AUTH_SECRET_MARKER',
+            cookie: 'session=COOKIE_SECRET_MARKER',
+            'x-api-key': 'API_KEY_SECRET_MARKER',
+          },
+        });
+        expect(response.statusCode).toBe(503);
+        expect(JSON.parse(response.body)).toEqual({
+          status: 'not_ready',
+          error: {
+            code: 'DATABASE_UNAVAILABLE',
+            message: 'The service could not complete the request.',
+            details: {},
+          },
+          meta: { request_id: expect.any(String), correlation_id: expect.any(String) },
+        });
+      } finally {
+        await testApp.close();
+        if (previous === undefined) delete process.env.DATABASE_URL;
+        else process.env.DATABASE_URL = previous;
+      }
+      const output = lines.join('');
+      expect(output).toContain('"url":"/ready"');
+      for (const secret of [
+        'URL_SECRET_MARKER',
+        'CSV_SECRET_MARKER',
+        'AUTH_SECRET_MARKER',
+        'COOKIE_SECRET_MARKER',
+        'API_KEY_SECRET_MARKER',
+      ]) {
+        expect(output).not.toContain(secret);
+      }
+    });
+
+    it('uses request_id when correlation headers are absent, invalid or duplicated', async () => {
+      const lines: string[] = [];
+      const testApp = buildApp({
+        logStream: {
+          write: (chunk: string | Buffer) => {
+            lines.push(String(chunk));
+          },
+        } as NodeJS.WritableStream,
+      });
+      const previous = process.env.DATABASE_URL;
+      delete process.env.DATABASE_URL;
+      try {
+        for (const headers of [
+          {},
+          { 'x-correlation-id': 'invalid@id' },
+          { 'x-correlation-id': ['first', 'second'] },
+        ]) {
+          const response = await testApp.inject({ method: 'GET', url: '/ready', headers });
+          expect(response.statusCode).toBe(503);
+          expect(JSON.parse(response.body)).toEqual({
+            status: 'not_ready',
+            error: {
+              code: 'DATABASE_UNAVAILABLE',
+              message: 'The service could not complete the request.',
+              details: {},
+            },
+            meta: { request_id: expect.any(String), correlation_id: expect.any(String) },
+          });
+        }
+      } finally {
+        await testApp.close();
+        if (previous === undefined) delete process.env.DATABASE_URL;
+        else process.env.DATABASE_URL = previous;
+      }
+      const warnings = lines
+        .map(
+          (line) =>
+            JSON.parse(line) as {
+              level: number;
+              request_id?: string;
+              correlation_id?: string;
+              error_code?: string;
+            },
+        )
+        .filter((line) => line.level === 40);
+      expect(warnings).toHaveLength(3);
+      for (const warning of warnings) {
+        expect(warning.request_id).toEqual(expect.any(String));
+        expect(warning.correlation_id).toBe(warning.request_id);
+        expect(warning.error_code).toBe('DATABASE_UNAVAILABLE');
+      }
+    });
+
+    it.each([
+      ['unavailable', { ready: false }, 40],
+      ['exception', new Error('READINESS_SECRET_MARKER'), 50],
+    ])('logs safe metadata when the PostgreSQL check reports %s', async (_case, outcome, level) => {
+      const lines: string[] = [];
+      const testApp = buildApp({
+        logStream: {
+          write: (chunk: string | Buffer) => {
+            lines.push(String(chunk));
+          },
+        } as NodeJS.WritableStream,
+      });
+      const previous = process.env.DATABASE_URL;
+      process.env.DATABASE_URL = 'postgresql://user:DB_SECRET_MARKER@localhost:5432/test';
+      if (outcome instanceof Error) {
+        vi.mocked(databaseModule.checkPostgreSQLReadiness).mockRejectedValue(outcome);
+      } else {
+        vi.mocked(databaseModule.checkPostgreSQLReadiness).mockResolvedValue(outcome);
+      }
+      try {
+        const response = await testApp.inject({
+          method: 'GET',
+          url: '/ready',
+          headers: { 'x-correlation-id': 'p05-log-check' },
+        });
+        expect(response.statusCode).toBe(503);
+        const body = JSON.parse(response.body) as {
+          error: { code: string };
+          meta: { request_id: string; correlation_id: string };
+        };
+        expect(body.error.code).toBe('DATABASE_UNAVAILABLE');
+        const failures = lines
+          .map(
+            (line) =>
+              JSON.parse(line) as {
+                level: number;
+                request_id?: string;
+                correlation_id?: string;
+                error_code?: string;
+              },
+          )
+          .filter((line) => line.level === level);
+        expect(failures).toHaveLength(1);
+        expect(failures[0]).toMatchObject({
+          request_id: body.meta.request_id,
+          correlation_id: 'p05-log-check',
+          error_code: 'DATABASE_UNAVAILABLE',
+        });
+        expect(body.meta.correlation_id).toBe('p05-log-check');
+        expect(lines.join('')).not.toContain('DB_SECRET_MARKER');
+        expect(lines.join('')).not.toContain('READINESS_SECRET_MARKER');
+      } finally {
+        await testApp.close();
+        if (previous === undefined) delete process.env.DATABASE_URL;
+        else process.env.DATABASE_URL = previous;
+      }
+    });
+
     it('returns 200 with status ready when PostgreSQL is available', async () => {
       vi.mocked(databaseModule.checkPostgreSQLReadiness).mockResolvedValue({ ready: true });
 
@@ -82,7 +254,15 @@ describe('Health and Readiness Endpoints', () => {
       });
 
       expect(response.statusCode).toBe(503);
-      expect(JSON.parse(response.body)).toEqual({ status: 'not_ready' });
+      expect(JSON.parse(response.body)).toEqual({
+        status: 'not_ready',
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'The service could not complete the request.',
+          details: {},
+        },
+        meta: { request_id: expect.any(String), correlation_id: expect.any(String) },
+      });
 
       // Clean up
       delete process.env.DATABASE_URL;
@@ -98,7 +278,15 @@ describe('Health and Readiness Endpoints', () => {
       });
 
       expect(response.statusCode).toBe(503);
-      expect(JSON.parse(response.body)).toEqual({ status: 'not_ready' });
+      expect(JSON.parse(response.body)).toEqual({
+        status: 'not_ready',
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'The service could not complete the request.',
+          details: {},
+        },
+        meta: { request_id: expect.any(String), correlation_id: expect.any(String) },
+      });
     });
 
     it('returns 503 with status not_ready when readiness check throws', async () => {
@@ -115,7 +303,15 @@ describe('Health and Readiness Endpoints', () => {
       });
 
       expect(response.statusCode).toBe(503);
-      expect(JSON.parse(response.body)).toEqual({ status: 'not_ready' });
+      expect(JSON.parse(response.body)).toEqual({
+        status: 'not_ready',
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'The service could not complete the request.',
+          details: {},
+        },
+        meta: { request_id: expect.any(String), correlation_id: expect.any(String) },
+      });
 
       // Clean up
       delete process.env.DATABASE_URL;
@@ -136,8 +332,15 @@ describe('Health and Readiness Endpoints', () => {
 
       expect(response.statusCode).toBe(503);
       const body = JSON.parse(response.body);
-      expect(body).toEqual({ status: 'not_ready' });
-      expect(body).not.toHaveProperty('error');
+      expect(body).toEqual({
+        status: 'not_ready',
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'The service could not complete the request.',
+          details: {},
+        },
+        meta: { request_id: expect.any(String), correlation_id: expect.any(String) },
+      });
       expect(body).not.toHaveProperty('details');
       expect(response.body).not.toContain('secret123');
       expect(response.body).not.toContain('192.168.1.100');
@@ -172,32 +375,27 @@ describe('Health and Readiness Endpoints', () => {
       delete process.env.DATABASE_URL;
     });
 
-    it('enforces 2000ms total readiness budget', async () => {
-      // Mock a delay that exceeds the budget
-      vi.mocked(databaseModule.checkPostgreSQLReadiness).mockImplementation(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-        return { ready: true };
-      });
-
+    it('preserves safe failure output and correlation metadata', async () => {
+      vi.mocked(databaseModule.checkPostgreSQLReadiness).mockResolvedValue({ ready: false });
       process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/test';
-
       const response = await app.inject({
         method: 'GET',
         url: '/ready',
+        headers: { 'x-correlation-id': 'p05-check' },
       });
-      // Should return not_ready because the mock exceeded the internal budget logic
-      // (Note: In this mocked test, the app's internal timeout logic isn't triggered
-      // because the mock resolves eventually, but we verify the endpoint handles long waits).
-      // To truly test the budget, we rely on the integration test or a unit test of the database package.
-      // For this API-level test, we verify it doesn't hang indefinitely if the underlying impl respects timeouts.
-
-      // Since the mock ignores the timeout, we just ensure it eventually returns.
-      // The real timeout enforcement is in packages/database/src/readiness.ts and verified in integration tests.
-      expect(response.statusCode).toBeDefined();
-
-      // Clean up
+      expect(response.statusCode).toBe(503);
+      expect(JSON.parse(response.body)).toEqual({
+        status: 'not_ready',
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'The service could not complete the request.',
+          details: {},
+        },
+        meta: { request_id: expect.any(String), correlation_id: expect.any(String) },
+      });
+      expect(response.body).not.toContain('postgresql://');
+      expect(JSON.parse(response.body).meta.correlation_id).toBe('p05-check');
       delete process.env.DATABASE_URL;
-      vi.restoreAllMocks();
     });
   });
 });

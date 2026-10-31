@@ -2,7 +2,7 @@ import Fastify from 'fastify';
 import { randomBytes } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { checkPostgreSQLReadiness, createConfigurationStore } from '@finance-hub/database';
-import type { ConfigurationOptions } from './routes/admin/shared.js';
+import { meta, type ConfigurationOptions } from './routes/admin/shared.js';
 import { adminAuthentication, ingestAuthentication, type Credentials } from './middleware/auth.js';
 import { ApiError, installErrorHandler } from './middleware/errors.js';
 import { registerBooks } from './routes/admin/books.js';
@@ -50,6 +50,7 @@ function isValidCorrelationId(value: unknown): value is string {
 }
 
 export interface AppOptions extends Credentials {
+  logStream?: NodeJS.WritableStream;
   transactions?: ConfigurationOptions['transactions'];
   financialTransactions?: FinancialTransactionPort;
   transactionReads?: TransactionReadPort;
@@ -72,6 +73,7 @@ function buildApp(options: AppOptions = {}) {
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: false } },
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
+      stream: options.logStream,
       redact: {
         paths: [
           'req.headers.authorization',
@@ -94,7 +96,7 @@ function buildApp(options: AppOptions = {}) {
         req(req) {
           return {
             method: req.method,
-            url: req.url,
+            url: req.url?.split('?')[0],
             host: req.headers.host,
             remoteAddress: req.ip,
           };
@@ -318,10 +320,23 @@ function buildApp(options: AppOptions = {}) {
   // Readiness endpoint - performs bounded PostgreSQL check
   app.get('/ready', async (request, reply) => {
     const connectionString = process.env.DATABASE_URL;
+    const unavailable = () =>
+      reply.code(503).send({
+        status: 'not_ready',
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'The service could not complete the request.',
+          details: {},
+        },
+        meta: meta(request),
+      });
 
     if (!connectionString) {
-      request.log.warn({ msg: 'DATABASE_URL not configured for readiness check' });
-      return reply.code(503).send({ status: 'not_ready' });
+      request.log.warn({
+        error_code: 'DATABASE_UNAVAILABLE',
+        msg: 'PostgreSQL readiness check unavailable',
+      });
+      return unavailable();
     }
 
     try {
@@ -333,13 +348,19 @@ function buildApp(options: AppOptions = {}) {
       if (result.ready) {
         return { status: 'ready' };
       } else {
-        request.log.warn({ msg: 'PostgreSQL readiness check failed' });
-        return reply.code(503).send({ status: 'not_ready' });
+        request.log.warn({
+          error_code: 'DATABASE_UNAVAILABLE',
+          msg: 'PostgreSQL readiness check failed',
+        });
+        return unavailable();
       }
     } catch {
       // Never expose raw errors; log safely and return not_ready
-      request.log.error({ msg: 'PostgreSQL readiness check encountered an error' });
-      return reply.code(503).send({ status: 'not_ready' });
+      request.log.error({
+        error_code: 'DATABASE_UNAVAILABLE',
+        msg: 'PostgreSQL readiness check encountered an error',
+      });
+      return unavailable();
     }
   });
 

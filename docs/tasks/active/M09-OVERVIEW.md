@@ -1,12 +1,12 @@
 # M09 — Backup / Restore
 
-**Status:** ACTIVE — local/CI only; P01 DONE after accepted review and post-merge CI; P02 is the sole ACTIVE task subject to documentary promotion acceptance; P03–P06 remain PLANNED.
+**Status:** ACTIVE — local/CI only; P01 DONE, P02 accepted (documentary closure subject to exact main CI #234); P03 sole ACTIVE task only after its promotion merge and post-merge CI. P04–P06 remain PLANNED.
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 **Blocks:** Gate C
 
-**Activation Review:** [ACCEPTED PR #65, independent REVIEW PASS #5722893309, squash 9fb29569](../completed/M09-ACTIVATION-REVIEW.md). M09-P01 was accepted by PR #67 REVIEW PASS #5723448228, head CI #227 SUCCESS and squash `0cddd8e92b1b64182eccad47df47a19d25f2621c`; closure/P02 activation requires post-merge CI #228 SUCCESS and this separate independently reviewed PR. P03–P04 remain PLANNED; P05–P06 require formal Gate 0 PASS and separate operational authorization. No live action is authorized.
+**Activation Review:** [ACCEPTED PR #65, independent REVIEW PASS #5722893309, squash 9fb29569](../completed/M09-ACTIVATION-REVIEW.md). M09-P01 was accepted by PR #67 REVIEW PASS #5723448228, head CI #227 SUCCESS and squash `0cddd8e92b1b64182eccad47df47a19d25f2621c`; closure/P02 activation requires post-merge CI #228 SUCCESS and this separate independently reviewed PR. P02 accepted by PR #69 REVIEW PASS #5723754300; P03 may start only after this separate reviewed promotion and its post-merge CI, with P04 still PLANNED. P05–P06 require formal Gate 0 PASS and separate operational authorization. No live action is authorized.
 
-> **Authorized scope following this promotion's own post-merge CI SUCCESS:** only [M09-P02](M09-P02.md) in disposable local/CI environments. [M09-P01](../completed/M09-P01.md) is DONE; P03–P06 are not implementation authorization.
+> **Authorized scope after this promotion's own post-merge CI SUCCESS:** only [M09-P03](M09-P03.md) in disposable local/CI environments. [M09-P01](../completed/M09-P01.md) and [M09-P02](../completed/M09-P02.md) are DONE; P04–P06 are not implementation authorization.
 
 ---
 
@@ -116,7 +116,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 
 ---
 
-## 5. Task Decomposition (P01 done; only P02 active)
+## 5. Task Decomposition (P01–P02 done; only P03 active after gates)
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
@@ -127,7 +127,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 | **M09-P05** | Executed isolated restore + validation | Actual restore performed, all validation items verified, evidence captured |
 | **M09-P06** | M09 milestone verification | Daily backup running, off-site copy confirmed, retention verified, restore evidence recorded |
 
-Accepted: [P01](../completed/M09-P01.md) DONE (local/CI only). Current: [P02](M09-P02.md) ACTIVE only after this separate promotion merges and its post-merge CI SUCCESS. Still PLANNED: [P03](../planned/M09-P03.md), [P04](../planned/M09-P04.md), [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). Operational activity remains blocked.
+Accepted: [P01](../completed/M09-P01.md) and [P02](../completed/M09-P02.md) DONE (local/CI only). Current: [P03](M09-P03.md) ACTIVE only after this separate promotion merges and its post-merge CI SUCCESS. Still PLANNED: [P04](../planned/M09-P04.md), [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). Operational activity remains blocked.
 
 ---
 

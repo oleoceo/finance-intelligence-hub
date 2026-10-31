@@ -1,6 +1,6 @@
 # M09 — Backup / Restore
 
-**Status:** ACTIVE — local/CI only; P01–P02 DONE; P03 accepted by PR #71 (post-merge CI #239 prerequisite to documentary closure); P04 is the sole selected ACTIVE task only after this promotion's post-merge CI succeeds; P05/P06 PLANNED/operationally blocked.
+**Status:** ACTIVE — local/CI only; P01–P03 DONE; P04 REVIEW REQUIRED after synthetic isolated restore implementation; P05/P06 PLANNED/operationally blocked.
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 **Blocks:** Gate C
 
@@ -127,7 +127,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 | **M09-P05** | Executed isolated restore + validation | Actual restore performed, all validation items verified, evidence captured |
 | **M09-P06** | M09 milestone verification | Daily backup running, off-site copy confirmed, retention verified, restore evidence recorded |
 
-Accepted: [P01](../completed/M09-P01.md), [P02](../completed/M09-P02.md) and [P03](../completed/M09-P03.md) DONE (local/CI only after accepted closure). Current: [P04](M09-P04.md) ACTIVE only after separately reviewed promotion merges and its post-merge CI SUCCESS. Still PLANNED: [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). Operational activity remains blocked.
+Accepted: [P01](../completed/M09-P01.md), [P02](../completed/M09-P02.md) and [P03](../completed/M09-P03.md) DONE (local/CI only after accepted closure). Current: [P04](M09-P04.md) REVIEW REQUIRED for local/CI implementation, pending independent review and exact-head CI. Still PLANNED: [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). Operational activity remains blocked.
 
 ---
 

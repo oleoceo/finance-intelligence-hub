@@ -40,8 +40,8 @@ The [overview](../active/M09-OVERVIEW.md) retains P01–P06. Each linked contrac
 
 | Task | Phase | Contract |
 |---|---|---|
-| P01 | local/CI | [Backup scripts/layout/bootstrap](../active/M09-P01.md) |
-| P02 | local/CI | [Restic/rclone encryption](../planned/M09-P02.md) |
+| P01 | local/CI | [Backup scripts/layout/bootstrap](../completed/M09-P01.md) |
+| P02 | local/CI | [Restic/rclone encryption](../active/M09-P02.md) |
 | P03 | local/CI | [Scheduler/retention/monitoring](../planned/M09-P03.md) |
 | P04 | local/CI | [Restore runbook/isolated rehearsal](../planned/M09-P04.md) |
 | P05 | operational, gated | [Executed operational restore](../planned/M09-P05.md) |

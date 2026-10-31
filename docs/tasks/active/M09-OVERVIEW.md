@@ -1,12 +1,12 @@
 # M09 — Backup / Restore
 
-**Status:** ACTIVE — local/CI only; M09-P01 is REVIEW REQUIRED; P02–P06 remain PLANNED.
+**Status:** ACTIVE — local/CI only; P01 DONE after accepted review and post-merge CI; P02 is the sole ACTIVE task subject to documentary promotion acceptance; P03–P06 remain PLANNED.
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 **Blocks:** Gate C
 
-**Activation Review:** [ACCEPTED PR #65, independent REVIEW PASS #5722893309, squash 9fb29569](../completed/M09-ACTIVATION-REVIEW.md). M09-P01 is selected for local/CI implementation only after this task-specific activation PR has independently passed review, exact-head CI, squash merge and post-merge CI. P02–P04 are PLANNED and require their own selection/dependencies; P05–P06 require formal Gate 0 PASS and separate operational authorization. No live action is authorized.
+**Activation Review:** [ACCEPTED PR #65, independent REVIEW PASS #5722893309, squash 9fb29569](../completed/M09-ACTIVATION-REVIEW.md). M09-P01 was accepted by PR #67 REVIEW PASS #5723448228, head CI #227 SUCCESS and squash `0cddd8e92b1b64182eccad47df47a19d25f2621c`; closure/P02 activation requires post-merge CI #228 SUCCESS and this separate independently reviewed PR. P03–P04 remain PLANNED; P05–P06 require formal Gate 0 PASS and separate operational authorization. No live action is authorized.
 
-> **Authorized scope:** only [M09-P01](M09-P01.md) in local disposable/CI environments after this promotion merges and its post-merge CI succeeds. The provisional P02–P06 contracts are not implementation authorization.
+> **Authorized scope following this promotion's own post-merge CI SUCCESS:** only [M09-P02](M09-P02.md) in disposable local/CI environments. [M09-P01](../completed/M09-P01.md) is DONE; P03–P06 are not implementation authorization.
 
 ---
 
@@ -116,7 +116,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 
 ---
 
-## 5. Task Decomposition (only P01 active)
+## 5. Task Decomposition (P01 done; only P02 active)
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
@@ -127,7 +127,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 | **M09-P05** | Executed isolated restore + validation | Actual restore performed, all validation items verified, evidence captured |
 | **M09-P06** | M09 milestone verification | Daily backup running, off-site copy confirmed, retention verified, restore evidence recorded |
 
-Current contract: [P01](M09-P01.md) REVIEW REQUIRED (local/CI only). Still PLANNED: [P02](../planned/M09-P02.md), [P03](../planned/M09-P03.md), [P04](../planned/M09-P04.md), [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). Operational activity remains blocked.
+Accepted: [P01](../completed/M09-P01.md) DONE (local/CI only). Current: [P02](M09-P02.md) ACTIVE only after this separate promotion merges and its post-merge CI SUCCESS. Still PLANNED: [P03](../planned/M09-P03.md), [P04](../planned/M09-P04.md), [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). Operational activity remains blocked.
 
 ---
 

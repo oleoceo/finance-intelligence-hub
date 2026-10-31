@@ -7,6 +7,8 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  linkSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -147,6 +149,75 @@ describe('M09-P03 disposable scheduler and retention', () => {
     expect(held.stderr).toContain('LOCKED');
   });
 
+  it('rejects linked control files without changing external sentinels', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'finance-p03-sentinel-'));
+    writeFileSync(
+      join(root, '.finance-offsite-success'),
+      `${new Date().toISOString().slice(0, 19)}Z\n`,
+    );
+    try {
+      for (const name of [
+        '.finance-backup.lock',
+        '.finance-last-failure',
+        '.finance-offsite-success.tmp',
+        '.finance-offsite-success',
+      ]) {
+        const control = join(root, name);
+        const sentinel = join(outside, name);
+        const previous = existsSync(control) ? readFileSync(control) : undefined;
+        rmSync(control, { force: true });
+        writeFileSync(sentinel, 'external sentinel');
+        for (const link of [symlinkSync, linkSync]) {
+          link(sentinel, control);
+          const rejected = run();
+          expect(rejected.status).not.toBe(0);
+          expect(rejected.stdout).not.toContain('SUCCESS finished_at');
+          expect(readFileSync(sentinel, 'utf8')).toBe('external sentinel');
+          const status = spawnSync('bash', [statusScript], { env, encoding: 'utf8' });
+          expect(status.stdout).not.toContain('OFFSITE_VERIFIED');
+          rmSync(control);
+        }
+        if (previous) writeFileSync(control, previous);
+      }
+      const dangling = join(root, '.finance-last-failure');
+      symlinkSync(join(outside, 'missing'), dangling);
+      expect(spawnSync('bash', [statusScript], { env, encoding: 'utf8' }).stdout).toContain(
+        'ALERT_LAST_RUN_FAILED',
+      );
+      rmSync(dangling);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+      rmSync(join(root, '.finance-offsite-success'), { force: true });
+    }
+  });
+
+  it('preserves prior protection state when rclone fails after local snapshot', () => {
+    const previous = run();
+    expect(previous.status, previous.stderr).toBe(0);
+    const ids = snapshots().map((snapshot) => snapshot.id);
+    const artifacts = readdirSync(target);
+    const stamp = readFileSync(join(root, '.finance-offsite-success'), 'utf8');
+    const rclone = join(bin, 'rclone');
+    const original = readFileSync(rclone, 'utf8');
+    writeFileSync(rclone, '#!/bin/sh\nexit 17\n', { mode: 0o700 });
+    try {
+      const failed = run();
+      expect(failed.status).not.toBe(0);
+      expect(failed.stdout + failed.stderr).toContain('REMOTE_INCOMPLETE');
+      expect(failed.stdout).toContain('LOCAL_BACKUP_COMPLETE');
+      expect(failed.stdout).not.toContain('SUCCESS finished_at');
+      expect(snapshots().length).toBe(ids.length + 1);
+      expect(snapshots().map((snapshot) => snapshot.id)).toEqual(expect.arrayContaining(ids));
+      expect(readdirSync(target)).toEqual(expect.arrayContaining(artifacts));
+      expect(readFileSync(join(root, '.finance-offsite-success'), 'utf8')).toBe(stamp);
+      expect(spawnSync('bash', [statusScript], { env, encoding: 'utf8' }).stdout).toContain(
+        'ALERT_LAST_RUN_FAILED',
+      );
+    } finally {
+      writeFileSync(rclone, original, { mode: 0o700 });
+    }
+  }, 120_000);
+
   it('reports failure and stale verified success without false success', () => {
     const failed = run('daily', { PATH: process.env.PATH });
     expect(failed.status).not.toBe(0);
@@ -159,7 +230,7 @@ describe('M09-P03 disposable scheduler and retention', () => {
     expect(result.stdout).toContain('OFFSITE_RETENTION_VERIFIED');
     expect(result.stdout).toContain('SUCCESS finished_at');
     expect(result.stdout + result.stderr).not.toContain(readFileSync(passwordFile, 'utf8'));
-    expect(snapshots()).toHaveLength(1);
+    expect(snapshots()).toHaveLength(3);
     writeFileSync(join(root, '.finance-offsite-success'), '2020-01-01T00:00:00Z\n');
     const stale = spawnSync('bash', [statusScript], { env, encoding: 'utf8' });
     expect(stale.status).toBe(2);

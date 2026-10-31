@@ -25,10 +25,29 @@ password_file=$(realpath -e -- "$RESTIC_PASSWORD_FILE")
 target=$root/databases/finance-hub/local
 [[ -d $target && ! -L $target && $(stat -c %a "$target") == 700 ]] || fail 'invalid artifact directory'
 export RESTIC_REPOSITORY="$repository"
+control_file_safe() {
+  local path=$1
+  [[ ! -L $path ]] || return 1
+  [[ ! -e $path ]] || [[ -f $path && $(stat -c %h -- "$path") == 1 && $(stat -c %u -- "$path") == "$(id -u)" ]]
+}
+write_control_file() {
+  local path=$1 value=$2 temporary
+  control_file_safe "$path" || return 1
+  temporary=$(mktemp "$root/.finance-control.XXXXXXXX") || return 1
+  printf '%s\n' "$value" > "$temporary" || { rm -f -- "$temporary"; return 1; }
+  control_file_safe "$path" || { rm -f -- "$temporary"; return 1; }
+  mv -T -- "$temporary" "$path"
+}
 lock=$root/.finance-backup.lock
-exec 9>"$lock"
+for control in "$lock" "$root/.finance-last-failure" "$root/.finance-offsite-success.tmp" "$root/.finance-offsite-success"; do
+  control_file_safe "$control" || fail 'unsafe control file'
+done
+# Append mode cannot truncate a raced target; no bytes are written to the lock.
+exec 9>>"$lock"
+control_file_safe "$lock" || fail 'unsafe lock'
+[[ $(stat -Lc %d:%i -- /proc/self/fd/9) == "$(stat -c %d:%i -- "$lock")" ]] || fail 'lock changed during open'
 flock -n 9 || fail 'LOCKED'
-trap 'rc=$?; if (( rc != 0 )); then printf "%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$root/.finance-last-failure"; fi' EXIT
+trap 'rc=$?; if (( rc != 0 )); then write_control_file "$root/.finance-last-failure" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" || log "FAILED unsafe failure marker" >&2; fi' EXIT
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 log "STARTED mode=$mode at=$started environment=local database=$FINANCE_BACKUP_ALLOWED_DATABASE"
 trap 'log "INTERRUPTED" >&2; exit 143' TERM
@@ -82,8 +101,9 @@ done
 rclone sync "$repository" "$destination" --quiet >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
 rclone check "$repository" "$destination" --quiet >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
 log 'OFFSITE_RETENTION_VERIFIED'
-printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$root/.finance-offsite-success.tmp"
-mv -f -- "$root/.finance-offsite-success.tmp" "$root/.finance-offsite-success"
+write_control_file "$root/.finance-offsite-success.tmp" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" || fail 'unsafe success marker'
+control_file_safe "$root/.finance-offsite-success" || fail 'unsafe success marker'
+mv -T -- "$root/.finance-offsite-success.tmp" "$root/.finance-offsite-success" || fail 'success marker publish failed'
 
 # Keep three recent valid published artifacts. Reject ambiguous entries.
 mapfile -t entries < <(find "$target" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
@@ -109,5 +129,6 @@ if (( ${#valid[@]} > 3 )); then
     rmdir -- "$target/$entry" || fail 'LOCAL_RETENTION_FAILED'
   done
 fi
+control_file_safe "$root/.finance-last-failure" || fail 'unsafe failure marker'
+rm -f -- "$root/.finance-last-failure" || fail 'failure marker cleanup failed'
 log "SUCCESS finished_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-rm -f -- "$root/.finance-last-failure"

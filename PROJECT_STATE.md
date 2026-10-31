@@ -1,4 +1,4 @@
-**M09-P04 current state (2026-10-31):** REVIEW REQUIRED for synthetic isolated local/CI restore. P01–P03 are DONE and integrated; P04 has a versioned runbook, guarded restore runner and CI-discovered real PostgreSQL 18/API rehearsal. No VPS, operational Lab, Production, real Drive, real credentials or operational restore was accessed. Gate 0 formal and Gate C remain unapproved; P05/P06 remain PLANNED and blocked. Independent review and exact-head CI are pending.
+**M09 local/CI closure (2026-10-31):** M09-P01–P03 DONE; M09-P04 independently accepted at reviewed HEAD `0614c36ff4f941b76c6c68b0eb28c41e64b72673`, REVIEW PASS #5724660801, CI #243 SUCCESS (1,099 unit / 581 PostgreSQL integration incl. 5 P04), PR #73 squash `2fb6aa1db43f4c559f9af77cbde5568d0602dc58`. **Main post-merge CI #244 SUCCESS at exact squash SHA is prerequisite before this documentary closure PR merges.** After separately accepted documentation closure with its own exact-head and post-merge CI, P01–P04 DONE (local/CI only). M09 milestone NOT DONE: P05/P06 remain PLANNED and operationally BLOCKED until formal Gate 0 PASS with dated host evidence and separate exact-scope live authorization. Gate C and Production unapproved. No VPS, live Lab, real backups/restore, real Drive, or installed timers authorized.
 
 **M09 prior activation state (2026-10-31, historical):** P01/P02 DONE. M09-P03 independently accepted at PR #71, REVIEW PASS #5724167131, reviewed HEAD `ca41de8e44d0f14aaf5803fdd8c2994e0f3067d7`, exact-head CI #238 SUCCESS (1,099 unit / 576 real PostgreSQL integration including 10 P03), squash `0c5f276d735d281c9463dcae0551d6baee0d6da9`. **Main CI #239 on that exact squash SHA must finish SUCCESS before this closure/activation PR merges.** After this documentary promotion independently passes exact-head CI, merge and post-merge CI, P03 will be DONE and **P04 the sole ACTIVE local/disposable/CI task**. P05/P06 remain PLANNED and operationally BLOCKED: no Gate 0 formal PASS, no dated host acceptance or specific live authorization. Gate C and Production remain unapproved. No VPS/live Lab, timers, external Drive or real restore permitted.
 
@@ -221,7 +221,7 @@ M03-T02: DONE, functionally approved by human review on 2026-10-20; record moved
 
 # 8. Current milestone
 
-M08 DONE. M09 P01/P02 DONE and P03 accepted via PR #71; its exact-SHA post-merge CI #239 and this separately reviewed documentary promotion/post-merge CI gate P03 DONE / P04 ACTIVE local/CI ONLY. P05/P06 remain PLANNED. Gate 0 formal, Gate C and Production unapproved. Earlier milestone chronology remains historical.
+M08 DONE. M09 P01–P03 DONE, P04 implementation accepted via PR #73; closing P04 as DONE is conditioned on main CI #244 SUCCESS and this separately reviewed documentary closure plus post-merge CI. P05/P06 remain PLANNED/BLOCKED. M09 NOT DONE, Gate 0 formal and Gate C without PASS; Production unapproved. Earlier milestone chronology remains historical.
 
 M02 - Database Foundation: DONE, completed and accepted on 2026-10-20.
 M03 - Master Data / Configuration: DONE; M03-T01 DONE; M03-T02 DONE; M03-T03 DONE; M03-T04 DONE; M03-T05 DONE and integrated via PR #3.
@@ -784,7 +784,7 @@ Gate C — Real Data Ready
 
 # 35. Milestone status
 
-Current M08 status: DONE. M09: P01/P02 DONE, P03 PR #71 REVIEW PASS and squash accepted pending exact main CI #239; P04 selected for local/CI ONLY subject to this separate documentary PR's review/CI/merge/post-merge CI. P05/P06 PLANNED and blocked operationally. Gate B PASS local/CI, Gate 0/Gate C no formal PASS; Production unapproved.
+Current M08: DONE. M09: local/CI P01–P03 DONE; P04 REVIEW PASS #5724660801 and squash `2fb6aa1` accepted pending main CI #244 plus documentary closure CI/merge. P05/P06 PLANNED and blocked operationally; M09 and Gate C not DONE/PASS. Gate B PASS local/CI; Gate 0 no formal PASS; Production unapproved.
 
 ```text
 M01 Local Bootstrap

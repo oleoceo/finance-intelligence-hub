@@ -122,8 +122,27 @@ async function prove(expected: Totals, transactionCount: number) {
   const [header, ...records] = parseCsv(csv.body);
   expect(header).toBeDefined();
   const field = (row: string[], name: string) => row[header!.indexOf(name)]!;
-  for (const row of before[0])
-    expect(records.some((record) => field(record, 'id') === row.id)).toBe(true);
+  expect(records).toHaveLength(transactionCount);
+  expect(new Set(records.map((record) => field(record, 'id'))).size).toBe(transactionCount);
+  for (const row of before[0]) {
+    const record = records.find((candidate) => field(candidate, 'id') === row.id);
+    expect(record).toBeDefined();
+    expect(record).toHaveLength(header!.length);
+    expect(field(record!, 'book_id')).toBe(row.book_id);
+    expect(field(record!, 'transaction_date')).toBe(
+      row.transaction_date instanceof Date
+        ? row.transaction_date.toISOString().slice(0, 10)
+        : row.transaction_date,
+    );
+    expect(field(record!, 'type')).toBe(row.type);
+    expect(field(record!, 'status')).toBe(row.status);
+    expect(field(record!, 'amount')).toBe(row.amount);
+    expect(field(record!, 'refund_of_transaction_id')).toBe(row.refund_of_transaction_id ?? '');
+    expect(field(record!, 'is_refund')).toBe(String(row.refund_of_transaction_id !== null));
+  }
+  expect(records.filter((record) => field(record, 'status') === 'voided')).toHaveLength(
+    before[0].filter((row) => row.status === 'voided').length,
+  );
   const posted = records.filter((row) => field(row, 'status') === 'posted');
   const sum = (rows: string[][]) =>
     rows.reduce((total, row) => total + minorUnits(field(row, 'amount')), 0n);

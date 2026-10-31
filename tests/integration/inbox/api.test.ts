@@ -47,6 +47,34 @@ function post(payload: Record<string, unknown>, authorization = 'Bearer integrat
     payload,
   });
 }
+function parseSummaryCsv(csv: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < csv.length; i++) {
+    const char = csv[i];
+    if (char === '"') {
+      if (quoted && csv[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else quoted = !quoted;
+    } else if (char === ',' && !quoted) {
+      row.push(cell);
+      cell = '';
+    } else if (char === '\r' && csv[i + 1] === '\n' && !quoted) {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+      i++;
+    } else cell += char;
+  }
+  expect(quoted).toBe(false);
+  expect(row).toEqual([]);
+  expect(cell).toBe('');
+  return rows;
+}
 function buildForConnection(options: Parameters<typeof buildApp>[0] = {}) {
   const previous = process.env.DATABASE_URL;
   process.env.DATABASE_URL = fixture.connectionString;
@@ -432,9 +460,10 @@ describe('P05 Inbox API with PostgreSQL', () => {
       expect(inbox_message.status).toBe('processed');
       expect(result.type).toBe('query_summary');
       expect(result.summary.book_id).toBe(expectedBook);
+      const period = 'date_from=2026-10-01&date_to=2026-10-31';
       const direct = await app.inject({
         method: 'GET',
-        url: `/api/v1/reports/summary?book_id=${expectedBook}`,
+        url: `/api/v1/reports/summary?book_id=${expectedBook}&${period}`,
         headers: { authorization: 'Bearer integration-admin' },
       });
       expect(direct.statusCode, direct.body).toBe(200);
@@ -442,7 +471,7 @@ describe('P05 Inbox API with PostgreSQL', () => {
         expect(result.summary[key]).toBe(direct.json().data[key]);
       const csv = await app.inject({
         method: 'GET',
-        url: `/api/v1/exports/transactions.csv?book_id=${expectedBook}`,
+        url: `/api/v1/exports/transactions.csv?book_id=${expectedBook}&${period}`,
         headers: { authorization: 'Bearer integration-admin' },
       });
       expect(csv.statusCode, csv.body).toBe(200);
@@ -450,11 +479,34 @@ describe('P05 Inbox API with PostgreSQL', () => {
         .selectFrom('transactions')
         .selectAll()
         .where('book_id', '=', expectedBook)
-        .where('status', '=', 'posted')
         .where('transaction_date', '>=', '2026-10-01')
         .where('transaction_date', '<=', '2026-10-31')
         .execute();
-      for (const transaction of persisted) expect(csv.body).toContain(transaction.id);
+      const [header, ...records] = parseSummaryCsv(csv.body);
+      expect(header).toBeDefined();
+      const field = (row: string[], name: string) => row[header!.indexOf(name)]!;
+      expect(records).toHaveLength(persisted.length);
+      expect(new Set(records.map((row) => field(row, 'id'))).size).toBe(records.length);
+      for (const transaction of persisted) {
+        const row = records.find((candidate) => field(candidate, 'id') === transaction.id);
+        expect(row).toBeDefined();
+        expect(row).toHaveLength(header!.length);
+        expect(field(row!, 'book_id')).toBe(expectedBook);
+        expect(field(row!, 'transaction_date')).toBe(
+          transaction.transaction_date instanceof Date
+            ? transaction.transaction_date.toISOString().slice(0, 10)
+            : transaction.transaction_date,
+        );
+        expect(field(row!, 'type')).toBe(transaction.type);
+        expect(field(row!, 'status')).toBe(transaction.status);
+        expect(field(row!, 'amount')).toBe(transaction.amount);
+        expect(field(row!, 'refund_of_transaction_id')).toBe(
+          transaction.refund_of_transaction_id ?? '',
+        );
+        expect(field(row!, 'is_refund')).toBe(
+          String(transaction.refund_of_transaction_id !== null),
+        );
+      }
       const minor = (value: string) => {
         const [whole, fraction] = value.split('.');
         return BigInt(whole) * 100n + BigInt(fraction);
@@ -464,22 +516,42 @@ describe('P05 Inbox API with PostgreSQL', () => {
         const absolute = value < 0n ? -value : value;
         return `${sign}${absolute / 100n}.${String(absolute % 100n).padStart(2, '0')}`;
       };
-      const sum = (rows: typeof persisted) =>
-        rows.reduce((total, row) => total + minor(row.amount), 0n);
+      const posted = records.filter((row) => field(row, 'status') === 'posted');
+      const sum = (rows: string[][]) =>
+        rows.reduce((total, row) => total + minor(field(row, 'amount')), 0n);
       const ordinary = sum(
-        persisted.filter((row) => row.type === 'income' && row.refund_of_transaction_id === null),
+        posted.filter(
+          (row) => field(row, 'type') === 'income' && field(row, 'refund_of_transaction_id') === '',
+        ),
       );
-      const gross = sum(persisted.filter((row) => row.type === 'expense'));
+      const gross = sum(posted.filter((row) => field(row, 'type') === 'expense'));
       const refunds = sum(
-        persisted.filter((row) => row.type === 'income' && row.refund_of_transaction_id !== null),
+        posted.filter(
+          (row) => field(row, 'type') === 'income' && field(row, 'refund_of_transaction_id') !== '',
+        ),
       );
-      expect(result.summary).toMatchObject({
+      const totals = {
         ordinary_income: format(ordinary),
         gross_expenses: format(gross),
         refunds: format(refunds),
         net_expenses: format(gross - refunds),
         net: format(ordinary - gross + refunds),
-      });
+      };
+      expect(result.summary).toMatchObject(totals);
+      expect(direct.json().data).toMatchObject(totals);
+      const ptBr = (value: string) => {
+        const negative = value.startsWith('-');
+        const [whole, cents] = (negative ? value.slice(1) : value).split('.');
+        return `${negative ? '-' : ''}R$ ${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${cents}`;
+      };
+      for (const [label, key] of [
+        ['Receitas ordinárias', 'ordinary_income'],
+        ['Despesas brutas', 'gross_expenses'],
+        ['Estornos', 'refunds'],
+        ['Despesas líquidas', 'net_expenses'],
+        ['Resultado líquido', 'net'],
+      ] as const)
+        expect(reply.text.split('\n')).toContain(`${label}: ${ptBr(totals[key])}`);
       expect(reply.should_send).toBe(true);
       expect(reply.contract.max_code_points).toBe(500);
       expect([...reply.text].length).toBeLessThanOrEqual(500);

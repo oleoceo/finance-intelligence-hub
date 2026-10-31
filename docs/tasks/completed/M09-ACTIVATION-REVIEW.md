@@ -36,16 +36,16 @@ No material frozen-architecture blocker was found. The missing evidence blocks o
 
 ## 4. Execution contracts and tests
 
-The [overview](M09-OVERVIEW.md) retains P01–P06. Each linked contract specifies paths, dependencies, acceptance, tests and exclusions.
+The [overview](../active/M09-OVERVIEW.md) retains P01–P06. Each linked contract specifies paths, dependencies, acceptance, tests and exclusions.
 
 | Task | Phase | Contract |
 |---|---|---|
-| P01 | local/CI | [Backup scripts/layout/bootstrap](M09-P01.md) |
-| P02 | local/CI | [Restic/rclone encryption](M09-P02.md) |
-| P03 | local/CI | [Scheduler/retention/monitoring](M09-P03.md) |
-| P04 | local/CI | [Restore runbook/isolated rehearsal](M09-P04.md) |
-| P05 | operational, gated | [Executed operational restore](M09-P05.md) |
-| P06 | operational acceptance | [Milestone verification](M09-P06.md) |
+| P01 | local/CI | [Backup scripts/layout/bootstrap](../active/M09-P01.md) |
+| P02 | local/CI | [Restic/rclone encryption](../planned/M09-P02.md) |
+| P03 | local/CI | [Scheduler/retention/monitoring](../planned/M09-P03.md) |
+| P04 | local/CI | [Restore runbook/isolated rehearsal](../planned/M09-P04.md) |
+| P05 | operational, gated | [Executed operational restore](../planned/M09-P05.md) |
+| P06 | operational acceptance | [Milestone verification](../planned/M09-P06.md) |
 
 Local tests must use disposable real PostgreSQL where database semantics matter. They must demonstrate valid/restorable dumps, wrong-target rejection, interrupted/partial writes, remote failure, snapshot integrity/retention, grants, concurrency lock, safe cleanup and unchanged source. Compare Books, Accounts, Transactions, Refunds, Audit, Inbox, Idempotency and Summary before/after; use the accepted API against the restored database. No real Drive or VPS is needed for P01–P04.
 

@@ -13,7 +13,7 @@ Authenticated remote `main` and CI #187 match the baseline; PR #56 is merged and
 | --- | --- | --- |
 | M01–M05 / Gate A | DONE / PASS | [Gate A](../completed/GATE-A.md), accepted integrated baselines |
 | M06 | DONE / isolated technical Lab acceptance | [M06 acceptance](../../integrations/m06/LIVE-ACCEPTANCE-2026-10-29.md), PR #41 |
-| M07 P01–P06 | DONE / independently reviewed | PRs #44/#46/#48/#50/#52/#54, [M07 overview](M07-OVERVIEW.md) |
+| M07 P01–P06 | DONE / independently reviewed | PRs #44/#46/#48/#50/#52/#54, [M07 overview](../active/M07-OVERVIEW.md) |
 | Gate B | **DONE / PASS local + PostgreSQL CI** | [Gate B](../completed/GATE-B.md); PR #56, squash 539a210342b8d9235eca176f5070e68ad5b5d786, exact postmerge CI #187 SUCCESS |
 | Gate 0, Gate C, Production | **NOT PASSED / NOT APPROVED** | [Gate 0](../planned/GATE-0.md), M09/Gate C planned |
 

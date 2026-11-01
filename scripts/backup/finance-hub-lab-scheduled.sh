@@ -32,15 +32,18 @@ safe_control() { [[ ! -L $1 && ( ! -e $1 || ( -f $1 && $(stat -c %h "$1") == 1 &
 lock=$root/.finance-lab-p06.lock
 failure=$root/.finance-lab-p06-failure
 success=$root/.finance-lab-p06-success
-for path in "$lock" "$failure" "$success"; do safe_control "$path" || fail 'unsafe control file'; done
+active_slot_file=$root/.finance-lab-p06-active-slot
+for path in "$lock" "$failure" "$success" "$active_slot_file"; do safe_control "$path" || fail 'unsafe control file'; done
 exec 9>>"$lock"
 safe_control "$lock" || fail 'unsafe lock'
 [[ $(stat -Lc %d:%i /proc/self/fd/9) == "$(stat -c %d:%i "$lock")" ]] || fail 'lock changed'
 flock -n 9 || fail 'LOCKED'
 atomic_stamp() { local tmp; tmp=$(mktemp "$root/.finance-lab-p06.XXXXXXXX"); date -u +%Y-%m-%dT%H:%M:%SZ >"$tmp"; safe_control "$1" || fail 'unsafe marker'; mv -T -- "$tmp" "$1"; }
+atomic_value() { local tmp; tmp=$(mktemp "$root/.finance-lab-p06.XXXXXXXX"); printf '%s\n' "$2" >"$tmp"; safe_control "$1" || fail 'unsafe marker'; mv -T -- "$tmp" "$1"; }
 if [[ $mode == status ]]; then
   [[ ! -e $failure ]] || fail 'ALERT_LAST_RUN_FAILED'
   [[ -f $success ]] || fail 'ALERT_NO_VERIFIED_OFFSITE'
+  [[ -f $active_slot_file && $(cat "$active_slot_file") =~ ^slot-[ab]$ ]] || fail 'ALERT_INVALID_SUCCESS_STATE'
   stamp=$(cat "$success")
   [[ $stamp =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || fail 'ALERT_INVALID_SUCCESS_STATE'
   epoch=$(date -u -d "$stamp" +%s) || fail 'ALERT_INVALID_SUCCESS_STATE'
@@ -65,9 +68,14 @@ verify_artifact() {
   [[ $(find "$path" -mindepth 1 -maxdepth 1 | wc -l) == 2 ]] || return 1
   python3 - "$path" 2>/dev/null <<'PY' || return 1
 import hashlib,json,pathlib,sys
-p=pathlib.Path(sys.argv[1]); m=json.loads((p/'manifest.json').read_text()); b=(p/'archive.dump').read_bytes()
+p=pathlib.Path(sys.argv[1]); m=json.loads((p/'manifest.json').read_text()); h=hashlib.sha256(); size=0
+with (p/'archive.dump').open('rb') as f:
+    assert f.read(5)==b'PGDMP'
+    f.seek(0)
+    while chunk:=f.read(1024*1024):
+        size+=len(chunk); h.update(chunk)
 assert m['format']=='pg_dump-custom' and m['environment']=='lab' and m['database']=='finance_hub_lab'
-assert b.startswith(b'PGDMP') and m['bytes']==len(b) and m['sha256']==hashlib.sha256(b).hexdigest()
+assert m['bytes']==size and m['sha256']==h.hexdigest()
 PY
   pg_restore --list "$path/archive.dump" >/dev/null 2>&1
 }
@@ -91,7 +99,7 @@ print(sorted(matches,key=lambda x:x['time'])[-1]['id'])
 PY
 ) || fail 'SNAPSHOT_ID_MISSING'
 [[ $snapshot_id =~ ^[a-f0-9]{64}$ ]] || fail 'SNAPSHOT_ID_MISSING'
-restic forget --tag finance-hub-lab-p06 --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune --quiet >/dev/null 2>&1 || fail 'RETENTION_FAILED'
+restic forget --tag finance-hub-lab-p06 --group-by '' --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune --quiet >/dev/null 2>&1 || fail 'RETENTION_FAILED'
 restic check --quiet >/dev/null 2>&1 || fail 'INTEGRITY_CHECK_FAILED'
 while IFS= read -r -d '' entry; do
   relative=${entry#"$repository"/}
@@ -104,20 +112,26 @@ while IFS= read -r -d '' entry; do
     fail 'UNOWNED_REPOSITORY_ENTRY'
   fi
 done < <(find "$repository" -mindepth 1 -print0)
-# The destination is dedicated to this repository; reject unexpected files before sync.
-rclone mkdir "$FINANCE_RCLONE_REMOTE" >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
-remote_listing=$(rclone lsf "$FINANCE_RCLONE_REMOTE" --recursive 2>/dev/null) || fail 'REMOTE_INCOMPLETE'
+# Update the inactive slot so the last verified off-site repository stays recoverable.
+active_slot=none
+if [[ -e $active_slot_file ]]; then active_slot=$(cat "$active_slot_file"); fi
+[[ $active_slot == none || $active_slot == slot-a || $active_slot == slot-b ]] || fail 'INVALID_ACTIVE_SLOT'
+if [[ $active_slot == slot-a ]]; then next_slot=slot-b; else next_slot=slot-a; fi
+remote_slot=$FINANCE_RCLONE_REMOTE/$next_slot
+rclone mkdir "$remote_slot" >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
+remote_listing=$(rclone lsf "$remote_slot" --recursive 2>/dev/null) || fail 'REMOTE_INCOMPLETE'
 if [[ -n $remote_listing ]]; then
-  remote_marker=$(rclone cat "$FINANCE_RCLONE_REMOTE/.finance-lab-p06-owned" 2>/dev/null) || fail 'UNOWNED_REMOTE_DESTINATION'
+  remote_marker=$(rclone cat "$remote_slot/.finance-lab-p06-owned" 2>/dev/null) || fail 'UNOWNED_REMOTE_DESTINATION'
   [[ $remote_marker == "$ownership_id" ]] || fail 'UNOWNED_REMOTE_DESTINATION'
   while IFS= read -r entry; do
     [[ $entry == config || $entry == .finance-lab-p06-owned || $entry =~ ^(data|index|keys|locks|snapshots)/$ || $entry =~ ^data/[a-f0-9]{2}/$ || $entry =~ ^(index|keys|locks|snapshots)/[a-f0-9]{64}$ || $entry =~ ^data/[a-f0-9]{2}/[a-f0-9]{64}$ ]] || fail 'UNOWNED_REMOTE_ENTRY'
   done <<< "$remote_listing"
 fi
-rclone sync "$repository" "$FINANCE_RCLONE_REMOTE" --quiet >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
-rclone check "$repository" "$FINANCE_RCLONE_REMOTE" --quiet >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
+rclone sync "$repository" "$remote_slot" --quiet >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
+rclone check "$repository" "$remote_slot" --quiet >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
+atomic_value "$active_slot_file" "$next_slot"
 atomic_stamp "$success"
-log "OFFSITE_RETENTION_VERIFIED snapshot=$snapshot_id"
+log "OFFSITE_RETENTION_VERIFIED snapshot=$snapshot_id slot=$next_slot"
 mapfile -t entries < <(find "$target" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
 for entry in "${entries[@]}"; do
   [[ $entry =~ ^finance-hub_lab_finance_hub_lab_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}_[0-9]+_[a-f0-9]{8}$ ]] || fail 'UNOWNED_LOCAL_ENTRY'

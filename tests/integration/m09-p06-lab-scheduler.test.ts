@@ -137,6 +137,8 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     expect(first.stdout).toMatch(/OFFSITE_RETENTION_VERIFIED snapshot=[a-f0-9]{64}/);
     expect(run('status').status).toBe(0);
     const stamp = readFileSync(join(root, '.finance-lab-p06-success'), 'utf8');
+    const active = readFileSync(join(root, '.finance-lab-p06-active-slot'), 'utf8').trim();
+    const activeRepository = join(remote, 'FinanceHub-Backups', 'finance-lab-p06', 'test', active);
     const rclone = join(bin, 'rclone');
     const original = readFileSync(rclone, 'utf8');
     writeFileSync(rclone, '#!/bin/sh\nexit 17\n', { mode: 0o700 });
@@ -147,6 +149,13 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
       expect(failed.stdout).toContain('LOCAL_BACKUP_COMPLETE');
       expect(failed.stdout).not.toContain('SUCCESS finished_at');
       expect(readFileSync(join(root, '.finance-lab-p06-success'), 'utf8')).toBe(stamp);
+      expect(readFileSync(join(root, '.finance-lab-p06-active-slot'), 'utf8').trim()).toBe(active);
+      const recovered = spawnSync('restic', ['check', '--quiet'], {
+        env: { ...env, RESTIC_REPOSITORY: activeRepository },
+        encoding: 'utf8',
+        timeout: 120_000,
+      });
+      expect(recovered.status, recovered.stderr).toBe(0);
       expect(run('status').status).not.toBe(0);
     } finally {
       writeFileSync(rclone, original, { mode: 0o700 });
@@ -173,6 +182,7 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     const dump = join(bin, 'pg_dump');
     const original = readFileSync(dump, 'utf8');
     const stamp = readFileSync(join(root, '.finance-lab-p06-success'), 'utf8');
+    const priorArtifacts = new Set(readdirSync(target));
     writeFileSync(dump, '#!/bin/sh\nprintf invalid\n', { mode: 0o700 });
     try {
       const invalid = run();
@@ -182,8 +192,13 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
       expect(readFileSync(join(root, '.finance-lab-p06-success'), 'utf8')).toBe(stamp);
     } finally {
       writeFileSync(dump, original, { mode: 0o700 });
+      for (const entry of readdirSync(target))
+        if (!priorArtifacts.has(entry))
+          rmSync(join(target, entry), { recursive: true, force: true });
     }
-    const foreign = join(remote, 'FinanceHub-Backups', 'finance-lab-p06', 'test', 'foreign');
+    const active = readFileSync(join(root, '.finance-lab-p06-active-slot'), 'utf8').trim();
+    const next = active === 'slot-a' ? 'slot-b' : 'slot-a';
+    const foreign = join(remote, 'FinanceHub-Backups', 'finance-lab-p06', 'test', next, 'foreign');
     writeFileSync(foreign, 'preserve');
     try {
       const refused = run();
@@ -195,4 +210,61 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
       rmSync(foreign);
     }
   }, 120_000);
+
+  it('expires dated snapshots across distinct artifact paths under the 14/8/12 policy', () => {
+    const dates = Array.from({ length: 20 }, (_, i) => {
+      const date = new Date();
+      date.setUTCMonth(date.getUTCMonth() - i - 1, 15);
+      return date.toISOString().slice(0, 19).replace('T', ' ');
+    });
+    const commands = dates
+      .map((date, i) => {
+        const path = join(target, `seed-${i}`);
+        return `mkdir '${path}'; printf seed > '${path}/data'; restic backup --quiet --tag finance-hub-lab-p06 --time '${date}' -- '${path}'; rm '${path}/data'; rmdir '${path}'`;
+      })
+      .join('\n');
+    const seeded = spawnSync(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '--user',
+        `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`,
+        '-v',
+        `${root}:${root}`,
+        '-v',
+        `${password}:${password}:ro`,
+        '-e',
+        `RESTIC_REPOSITORY=${repository}`,
+        '-e',
+        `RESTIC_PASSWORD_FILE=${password}`,
+        '--entrypoint',
+        '/bin/sh',
+        'restic/restic:0.18.1',
+        '-ec',
+        commands,
+      ],
+      { encoding: 'utf8', timeout: 300_000 },
+    );
+    expect(seeded.status, seeded.stderr).toBe(0);
+    const list = () => {
+      const result = spawnSync('restic', ['snapshots', '--json'], {
+        env: { ...env, RESTIC_REPOSITORY: repository },
+        encoding: 'utf8',
+        timeout: 120_000,
+      });
+      expect(result.status, result.stderr).toBe(0);
+      return JSON.parse(result.stdout) as Array<{ id: string; time: string }>;
+    };
+    const before = list();
+    expect(before.length).toBeGreaterThanOrEqual(20);
+    const latest = before.find((snapshot) => snapshot.time.startsWith(dates[0].replace(' ', 'T')));
+    expect(latest).toBeDefined();
+    const retained = run();
+    expect(retained.status, retained.stderr).toBe(0);
+    const after = list();
+    expect(after.length).toBeLessThan(before.length);
+    expect(after.some((snapshot) => snapshot.id === latest?.id)).toBe(true);
+    expect(readdirSync(target)).toHaveLength(3);
+  }, 600_000);
 });

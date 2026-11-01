@@ -1,6 +1,6 @@
 # M09-P06 — antecipação local/CI
 
-**Status:** ACTIVE apenas para implementação e revisão local/CI. O contrato de aceite [M09-P06](../planned/M09-P06.md) permanece PLANNED para execução operacional. P05 permanece ACTIVE e aguarda restauração real. Esta autorização decorre da instrução explícita do proprietário em 2026-11-01; não altera o ciclo de aceite operacional.
+**Status:** IMPLEMENTATION READY / AWAITING OPERATOR EXECUTION para a fase técnica local/CI, condicionado ao CI verde no HEAD final do PR. O contrato de aceite [M09-P06](../planned/M09-P06.md) permanece PLANNED para execução operacional. P05 permanece ACTIVE e aguarda restauração real. Esta autorização decorre da instrução explícita do proprietário em 2026-11-01; não altera o ciclo de aceite operacional.
 
 **Objetivo:** preparar código, testes, evidências e plano de execução de P06 antes da operação manual final, reutilizando P01–P05.
 
@@ -12,4 +12,4 @@
 
 **Exclusões:** acesso ou alteração da VPS pelo agente; Production; instalação/ativação de timers; prune em dados reais; exclusão de backups, volumes ou serviços; declaração de P05/P06 DONE, M09 DONE ou Gate C PASS.
 
-**Implementação local em revisão:** runner Lab dedicado, sete unidades systemd preparadas sem ativação e procedimento manual no runbook final. O runner P03 permanece restrito a fixtures. Os testes descartáveis cobrem locks, dump inválido, credenciais, falha e recuperação remota, retenção e detecção de backup obsoleto. Esta fase só recebe `IMPLEMENTATION READY / AWAITING OPERATOR EXECUTION` após CI no HEAD exato e revisão independente. Isso não promove o contrato operacional PLANNED nem aceita P05.
+**Implementação técnica:** runner Lab dedicado, sete unidades systemd preparadas sem ativação e procedimento manual no runbook final. O runner P03 permanece restrito a fixtures. A revisão independente identificou agrupamento incorreto de retenção, leitura integral do dump e risco de sync sobre a única cópia remota; os três defeitos foram corrigidos e a re-revisão deu PASS. Validação local após correção: instalação congelada, lint, formatação dos arquivos alterados, build, typecheck, 1.099 unitários e 592 integrações (incluindo 5 P06) PASS. O CI Linux no HEAD final é a prova independente de execução exigida. Isso não promove o contrato operacional PLANNED nem aceita P05.

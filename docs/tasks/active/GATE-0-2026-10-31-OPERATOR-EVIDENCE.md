@@ -167,3 +167,56 @@ O proprietário forneceu nova saída de terminal **read-only**. Parte das linhas
 | Docker Compose e armazenamento detalhado | Comandos para `docker compose version --short` e `docker system df -v` foram colados, mas seus resultados não foram apresentados em linhas separadas | Permanecem **pendentes**, não FAIL |
 
 **Conclusão pontual:** evidência suficiente para fechar campos de CPU lógico, RAM, Engine e membership de redes Finance no inventário; não converter ausência de output de containers/Compose/mounts/tamanhos em prova técnica. Solicitar somente os comandos de leitura ainda faltantes, **um bloco de cada vez**, evitando novo paste intercalado. Nenhum segredo ou conteúdo de dados é necessário, nenhuma mudança na VPS foi feita pela integração GitHub. O Gate 0 permanece sujeito à revisão formal.
+
+## Contêineres e volumes — inventário íntegro enviado pelo operador, 2026-11-01
+
+**Origem:** saída textual direta dos comandos somente leitura no terminal. `docker compose version --short` apresentou **5.1.0**. `docker ps -a --no-trunc` apresentou **28 containers** (27 `Up`, 1 `Exited (0)` histórico), nomes, IDs completos, referências de imagens, estado e `Ports` exatamente como exibidos. A coluna `Image` é referência de imagem usada pelo container, não necessariamente um `image inspect .Id` imutável; imagens `:latest` continuam não fixadas. Valores `5432/tcp`/`6379/tcp` sem host binding **não** significam publicação da porta.
+
+### Saída de containers recebida (sem segredo)
+
+```text
+Name | Container ID | Image reference | Status | Ports
+n8n | 5eeaebf16102f0eb89f87f06e3061ed8c324ab10c75ff35389ded766c828b644 | docker.n8n.io/n8nio/n8n:latest | Up 2 days | 5678/tcp
+evolution-api | 1bc46d5aebe833fe3343bbbc5f19070a4e8ee29927b48c9cec169cd7ab8b73eb | evolution-m06-logging:2.3.7-f518183 | Up 3 days | 8080/tcp
+finance-lab-api-1 | ee2821d759ac554706fac586f1a3295fea459512517f59dc76d7c2259ad03646 | finance-hub-api:lab | Up 3 days (healthy) | 3000/tcp
+finance-hub-restore-test | f23d3ee75f898d96f4acff6793ffa4f56fcf8e729383e45922b1cc3c2bddd34c | postgres:18.6-bookworm@sha256:5c4783a8cc3f0074912164f94dfa1be4e043438f0f707cf968d7af9a0d31a2c8 | Up 3 days | 5432/tcp
+postgres-products | 5600d8abb753e6cf8ef1c7d39420f4f50ced29e6eb66eff16c5090380d4f6ea8 | postgres:18.6-bookworm@sha256:5c4783a8cc3f0074912164f94dfa1be4e043438f0f707cf968d7af9a0d31a2c8 | Up 3 days (healthy) | 5432/tcp
+members-web | abb8d9845b1b2795393af1a7904f53e730d46cc15709c09f9b46a81338c399fa | members-platform-members-web | Up 3 days | 80/tcp
+members-db | 6d9c1ed024a10d84a8da4b96cce62981ff2b13ae19509f56123614633bb72e7f | postgres:16-alpine | Up 3 days | 5432/tcp
+n8n-postgres | aff63d16d617de35c9d0d7a979885612bdf77a24aeaf28ba365957351aff781e | postgres:16-alpine | Up 2 weeks | 5432/tcp
+evolution-postgres | 3a709cb3777fad41aced0a42de6e9049d0831c3c3af3da70ddf745ca1c2c37a9 | postgres:16-alpine | Up 2 weeks (healthy) | 5432/tcp
+redis-main | a3c2439bf663e09bc30cf9cf905fc8d99645dc75d60a60370d8d04599590a143 | redis:7-alpine | Up 2 weeks (healthy) | 6379/tcp
+checkout-flowcheckout-prod | aaaa6abed544f84de8ad2b31b30ba711a69023612847d1ce7627884388936ab9 | wordpress:6.5.5-php8.2-apache | Up 2 weeks | 80/tcp
+checkout-flowcheckout-prod-db | bc4cc58cb0eed20efc4f2269533d3d8b356cf33e23e55ef19c8a95400a880065 | mariadb:10.6 | Up 2 weeks | 3306/tcp
+checkout-flowcheckout-teste | 54af10531f9c934ef33a44a14ccc439f268755e73c18aaf7c836683a5b9c39da | wordpress:6.5.5-php8.2-apache | Up 2 weeks | 80/tcp
+checkout-flowcheckout-teste-db | 8b4fa97a79aa3c404bc6ff86f11c9ad46653167e758854dc81e7722102e43d4c | mariadb:10.6 | Up 2 weeks | 3306/tcp
+member-api | 93201e4a8af7c9138c2d10d18ea725882d9fab781b3e5c4d3a0bb008c6cdabc0 | platform-members-member-api | Up 2 weeks | 8080/tcp
+member-db | b598ef468cf4bbd5db061b8ab41d59bf4d50fa7113256cc71f9e6062b6ec9001 | postgres:16-alpine | Up 2 weeks | 5432/tcp
+member-web | b74284b3c796f921e1ed0259f5d1992c8aa20a84a024af6c89f6928c55d84553 | platform-members-member-web | Up 2 weeks | 80/tcp
+members-api | 672a4c4046462c8915b78036f2a4ff20b17460e8d7d33e97a2c280bbc8a0441b | members-platform-members-api | Up 2 weeks | 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+checkout-flowcheckout | d93c2253ba4d03976941c274a814fff7fad142fcf942b48bfbfa393e3fe88c91 | wordpress:6.5.5-php8.2-apache | Up 2 weeks | 80/tcp
+checkout-flowcheckout-db | 40f7f2a5ccba3ae74bce04cf4e9602efba45750dc8ef7088b27630b13fb93ee2 | mariadb:10.6 | Up 2 weeks | 3306/tcp
+areamembros-flowmembers | 240cde9d51b5f670c52bf4b7e5e28c5ea68e9c5009479d2986a5f90796985cd0 | wordpress:6.5.5-php8.2-apache | Up 2 weeks | 80/tcp
+areamembros-flowmembers-db | 1206209a591bc3b3cbf086086ebba99639ca652366bfbf35b9fd80ddc23a4ad3 | mariadb:10.6 | Up 2 weeks | 3306/tcp
+lp-deepsecrets | 42bb04d4ada6ccda43336d5777b101c2054d7452d5d215a634d8545312263bd8 | php:8.2-apache | Up 2 weeks | 80/tcp
+portainer | daafad5fd2332873dbb24a032a7213bca03bca66e6614fbfd1e44b0eb165ced5 | portainer/portainer-ce:latest | Up 2 weeks | 8000/tcp, 9443/tcp, 0.0.0.0:9000->9000/tcp, [::]:9000->9000/tcp
+nginx-proxy-manager-app-1 | b89cedcc0936b70c393bcd3d9593eae5bfe4eec1ce3cbe3ee3152a273362c816 | jc21/nginx-proxy-manager:latest | Up 2 weeks | 0.0.0.0:80-81->80-81/tcp, [::]:80-81->80-81/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+nginx-proxy-manager-db-1 | 6339dc5d0dce3d4aeba95eb0f4dba75adbcd1a84c2ddc2a6889f4fc95c51b30a | mariadb:10.5 | Up 2 weeks | 3306/tcp
+priceless_rosalind | 79e9519a380b24b6d39d632fe40d9a029c03ed178ca31487c84003728effbb4d | hello-world | Exited (0) 7 months ago |
+```
+
+### Saída dos volumes nomeados (caminho e ocupação)
+
+```text
+Volume | Mountpoint | du -sh
+finance_hub_restore_test_data | /var/lib/docker/volumes/finance_hub_restore_test_data/_data | 47M
+finance_postgres_products_data | /var/lib/docker/volumes/finance_postgres_products_data/_data | 65M
+members-platform_members-db-data | /var/lib/docker/volumes/members-platform_members-db-data/_data | 48M
+platform-members_member-db-data | /var/lib/docker/volumes/platform-members_member-db-data/_data | 48M
+platform-members_members-db-data | /var/lib/docker/volumes/platform-members_members-db-data/_data | 4.0K
+portainer_data | /var/lib/docker/volumes/portainer_data/_data | 224K
+```
+
+**Interpretação limitada:** os seis *Docker named volumes* agora possuem nomes, `Mountpoint` e tamanho estimado. O inventário não inclui *bind mounts* declarados diretamente nas configurações de containers nem associa cada volume ao container consumidor por `Mounts`. Não assumir que todos os dados persistentes ficam nesses seis volumes: aplicações n8n, Evolution, WordPress, outros bancos e Finance podem usar binds. Releitura focalizada de `.Mounts` de containers relevantes, sem `Env` nem conteúdo de arquivos, é a forma de fechar apenas esse campo se exigido no Gate 0. Nenhuma alteração foi feita na VPS.
+
+**Segurança observada:** `members-api` publica `0.0.0.0/[::]:8080`, `portainer` publica `0.0.0.0/[::]:9000` e NPM publica `80/81/443` em IPv4/IPv6; já registrados como risco aceito pelo proprietário. `postgres-products` e `redis-main` não mostram bind de host no `docker ps`, consistente com as verificações anteriores; isso não é uma varredura universal de rede. Containers Finance API e PostgreSQL `healthy`; Evolution e n8n `Up`, sem `healthy` exibido nesse comando, o que **não** equivale a prova de falha de saúde.

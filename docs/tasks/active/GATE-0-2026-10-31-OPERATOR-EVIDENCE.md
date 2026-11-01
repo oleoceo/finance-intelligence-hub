@@ -118,3 +118,14 @@ Combinados aos exames anteriores, os **quatro arquivos de chaves explicitamente 
 **Limites mantidos:** a verificação está restrita a estas duas contas e aos caminhos da configuração `sshd -T` anteriormente registrada; não inventaria outras contas, serviços ou mecanismos de autenticação. `authorizedkeyscommand none` foi registrado anteriormente. Continuam ativos, por escolha e risco aceito do proprietário, `passwordauthentication yes` e `permitrootlogin yes`; não declarar hardening, impossibilidade absoluta de acesso por agentes ou revogação de credenciais a partir da ausência de arquivos.
 
 Esta evidência encerra apenas a **pendência dos dois `authorized_keys2`**. Não concede Gate 0 PASS; o revisor ainda deve examinar a adequação da recuperação da Hostinger e os metadados de inventário residuais contra o contrato congelado.
+
+## Pré-validação operacional rclone/Google Drive — relato do operador, 2026-11-01
+
+O operador apresentou capturas do PowerShell Windows e terminal da VPS demonstrando, **antes do Gate 0 PASS**, um teste com destino remoto `finance-drive:FinanceHub-Backups`, sem backup financeiro:
+
+- Autorização OAuth iniciada pelo rclone no Windows e configuração transferida para o arquivo privado de `finance-backup` em `/var/lib/finance-hub-backup/.config/rclone/rclone.conf`. A tela da VPS exibiu `rclone lsd finance-drive:` com a pasta `FinanceHub-Backups`.
+- `rclone about finance-drive:` reportou aproximadamente **15 GiB** totais e **14.994 GiB** livres na conta Google; isso **não comprova** capacidade suficiente para a política de retenção futura.
+- A VPS executou `rclone rcat` para enviar texto **sintético** (`TESTE DE CONEXAO FINANCE HUB - SEM DADOS FINANCEIROS`) a um nome `teste-vps-<timestamp>.txt` dentro de `FinanceHub-Backups`; `rclone cat` devolveu exatamente essa linha; `rclone deletefile` retornou ao prompt sem erro. Não houve verificação independente pós-exclusão e nenhum dado financeiro foi usado neste teste.
+- O proprietário informou que as credenciais/chaves OAuth anteriormente expostas em capturas foram substituídas. Esta é uma **declaração do operador**, não prova técnica de revogação de tokens antigos nem de configuração atualizada. Não registrar valores de Client ID, Client Secret ou tokens.
+  
+**Alcance:** conectividade, leitura, gravação e exclusão pontual de arquivo fictício por `finance-backup`. **Não** houve inicialização/transferência de repositório Restic, criptografia comprovada no Drive, `restic check`, recuperação off-site, cron/timer, backups reais, M09-P05 PASS, M09-P06 PASS ou Gate 0 PASS. Preservar a separação entre preflight e autorização formal para operação financeira.

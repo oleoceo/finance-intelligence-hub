@@ -174,10 +174,16 @@ describe('M08-P04 PostgreSQL CSV export', () => {
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
       .execute();
-    const corrected = targets[260];
-    const voided = targets[261];
-    expect(corrected).toBeDefined();
-    expect(voided).toBeDefined();
+    // All 270 February 15 fixtures are posted incomes. Their final two sorted
+    // positions remain on page two (limit=256), regardless of random UUID order.
+    const februaryIncomes = targets.filter(
+      (row) =>
+        (row.transaction_date instanceof Date
+          ? row.transaction_date.toISOString().slice(0, 10)
+          : row.transaction_date) === '2024-02-15',
+    );
+    expect(februaryIncomes).toHaveLength(270);
+    const [corrected, voided] = februaryIncomes.slice(-2);
     const reached = Promise.withResolvers<void>();
     const resume = Promise.withResolvers<void>();
     const exported: TransactionReadRecord[] = [];

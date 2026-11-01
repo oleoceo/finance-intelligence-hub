@@ -140,3 +140,13 @@ Captura do operador (terminal da VPS) registrou os seguintes resultados em ambie
 - Nenhuma cópia de repositório criptografado ao Google Drive, download de repositório remoto, `restic restore`, backup PostgreSQL, agendamento ou retenção foi demonstrada nesta captura.
 
 **Classificação:** PASS restrito ao *ensaio sintético local Restic*. Não constitui prova de recuperação off-site/M09-P05, automação M09-P06, autorização para dados financeiros reais, nem Gate 0 PASS. Evidência proveniente da captura do proprietário, sem execução pelo revisor.
+
+## Recuperação Restic off-site com arquivo sintético — relato do operador, 2026-11-01
+
+O proprietário informou, após executar o roteiro de teste, o resultado final literal `RECUPERACAO OFFSITE SINTETICA: PASS`. O fluxo instruído utilizou exclusivamente o repositório Restic **descartável** `dad15f1600` e o snapshot `42a6da7e`, com arquivo de conteúdo fictício (43 bytes) e senha de teste, não uma origem PostgreSQL.
+
+**Procedimento indicado ao operador:** (1) `rclone copy` do repositório local privado para `finance-drive:FinanceHub-Backups/Restic-Teste-Sintetico-20261101`; (2) comparação `rclone check --download`; (3) transferência de volta a um diretório privado separado; (4) `restic check` no repositório recuperado; (5) `restic restore 42a6da7e` para um segundo diretório; (6) `cmp` do arquivo restaurado contra a fonte fictícia e impressão da frase PASS somente se o conteúdo coincidir.
+
+**Proveniência e limite:** a confirmação final é textual do operador; não foram fornecidos aqui logs sanitizados de cada comando ou prova externa de distribuição/revogação de credenciais. Ela sustenta **PASS relatado para a prova técnica sintética off-site**, não valida volumes financeiros, dump SQL, roles, integridade do histórico da aplicação, programação diária, política de retenção, RPO/RTO ou recuperação operacional M09-P05. Não houve alteração documentada de PostgreSQL, Docker ou serviços compartilhados nesse teste.
+
+**Governança:** o PR #78 continua sendo documentação de preflight/inspeção e **não concede Gate 0 PASS** por conta da prova sintética. A lista de inventário obrigatório residual, a decisão de riscos aceitos e o procedimento de recuperação Hostinger exigem decisão formal independente antes de ativar P05. O repositório de teste e seus segredos permanecem sob responsabilidade do operador; qualquer limpeza posterior deve ser específica e autorizada, sem remoção automática de dados existentes.

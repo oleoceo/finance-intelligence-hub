@@ -1,12 +1,12 @@
 # M09 — Backup / Restore
 
-**Status:** ACTIVE — local/CI implementation P01–P04 independently accepted; P04 documentary DONE only after this closure PR merges and its post-merge CI SUCCESS. Operational P05/P06 PLANNED/BLOCKED. M09 NOT DONE; Gate 0/Gate C/Production not approved.
+**Status:** ACTIVE — P01–P04 DONE (local/CI); Gate 0 inspection PASS; P05 implementation REVIEW REQUIRED in Draft PR #82, with manual Finance Lab rehearsal pending; P06 PLANNED. M09 NOT DONE; Gate C/Production not approved.
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 **Blocks:** Gate C
 
-**Activation Review:** [ACCEPTED PR #65, independent REVIEW PASS #5722893309, squash 9fb29569](../completed/M09-ACTIVATION-REVIEW.md). M09-P01 was accepted by PR #67 REVIEW PASS #5723448228, head CI #227 SUCCESS and squash `0cddd8e92b1b64182eccad47df47a19d25f2621c`; closure/P02 activation requires post-merge CI #228 SUCCESS and this separate independently reviewed PR. P02 accepted by PR #69 REVIEW PASS #5723754300; P03 accepted by PR #71 REVIEW PASS #5724167131 and exact-head CI #238 SUCCESS; post-merge CI #239 SUCCESS is required before closing it and activating P04 through this independently reviewed promotion. P05–P06 require formal Gate 0 PASS and separate operational authorization. No live action is authorized.
+**Activation Review:** [accepted by PR #65](../completed/M09-ACTIVATION-REVIEW.md). P01–P04 were accepted and integrated for local/CI. Gate 0 inspection PASS was formalized by PR #81 after PR #78; P05 preparation PR #79 was integrated with exact-head and post-merge CI SUCCESS. The owner authorized the exact Finance Lab scope in [P05](M09-P05.md). Only `leoceo` may operate the VPS; implementation review precedes the real rehearsal.
 
-> **Current authorization:** P01–P04 implemented/accepted **locally only**; [M09-P04](../completed/M09-P04.md) is archived only after closure gates. P05–P06 remain PLANNED and are not eligible for live execution without formal Gate 0 PASS, dated host evidence and separately granted operational authorization. No Production or Gate C PASS.
+> **Current authorization:** [M09-P05](M09-P05.md) is active under the owner's exact-scope Finance Lab authorization; implementation review is pending in Draft PR #82. Only human operator `leoceo` may execute the real VPS backup and isolated restore after reviewed implementation. P05 remains AWAITING OPERATOR EXECUTION until real reconciliation evidence and independent review; P06, Gate C and Production remain pending.
 
 ---
 
@@ -116,7 +116,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 
 ---
 
-## 5. Task Decomposition (P01–P04 local/CI completed; P05/P06 operationally blocked)
+## 5. Task Decomposition (P01–P04 complete; P05 active; P06 planned)
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
@@ -127,7 +127,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 | **M09-P05** | Executed isolated restore + validation | Actual restore performed, all validation items verified, evidence captured |
 | **M09-P06** | M09 milestone verification | Daily backup running, off-site copy confirmed, retention verified, restore evidence recorded |
 
-Accepted local/CI work: [P01](../completed/M09-P01.md), [P02](../completed/M09-P02.md), [P03](../completed/M09-P03.md), [P04](../completed/M09-P04.md) DONE after documentary closure is integrated and CI verified. Still PLANNED/BLOCKED: [P05](../planned/M09-P05.md), [P06](../planned/M09-P06.md). No operational activity is authorized; M09/Gate C are not accepted.
+Accepted local/CI work: [P01](../completed/M09-P01.md), [P02](../completed/M09-P02.md), [P03](../completed/M09-P03.md), [P04](../completed/M09-P04.md). [P05](M09-P05.md) implementation REVIEW REQUIRED; real execution by `leoceo` only after review. [P06](../planned/M09-P06.md) PLANNED. M09/Gate C are not accepted.
 
 ---
 

@@ -1,6 +1,6 @@
 # M09-P05 — operational activation preparation (Finance Lab)
 
-**State:** DOCUMENTARY PREPARATION ONLY; do not promote P05 to ACTIVE or run live backup/restore until the formal Gate 0 closure PR is reviewed, CI GREEN and integrated. This plan is not Gate 0 PASS, operational permission, Production release or Gate C approval.
+**State:** DOCUMENTARY PREPARATION COMPLETED by PR #79. Gate 0 inspection PASS was integrated by PR #81; P05's current executable contract is [the ACTIVE task](../active/M09-P05.md). This historical preparation is not P05 completion, Production release or Gate C approval.
 
 **Prepared:** 2026-11-01. **Authoritative contracts:** [M09-P05](M09-P05.md), [M09 overview](../active/M09-OVERVIEW.md), [isolated restore runbook](../../runbooks/finance-hub-restore.md), `docs/frozen/07-SECURITY.md`, `08-BACKUP-RESTORE.md`, `09-ROADMAP-TESTS.md`. **Gate 0 evidence:** PR #78 and `docs/tasks/active/GATE-0-CLOSURE-REVIEW.md` after acceptance.
 

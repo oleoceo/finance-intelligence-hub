@@ -34,12 +34,9 @@ failure=$root/.finance-lab-p06-failure
 success=$root/.finance-lab-p06-success
 active_slot_file=$root/.finance-lab-p06-active-slot
 for path in "$lock" "$failure" "$success" "$active_slot_file"; do safe_control "$path" || fail 'unsafe control file'; done
-exec 9>>"$lock"
-safe_control "$lock" || fail 'unsafe lock'
-[[ $(stat -Lc %d:%i /proc/self/fd/9) == "$(stat -c %d:%i "$lock")" ]] || fail 'lock changed'
-flock -n 9 || fail 'LOCKED'
 atomic_stamp() { local tmp; tmp=$(mktemp "$root/.finance-lab-p06.XXXXXXXX"); date -u +%Y-%m-%dT%H:%M:%SZ >"$tmp"; safe_control "$1" || fail 'unsafe marker'; mv -T -- "$tmp" "$1"; }
 atomic_value() { local tmp; tmp=$(mktemp "$root/.finance-lab-p06.XXXXXXXX"); printf '%s\n' "$2" >"$tmp"; safe_control "$1" || fail 'unsafe marker'; mv -T -- "$tmp" "$1"; }
+# Status reads atomic markers and must still check freshness during a long backup.
 if [[ $mode == status ]]; then
   [[ ! -e $failure ]] || fail 'ALERT_LAST_RUN_FAILED'
   [[ -f $success ]] || fail 'ALERT_NO_VERIFIED_OFFSITE'
@@ -52,6 +49,10 @@ if [[ $mode == status ]]; then
   log "OFFSITE_VERIFIED last_success=$stamp"
   exit 0
 fi
+exec 9>>"$lock"
+safe_control "$lock" || fail 'unsafe lock'
+[[ $(stat -Lc %d:%i /proc/self/fd/9) == "$(stat -c %d:%i "$lock")" ]] || fail 'lock changed'
+flock -n 9 || fail 'LOCKED'
 trap 'rc=$?; if (( rc != 0 )); then atomic_stamp "$failure" || log "ALERT_MARKER_FAILED" >&2; fi' EXIT
 trap 'exit 143' TERM
 trap 'exit 130' INT

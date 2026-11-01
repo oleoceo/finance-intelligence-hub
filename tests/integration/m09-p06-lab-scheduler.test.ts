@@ -136,6 +136,12 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     expect(first.stdout).toMatch(/LOCAL_BACKUP_COMPLETE dump_bytes=[0-9]+/);
     expect(first.stdout).toMatch(/OFFSITE_RETENTION_VERIFIED snapshot=[a-f0-9]{64}/);
     expect(run('status').status).toBe(0);
+    const statusDuringLock = spawnSync(
+      'flock',
+      ['-x', join(root, '.finance-lab-p06.lock'), 'bash', script, 'status'],
+      { env, encoding: 'utf8' },
+    );
+    expect(statusDuringLock.status, statusDuringLock.stderr).toBe(0);
     const stamp = readFileSync(join(root, '.finance-lab-p06-success'), 'utf8');
     const active = readFileSync(join(root, '.finance-lab-p06-active-slot'), 'utf8').trim();
     const activeRepository = join(remote, 'FinanceHub-Backups', 'finance-lab-p06', 'test', active);

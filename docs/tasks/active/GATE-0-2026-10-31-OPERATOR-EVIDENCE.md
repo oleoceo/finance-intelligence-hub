@@ -70,3 +70,36 @@ Estas saídas são do operador, reportadas na conversa; não houve acesso admini
 **Progresso real vs. status formal:** descobertas de paths/ownership, ferramentas instaladas e achados SSH foram incorporados para impedir repetição. Ainda não há `Gate 0 PASS`, backup externo criptografado real, OAuth do rclone implantado, usuário `finance-backup`, restauração M09-P05, Gate C ou autorização genérica de deploy.
 
 **Próxima evidência humana estritamente necessária:** referência de backup Hostinger recuperável — o backup semanal informado de 2026-10-28 10:46, 20,09 GB, entrada de 2026-10-20, tipo/escopo, retenção e opção de recuperação do painel — por captura sanitizada ou documento equivalente. Não executar restauração destrutiva da VPS para gerar evidência documental.
+
+## Comprovantes visuais recebidos — Hostinger e SSH (2026-11-01)
+
+**Proveniência:** duas capturas de tela enviadas diretamente pelo operador na conversa de inspeção em 2026-11-01. O presente texto é transcrição sanitizada dos campos visíveis; **não corresponde a um artefato de screenshot hospedado/verificado pelo GitHub**. As imagens originais devem ser preservadas pelo operador de modo privado para auditoria. Nenhuma ação de restore foi acionada.
+
+**Hostinger hPanel — VPS → Snapshots e Backups:**
+
+| Campo observável | Resultado |
+| --- | --- |
+| Tipo de backup | `Backups automáticos — Semanalmente` |
+| Entrada 1 | `2026-10-28 10:46`; `Brasil`; `20.09 GB`; `Ubuntu 24.04 LTS` |
+| Entrada 2 | `2026-10-20 20:48`; `Brasil`; `20.07 GB`; `Ubuntu 24.04 LTS` |
+| Restauração | Botão `Restaurar` visível em ambas as entradas |
+| Tempo exibido | `46m` para cada entrada — **estimativa da UI, não tempo de restore observado** |
+| Cópia off-host | Mensagem da UI: `Os backups são armazenados separadamente do seu servidor principal` |
+| Retenção | Mensagem da UI: `Backups antigos são substituídos automaticamente`; **quantidade/política exata de retenção não exibida** |
+| Recuperação administrativa | Botão `Web console` visível no painel, complementando confirmação do operador de acesso |
+
+**Limite importante:** a interface comprova entradas de backup de host e opção de restauração **oferecida pelo provedor**, não um teste de recuperação integral executado. A prova anterior `M06 RESTORE PASS` continua sendo de **banco Finance Lab isolado** e distinta do snapshot de VPS. A política de substituição impede alegar retenção prolongada ou RPO de 24h de snapshots **semanais**. Nenhum arquivo contendo senhas, tokens ou dados financeiros foi compartilhado.
+
+**SSH efetivo — saída `sudo sshd -T | grep -E ...`:**
+
+```text
+permitrootlogin yes
+pubkeyauthentication yes
+passwordauthentication yes
+authorizedkeyscommand none
+authorizedkeysfile .ssh/authorized_keys .ssh/authorized_keys2
+```
+
+Os arquivos padrão `/home/leoceo/.ssh/authorized_keys` (ausente) e `/root/.ssh/authorized_keys` (vazio, 0 bytes, modo 600) já foram examinados. **Nova informação:** `authorized_keys2` também é um arquivo configurado pelo sshd e **não foi inspecionado** nas contas relevantes. Não afirmar ausência total de chaves ou acesso de agentes. A configuração SSH aceita senha e root; o risco de exposição continua conhecido e com hardening adiado pelo proprietário.
+
+**Estado para decisão Gate 0:** backup pré-mudança oferecido por provedor e console alternativo têm agora **prova visual de interface** declarada, suficiente para sustentar somente seu alcance expresso. Antes da promoção formal a PASS, o revisor deve avaliar o critério de prova de recuperação do host versus disponibilidade da opção de restore e resolver a rota `authorized_keys2` (ou aceitar formalmente seu risco caso os contratos permitam), além do inventário faltante. Gate 0 não é prova de Restic/Google Drive e não autoriza implantação P05.

@@ -1,12 +1,12 @@
 # M09 — Backup / Restore
 
-**Status:** ACTIVE — P01–P04 DONE (local/CI); Gate 0 inspection PASS; P05 implementation REVIEW REQUIRED in Draft PR #82, with manual Finance Lab rehearsal pending; P06 PLANNED. M09 NOT DONE; Gate C/Production not approved.
+**Status:** ACTIVE — P01–P04 DONE (local/CI); Gate 0 inspection PASS; P05 implementation technically accepted/integrated via PR #82, with manual Finance Lab rehearsal pending; P06 PLANNED. M09 NOT DONE; Gate C/Production not approved.
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 **Blocks:** Gate C
 
 **Activation Review:** [accepted by PR #65](../completed/M09-ACTIVATION-REVIEW.md). P01–P04 were accepted and integrated for local/CI. Gate 0 inspection PASS was formalized by PR #81 after PR #78; P05 preparation PR #79 was integrated with exact-head and post-merge CI SUCCESS. The owner authorized the exact Finance Lab scope in [P05](M09-P05.md). Only `leoceo` may operate the VPS; implementation review precedes the real rehearsal.
 
-> **Current authorization:** [M09-P05](M09-P05.md) is active under the owner's exact-scope Finance Lab authorization; implementation review is pending in Draft PR #82. Only human operator `leoceo` may execute the real VPS backup and isolated restore after reviewed implementation. P05 remains AWAITING OPERATOR EXECUTION until real reconciliation evidence and independent review; P06, Gate C and Production remain pending.
+> **Current authorization:** [M09-P05](M09-P05.md) is active under the owner's exact-scope Finance Lab authorization; implementation was reviewed on SHA 9c6bc90, merged by PR #82; post-merge main CI must be verified GREEN before operator rehearsal. Only human operator `leoceo` may execute the real VPS backup and isolated restore after reviewed implementation. P05 remains AWAITING OPERATOR EXECUTION until real reconciliation evidence and independent review; P06, Gate C and Production remain pending.
 
 ---
 
@@ -127,7 +127,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 | **M09-P05** | Executed isolated restore + validation | Actual restore performed, all validation items verified, evidence captured |
 | **M09-P06** | M09 milestone verification | Daily backup running, off-site copy confirmed, retention verified, restore evidence recorded |
 
-Accepted local/CI work: [P01](../completed/M09-P01.md), [P02](../completed/M09-P02.md), [P03](../completed/M09-P03.md), [P04](../completed/M09-P04.md). [P05](M09-P05.md) implementation REVIEW REQUIRED; real execution by `leoceo` only after review. [P06](../planned/M09-P06.md) PLANNED. M09/Gate C are not accepted.
+Accepted local/CI work: [P01](../completed/M09-P01.md), [P02](../completed/M09-P02.md), [P03](../completed/M09-P03.md), [P04](../completed/M09-P04.md). [P05](M09-P05.md) implementation integrated/technically reviewed; real execution by `leoceo` only after post-merge CI SUCCESS. [P06](../planned/M09-P06.md) PLANNED. M09/Gate C are not accepted.
 
 ---
 

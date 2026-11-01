@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { Pool } from 'pg';
 import { migrateUp } from '@finance-hub/database';
+import { buildApp } from '../../apps/api/src/index.js';
 
 describe('M09-P05 Finance Lab encrypted remote recovery', () => {
   const root = mkdtempSync(join(tmpdir(), 'finance-lab-p05-'));
@@ -22,6 +23,10 @@ describe('M09-P05 Finance Lab encrypted remote recovery', () => {
   const password = randomUUID();
   const bookId = randomUUID();
   const accountId = randomUUID();
+  const expenseId = randomUUID();
+  const refundId = randomUUID();
+  const senderId = randomUUID();
+  let sourceSystemIdentifier: string;
   const script = resolve('scripts/backup/finance-hub-lab-offsite.sh');
   const dumpScript = resolve('scripts/backup/finance-hub-lab-dump.sh');
   const fingerprintScript = resolve('scripts/backup/finance-hub-lab-fingerprint.sh');
@@ -61,6 +66,10 @@ describe('M09-P05 Finance Lab encrypted remote recovery', () => {
       connectionString: `postgresql://test_admin:${password}@${container.getHost()}:${container.getMappedPort(5432)}/${database}`,
     });
     try {
+      sourceSystemIdentifier = String(
+        (await admin.query('SELECT system_identifier FROM pg_control_system()')).rows[0]
+          .system_identifier,
+      );
       await migrateUp({
         connectionString: `postgresql://test_admin:${password}@${container.getHost()}:${container.getMappedPort(5432)}/${database}`,
       });
@@ -71,6 +80,64 @@ describe('M09-P05 Finance Lab encrypted remote recovery', () => {
       await admin.query(
         'INSERT INTO accounts (id,book_id,name,normalized_name,type,currency,active,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,true,now(),now())',
         [accountId, bookId, 'P05 account', 'p05 account', 'checking', 'BRL'],
+      );
+      for (const [id, ref, type, amount, original] of [
+        [expenseId, 'P05EXP001', 'expense', '500.00', null],
+        [refundId, 'P05REF001', 'income', '200.00', expenseId],
+      ])
+        await admin.query(
+          'INSERT INTO transactions (id,human_ref,book_id,account_id,type,status,amount,currency,description,transaction_date,source,refund_of_transaction_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now(),now())',
+          [
+            id,
+            ref,
+            bookId,
+            accountId,
+            type,
+            'posted',
+            amount,
+            'BRL',
+            'P05 synthetic',
+            '2026-10-20',
+            'api',
+            original,
+          ],
+        );
+      await admin.query(
+        'INSERT INTO audit_events (id,entity_type,entity_id,action,source,created_at) VALUES ($1,$2,$3,$4,$5,now())',
+        [randomUUID(), 'transaction', expenseId, 'created', 'api'],
+      );
+      await admin.query(
+        'INSERT INTO idempotency_keys (id,scope,idempotency_key,request_hash,status,resource_type,resource_id,response_status,response_body,created_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),now())',
+        [
+          randomUUID(),
+          'transactions:create',
+          'p05-replay',
+          'a'.repeat(64),
+          'completed',
+          'transaction',
+          expenseId,
+          201,
+          JSON.stringify({ id: expenseId }),
+        ],
+      );
+      await admin.query(
+        'INSERT INTO authorized_senders (id,channel,sender_reference,default_book_id,default_account_id,active,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,true,now(),now())',
+        [senderId, 'whatsapp', 'synthetic-sender', bookId, accountId],
+      );
+      await admin.query(
+        'INSERT INTO inbox_messages (id,source,source_instance,source_message_id,sender_reference,authorized_sender_id,raw_text,received_at,processing_status,attempt_count,correlation_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,now(),$8,$9,$10,now(),now())',
+        [
+          randomUUID(),
+          'evolution',
+          'p05-synthetic',
+          'p05-message',
+          'synthetic-sender',
+          senderId,
+          'synthetic only',
+          'processed',
+          1,
+          randomUUID(),
+        ],
       );
       await admin.query(`CREATE ROLE finance_backup_ro LOGIN PASSWORD '${password}'`);
       await admin.query('GRANT USAGE ON SCHEMA public TO finance_backup_ro');
@@ -188,6 +255,16 @@ describe('M09-P05 Finance Lab encrypted remote recovery', () => {
       invoke({ PGHOST: 'isolated', FINANCE_RESTORE_ALLOWED_DATABASE: 'finance_restore_other' })
         .status,
     ).not.toBe(0);
+    expect(
+      invoke({
+        PGHOST: container.getHost(),
+        PGPORT: String(container.getMappedPort(5432)),
+        PGUSER: 'test_admin',
+        PGPASSFILE: join(root, 'pgpass-admin'),
+        FINANCE_SOURCE_SYSTEM_IDENTIFIER: sourceSystemIdentifier,
+        FINANCE_RECOVERY_SYSTEM_IDENTIFIER: sourceSystemIdentifier,
+      }).status,
+    ).not.toBe(0);
   });
 
   it('fingerprints financial rows without exposing data or accepting the source as target', () => {
@@ -196,6 +273,10 @@ describe('M09-P05 Finance Lab encrypted remote recovery', () => {
     expect(after.stdout).toBe(sourceFingerprint);
     expect(after.stdout).toMatch(/^books 1 [a-f0-9]{64}$/m);
     expect(after.stdout).toMatch(/^accounts 1 [a-f0-9]{64}$/m);
+    expect(after.stdout).toMatch(/^transactions 2 [a-f0-9]{64}$/m);
+    expect(after.stdout).toMatch(/^audit_events 1 [a-f0-9]{64}$/m);
+    expect(after.stdout).toMatch(/^idempotency_keys 1 [a-f0-9]{64}$/m);
+    expect(after.stdout).toMatch(/^inbox_messages 1 [a-f0-9]{64}$/m);
     expect(after.stdout).not.toContain('P05 Finance Lab');
     const invalid = spawnSync('bash', [fingerprintScript, 'target'], {
       env: { ...env, FINANCE_RESTORE_ALLOWED_DATABASE: 'finance_restore_bad' },
@@ -228,6 +309,25 @@ describe('M09-P05 Finance Lab encrypted remote recovery', () => {
       ]);
       expect(book.rows).toEqual([{ id: bookId, currency: 'BRL' }]);
       expect(account.rows).toEqual([{ id: accountId, book_id: bookId, currency: 'BRL' }]);
+      const amounts = await source.query(
+        'SELECT id,type,status,amount::text,refund_of_transaction_id FROM transactions ORDER BY human_ref',
+      );
+      expect(amounts.rows).toEqual([
+        {
+          id: expenseId,
+          type: 'expense',
+          status: 'posted',
+          amount: '500.00',
+          refund_of_transaction_id: null,
+        },
+        {
+          id: refundId,
+          type: 'income',
+          status: 'posted',
+          amount: '200.00',
+          refund_of_transaction_id: expenseId,
+        },
+      ]);
     } finally {
       await source.end();
     }
@@ -254,6 +354,10 @@ describe('M09-P05 Finance Lab encrypted remote recovery', () => {
     });
     try {
       await recoveryAdmin.query('CREATE DATABASE finance_restore_p05');
+      var recoverySystemIdentifier = String(
+        (await recoveryAdmin.query('SELECT system_identifier FROM pg_control_system()')).rows[0]
+          .system_identifier,
+      );
     } finally {
       await recoveryAdmin.end();
     }
@@ -272,7 +376,27 @@ describe('M09-P05 Finance Lab encrypted remote recovery', () => {
       FINANCE_RESTORE_BOOTSTRAP: resolve('packages/database/roles/bootstrap.sql'),
       FINANCE_SOURCE_PGHOST: 'postgres-products',
       FINANCE_RECOVERY_INSTANCE: 'finance-hub-p05-restore-test',
+      FINANCE_SOURCE_SYSTEM_IDENTIFIER: sourceSystemIdentifier,
+      FINANCE_RECOVERY_SYSTEM_IDENTIFIER: recoverySystemIdentifier,
     };
+    const aliasedSource = spawnSync(
+      'bash',
+      [restoreScript, join(staging, artifact.slice(1)), 'finance_restore_p05'],
+      {
+        env: {
+          ...targetEnv,
+          PGHOST: container.getHost(),
+          PGPORT: String(container.getMappedPort(5432)),
+          PGUSER: 'test_admin',
+          PGPASSFILE: join(root, 'pgpass-admin'),
+        },
+        encoding: 'utf8',
+      },
+    );
+    expect(aliasedSource.status).not.toBe(0);
+    expect(aliasedSource.stderr).toContain(
+      'connected PostgreSQL cluster is not the verified isolated recovery cluster',
+    );
     const restored = spawnSync(
       'bash',
       [restoreScript, join(staging, artifact.slice(1)), 'finance_restore_p05'],
@@ -287,6 +411,73 @@ describe('M09-P05 Finance Lab encrypted remote recovery', () => {
     expect(targetFingerprint.stdout.split('\n').slice(1)).toEqual(
       sourceFingerprint.split('\n').slice(1),
     );
+    const target = new Pool({
+      connectionString: `postgresql://restore_admin:${password}@${recoveryHost}:${recoveryPort}/finance_restore_p05`,
+    });
+    try {
+      const financial = await target.query(
+        "SELECT sum(amount) FILTER (WHERE type='expense')::text AS gross, sum(amount) FILTER (WHERE refund_of_transaction_id IS NOT NULL)::text AS refunds, (sum(amount) FILTER (WHERE type='expense') - sum(amount) FILTER (WHERE refund_of_transaction_id IS NOT NULL))::text AS net_expenses FROM transactions WHERE status='posted'",
+      );
+      expect(financial.rows).toEqual([
+        { gross: '500.00', refunds: '200.00', net_expenses: '300.00' },
+      ]);
+      const replay = await target.query(
+        'SELECT status,resource_id,response_status,response_body FROM idempotency_keys WHERE idempotency_key=$1',
+        ['p05-replay'],
+      );
+      expect(replay.rows).toEqual([
+        {
+          status: 'completed',
+          resource_id: expenseId,
+          response_status: 201,
+          response_body: { id: expenseId },
+        },
+      ]);
+    } finally {
+      await target.end();
+    }
+    const priorUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = `postgresql://restore_admin:${password}@${recoveryHost}:${recoveryPort}/finance_restore_p05`;
+    const app = buildApp({
+      adminToken: 'p05-synthetic-admin',
+      ingestToken: 'p05-synthetic-ingest',
+      now: () => new Date('2026-10-21T12:00:00Z'),
+    });
+    if (priorUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = priorUrl;
+    try {
+      const headers = { authorization: 'Bearer p05-synthetic-admin' };
+      const summary = await app.inject({
+        method: 'GET',
+        url: `/api/v1/reports/summary?book_id=${bookId}&date_from=2026-10-20&date_to=2026-10-20`,
+        headers,
+      });
+      expect(summary.statusCode).toBe(200);
+      expect(summary.json().data).toMatchObject({
+        book_id: bookId,
+        currency: 'BRL',
+        gross_expenses: '500.00',
+        refunds: '200.00',
+        net_expenses: '300.00',
+      });
+      const expense = await app.inject({
+        method: 'GET',
+        url: `/api/v1/transactions/${expenseId}`,
+        headers,
+      });
+      expect(expense.statusCode).toBe(200);
+      const refunds = await app.inject({
+        method: 'GET',
+        url: `/api/v1/transactions/${expenseId}/refunds`,
+        headers,
+      });
+      expect(refunds.statusCode).toBe(200);
+      expect(refunds.json().data.items).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: refundId })]),
+      );
+    } finally {
+      await app.close();
+    }
     for (const file of files(join(remote, 'FinanceHub-Backups', 'finance-lab-p05', 'test'))) {
       const contents = readFileSync(file);
       expect(contents.includes(Buffer.from('PGDMP')), file).toBe(false);

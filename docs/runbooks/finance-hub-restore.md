@@ -2,6 +2,52 @@
 
 ## M09-P05 Finance Lab operator procedure (manual only)
 
+### Docker client and cluster identity preflight
+
+The VPS host does not resolve `postgres-products`; Docker resolves it on the existing internal `finance-products-db` network. The command checkpoints below run **inside one-shot client containers**, never in the host shell. Before execution, `leoceo` checks `docker network inspect finance-products-db` and `docker inspect postgres-products` for the accepted network membership and builds the reviewed PostgreSQL 18.6 client with `docker build -f scripts/backup/Dockerfile.p05-client -t finance-hub-p05-client .`. No port publishing or shared-network changes are permitted.
+
+For the source client, `leoceo` uses `docker run --rm --network finance-products-db --user "<finance-backup-uid>:<finance-backup-gid>"` with the reviewed checkout mounted read-only at its **same absolute path**, `/opt/apps/backups` mounted read-write at the same path, and the source mode 0600 `PGPASSFILE` mounted read-only at the same path. Pass the required `PG*` and `FINANCE_BACKUP_*` variable names with Docker `-e` (no inline secret or password in the command). Obtain UID:GID using `id -u finance-backup` and `id -g finance-backup`; verify the existing Lab backup directory is 0700 and writable by that UID. Do not add `finance-backup` to Docker/sudo or change historical directory permissions. Run the source fingerprint and dump commands from the checkpoints inside this client. The CI wrappers remap DNS to Testcontainers and do not prove VPS host DNS.
+
+For recovery, inspect the **new isolated** PostgreSQL 18 container ID and its separate network ID. Run a different one-shot client on that network, mounting the reviewed checkout, recovered artifact, bootstrap file and recovery mode 0600 `PGPASSFILE` at their same absolute paths. Never mount the source credential or attach the recovery client to `finance-products-db`. Use the authorized recovery administrator on each cluster separately to record `SELECT system_identifier FROM pg_control_system()` and `SHOW server_version` with the corresponding container and network IDs in private evidence. Supply the two different recorded values as `FINANCE_SOURCE_SYSTEM_IDENTIFIER` and `FINANCE_RECOVERY_SYSTEM_IDENTIFIER`. The restore runner queries the connected recovery cluster and rejects an alias to the source before touching the target. If either identity query or network/UID/mount check fails, stop.
+
+Run the following commands as the **authorized Docker operator**, from the reviewed checkout on the VPS. Set `FINANCE_P05_CHECKOUT` to its absolute path, and set the remaining named variables privately before running each block. The `-e` flags pass variable names only; never put a password in the command line. The source block uses the existing network and the non-root backup UID, with no published port:
+
+```bash
+test -d "$FINANCE_P05_CHECKOUT/scripts/backup"
+test "$(stat -c %a "$PGPASSFILE")" = 600
+docker run --rm --network finance-products-db \
+  --user "$(id -u finance-backup):$(id -g finance-backup)" \
+  --mount "type=bind,src=$FINANCE_P05_CHECKOUT,dst=$FINANCE_P05_CHECKOUT,readonly" \
+  --mount "type=bind,src=/opt/apps/backups,dst=/opt/apps/backups" \
+  --mount "type=bind,src=$PGPASSFILE,dst=$PGPASSFILE,readonly" \
+  -e PGHOST -e PGPORT -e PGUSER -e PGPASSFILE \
+  -e FINANCE_BACKUP_ALLOWED_DATABASE -e FINANCE_BACKUP_ROOT \
+  -w "$FINANCE_P05_CHECKOUT" finance-hub-p05-client \
+  bash scripts/backup/finance-hub-lab-dump.sh
+```
+
+For recovery, set `FINANCE_P05_RECOVERY_NETWORK` to the **separate, inspected** network name and `FINANCE_P05_RECOVERY_HOST` to its PostgreSQL container DNS name. Mount the recovered artifact's parent directory and bootstrap file path read-only in addition to the checkout. Use the recovery administrator UID and credential file, never the source credential. The operator must verify the two network/container IDs in private evidence before this command:
+
+```bash
+test "$FINANCE_P05_RECOVERY_NETWORK" != finance-products-db
+test "$(stat -c %a "$PGPASSFILE")" = 600
+docker run --rm --network "$FINANCE_P05_RECOVERY_NETWORK" \
+  --user "$(id -u):$(id -g)" \
+  --mount "type=bind,src=$FINANCE_P05_CHECKOUT,dst=$FINANCE_P05_CHECKOUT,readonly" \
+  --mount "type=bind,src=$FINANCE_P05_RECOVERED_PARENT,dst=$FINANCE_P05_RECOVERED_PARENT,readonly" \
+  --mount "type=bind,src=$PGPASSFILE,dst=$PGPASSFILE,readonly" \
+  -e PGHOST -e PGPORT -e PGUSER -e PGPASSFILE \
+  -e FINANCE_RESTORE_ALLOWED_DATABASE -e FINANCE_RESTORE_SOURCE_DATABASE \
+  -e FINANCE_RESTORE_SOURCE_ENVIRONMENT -e FINANCE_RESTORE_BOOTSTRAP \
+  -e FINANCE_SOURCE_PGHOST -e FINANCE_RECOVERY_INSTANCE \
+  -e FINANCE_SOURCE_SYSTEM_IDENTIFIER -e FINANCE_RECOVERY_SYSTEM_IDENTIFIER \
+  -w "$FINANCE_P05_CHECKOUT" finance-hub-p05-client \
+  bash scripts/backup/finance-hub-lab-restore.sh \
+  "$FINANCE_P05_RECOVERED_ARTIFACT" "$FINANCE_P05_TARGET"
+```
+
+`PGHOST` in the recovery block must equal the inspected recovery container's DNS name. The restore script queries the connected cluster identity before accessing the artifact or target.
+
 This section is the live Finance Lab rehearsal contract. Only operator `leoceo` executes it on the VPS after the P05 implementation PR is reviewed and exact-head CI is green. The older synthetic procedure below remains the P04 local/CI baseline. Stop on any unexpected identity, nonzero exit, missing credential, or preexisting target. Do not use `finance_hub_prod`, existing `finance-hub-restore-test`, Docker volume deletion, `pg_dumpall`, `pg_restore --clean/--create`, Restic `forget/prune`, or rclone `sync`.
 
 1. In a private operator log, record UTC start, `postgres-products` and `finance-products-db` identity, PostgreSQL 18.6, source `finance_hub_lab`, new recovery PostgreSQL 18 instance identity, empty `finance_restore_*` target name, free space, operator and credential-file paths. The backup database identity must have read-only privileges and access only to `finance_hub_lab`; do not add `finance-backup` to sudo or Docker. Keep every password and rclone config outside the repository and command output. Establish a private before/after source fingerprint with `finance-hub-lab-fingerprint.sh`; it prints counts and SHA-256 of all 13 application tables and the migration chain, including exact decimal text, IDs and states without printing rows.
@@ -54,6 +100,26 @@ time bash scripts/backup/finance-hub-lab-restore.sh "$FINANCE_P05_RECOVERED_ARTI
 Expected: `finance restore: complete elapsed_seconds=...` on the new empty isolated target. Stop on any preexisting database/object or mismatch; do not retry against the same target.
 
 After restore, switch the private `PG*` variables to the source read-only identity, capture `source-after.fingerprint`, and require `diff -u source-before.fingerprint source-after.fingerprint` to be empty. Switch `PG*` to the isolated target read identity, capture `target.fingerprint`, then compare the fingerprint files after removing only their first `database=` line. Any table count/hash or migration mismatch is failure. Finally run the isolated API checks; do not mark P05 DONE on SQL fingerprints alone.
+
+### Isolated API verification checkpoint
+
+The operator builds the reviewed `apps/api/Dockerfile` image from the same checkout and starts one temporary API container attached **only** to the recovery network. Its restricted mode 0600 Docker `--env-file` contains `DATABASE_URL` for the restored `finance_restore_*` database and fresh synthetic `FINANCE_ADMIN_TOKEN` and `FINANCE_INGEST_TOKEN`; it contains no source connection. Bind its HTTP port to `127.0.0.1` only, use a unique P05 container name, and verify `docker inspect` reports just the inspected recovery network. Do not attach n8n, Evolution or operational WhatsApp traffic. Keep the env file outside the checkout and evidence. Stop and remove only this newly created API container after verification; retain the restored database for review.
+
+```bash
+test "$FINANCE_P05_RECOVERY_NETWORK" != finance-products-db
+test "$(stat -c %a "$FINANCE_P05_API_ENV_FILE")" = 600
+docker build -f apps/api/Dockerfile -t finance-hub-p05-api "$FINANCE_P05_CHECKOUT"
+docker run --detach --rm --name "$FINANCE_P05_API_CONTAINER" \
+  --network "$FINANCE_P05_RECOVERY_NETWORK" \
+  --publish 127.0.0.1:13005:3000 \
+  --env-file "$FINANCE_P05_API_ENV_FILE" \
+  finance-hub-p05-api
+docker inspect "$FINANCE_P05_API_CONTAINER"
+```
+
+Require `FINANCE_P05_API_CONTAINER` to be a new, unused name for this run and abort if loopback port 13005 is already occupied. Verify the env file's database host and database name privately before starting. Never include `docker inspect` environment output in the review log because it can contain secrets.
+
+Using a private client with the admin Bearer token supplied through a mode 0600 curl config file, request `GET /api/v1/transactions/<known-expense-id>`, `GET /api/v1/transactions/<known-expense-id>/refunds`, `GET /api/v1/transactions/<known-expense-id>/audit`, and `GET /api/v1/reports/summary?book_id=<known-book-id>&date_from=<date>&date_to=<date>` on the loopback endpoint. Require HTTP 200 and compare the returned IDs, statuses, refund links, exact decimal strings and summary fields against source evidence for the same book and dates. Replay one previously captured, authorized transaction request with its **same** `Idempotency-Key` and body against the isolated API; require the original response status/body and unchanged Transaction, Audit and Idempotency row counts/fingerprints. If the original request cannot be safely replayed with the synthetic admin token, record this as an unmet acceptance check and stop; never send a new financial request to the source. Redact the token, request body and personal data from the review log.
 
 **Scope:** authorized recovery rehearsal using a synthetic Finance Hub archive and a disposable PostgreSQL 18 database. M09-P04 does not authorize a live host, Lab, Production, real credentials, or operational recovery. Gate 0 and Gate C remain pending.
 

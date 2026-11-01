@@ -129,3 +129,14 @@ O operador apresentou capturas do PowerShell Windows e terminal da VPS demonstra
 - O proprietário informou que as credenciais/chaves OAuth anteriormente expostas em capturas foram substituídas. Esta é uma **declaração do operador**, não prova técnica de revogação de tokens antigos nem de configuração atualizada. Não registrar valores de Client ID, Client Secret ou tokens.
   
 **Alcance:** conectividade, leitura, gravação e exclusão pontual de arquivo fictício por `finance-backup`. **Não** houve inicialização/transferência de repositório Restic, criptografia comprovada no Drive, `restic check`, recuperação off-site, cron/timer, backups reais, M09-P05 PASS, M09-P06 PASS ou Gate 0 PASS. Preservar a separação entre preflight e autorização formal para operação financeira.
+
+## Restic — prova criptográfica sintética local (operador, 2026-11-01)
+
+Captura do operador (terminal da VPS) registrou os seguintes resultados em ambiente **descartável**, segregado em `/var/lib/finance-hub-backup/restic-prova`, com conta `finance-backup` e senha de teste por arquivo, sem conteúdo financeiro real:
+
+- `restic init` criou repositório local ID `dad15f1600` (abreviado `dad15f16`).
+- `restic backup` do diretório de fonte fictícia reportou **1 arquivo novo de 43 bytes** e snapshot `42a6da7e`; o Restic criou cache próprio da conta de serviço.
+- `restic check` abriu o mesmo repositório, leu índices e snapshots, verificou árvores e blobs, terminando com `no errors were found`.
+- Nenhuma cópia de repositório criptografado ao Google Drive, download de repositório remoto, `restic restore`, backup PostgreSQL, agendamento ou retenção foi demonstrada nesta captura.
+
+**Classificação:** PASS restrito ao *ensaio sintético local Restic*. Não constitui prova de recuperação off-site/M09-P05, automação M09-P06, autorização para dados financeiros reais, nem Gate 0 PASS. Evidência proveniente da captura do proprietário, sem execução pelo revisor.

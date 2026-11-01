@@ -170,7 +170,7 @@ O proprietário forneceu nova saída de terminal **read-only**. Parte das linhas
 
 ## Contêineres e volumes — inventário íntegro enviado pelo operador, 2026-11-01
 
-**Origem:** saída textual direta dos comandos somente leitura no terminal. `docker compose version --short` apresentou **5.1.0**. `docker ps -a --no-trunc` apresentou **28 containers** (27 `Up`, 1 `Exited (0)` histórico), nomes, IDs completos, referências de imagens, estado e `Ports` exatamente como exibidos. A coluna `Image` é referência de imagem usada pelo container, não necessariamente um `image inspect .Id` imutável; imagens `:latest` continuam não fixadas. Valores `5432/tcp`/`6379/tcp` sem host binding **não** significam publicação da porta.
+**Origem:** saída textual direta dos comandos somente leitura no terminal. `docker compose version --short` apresentou **5.1.0**. `docker ps -a --no-trunc` apresentou **27 containers** (26 `Up`, 1 `Exited (0)` histórico), nomes, IDs completos, referências de imagens, estado e `Ports` exatamente como exibidos. A coluna `Image` é referência de imagem usada pelo container, não necessariamente um `image inspect .Id` imutável; imagens `:latest` continuam não fixadas. Valores `5432/tcp`/`6379/tcp` sem host binding **não** significam publicação da porta.
 
 ### Saída de containers recebida (sem segredo)
 

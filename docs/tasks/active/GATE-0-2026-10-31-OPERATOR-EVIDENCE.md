@@ -220,3 +220,54 @@ portainer_data | /var/lib/docker/volumes/portainer_data/_data | 224K
 **Interpretação limitada:** os seis *Docker named volumes* agora possuem nomes, `Mountpoint` e tamanho estimado. O inventário não inclui *bind mounts* declarados diretamente nas configurações de containers nem associa cada volume ao container consumidor por `Mounts`. Não assumir que todos os dados persistentes ficam nesses seis volumes: aplicações n8n, Evolution, WordPress, outros bancos e Finance podem usar binds. Releitura focalizada de `.Mounts` de containers relevantes, sem `Env` nem conteúdo de arquivos, é a forma de fechar apenas esse campo se exigido no Gate 0. Nenhuma alteração foi feita na VPS.
 
 **Segurança observada:** `members-api` publica `0.0.0.0/[::]:8080`, `portainer` publica `0.0.0.0/[::]:9000` e NPM publica `80/81/443` em IPv4/IPv6; já registrados como risco aceito pelo proprietário. `postgres-products` e `redis-main` não mostram bind de host no `docker ps`, consistente com as verificações anteriores; isso não é uma varredura universal de rede. Containers Finance API e PostgreSQL `healthy`; Evolution e n8n `Up`, sem `healthy` exibido nesse comando, o que **não** equivale a prova de falha de saúde.
+
+## Encerramento do inventário dos mounts e Proxy Hosts — operador, 2026-11-01
+
+O operador realizou os dois **últimos comandos de leitura direcionados**. Estes dados complementam o inventário de 27 containers, redes e seis volumes nomeados já reproduzido acima. Nenhuma operação de alteração de containers, redes, bancos, serviços ou NPM foi executada.
+
+### `docker inspect --format '{{range .Mounts}}...'` — bindings efetivos
+
+| Container | Tipo | Origem (host / named volume) | Destino no container |
+| --- | --- | --- | --- |
+| `postgres-products` | bind | `/opt/apps/apps/databases/postgres-products/secrets/postgres_password` | `/run/secrets/postgres_password` |
+| `postgres-products` | volume | `finance_postgres_products_data` (`/var/lib/docker/volumes/finance_postgres_products_data/_data`) | `/var/lib/postgresql` |
+| `finance-lab-api-1` | bind | `/opt/apps/apps/lab/finance-hub/secrets/ingest_token` | `/run/secrets/ingest_token` |
+| `finance-lab-api-1` | bind | `/opt/apps/apps/lab/finance-hub/secrets/app_password` | `/run/secrets/app_password` |
+| `finance-lab-api-1` | bind | `/opt/apps/apps/lab/finance-hub/secrets/admin_token` | `/run/secrets/admin_token` |
+| `finance-hub-restore-test` | volume | `finance_hub_restore_test_data` (`/var/lib/docker/volumes/finance_hub_restore_test_data/_data`) | `/var/lib/postgresql` |
+| `finance-hub-restore-test` | bind | restricted Lab restore secret mount (exact private temporary filename held by operator) | `/run/secrets/postgres_password` |
+| `n8n` | bind | `/opt/apps/apps/n8n/n8n_data` | `/home/node/.n8n` |
+| `n8n` | bind | `/opt/apps/apps/n8n/finance-m06-custom` | `/opt/finance-m06-custom` |
+| `n8n-postgres` | bind | `/opt/apps/apps/n8n/postgres_data` | `/var/lib/postgresql/data` |
+| `evolution-api` | bind | `/opt/apps/apps/platforms/evolution-main/evolution_instances` | `/evolution/instances` |
+| `evolution-postgres` | bind | `/opt/apps/apps/platforms/evolution-main/postgres_data` | `/var/lib/postgresql/data` |
+| `redis-main` | bind | `/opt/apps/apps/cache/redis-main/redis_data` | `/data` |
+| `portainer` | bind | `/opt/apps/infra/portainer/data` | `/data` |
+| `portainer` | bind | `/var/run/docker.sock` | `/var/run/docker.sock` |
+| `nginx-proxy-manager-app-1` | bind | `/opt/apps/infra/nginx-proxy-manager/data` | `/data` |
+| `nginx-proxy-manager-app-1` | bind | `/opt/apps/infra/nginx-proxy-manager/letsencrypt` | `/etc/letsencrypt` |
+| `nginx-proxy-manager-db-1` | bind | `/opt/apps/infra/nginx-proxy-manager/data/mysql` | `/var/lib/mysql` |
+
+**Segurança:** apenas nomes/caminhos de mounts, jamais leitura dos arquivos `secrets/*`. O container de restauração temporária já existia; não o apagar nem presumir que suas credenciais possam ser reaproveitadas. As pastas de dados de n8n/Evolution/Redis são *bind mounts*, não parte dos seis named volumes. O host continua compartilhado; o backup Finance não deve absorver os dados desses serviços.
+
+### Nginx Proxy Manager — encaminhamentos observados
+
+Saída do `grep` sobre `/data/nginx/proxy_host/*.conf`, sem leitura de credenciais:
+
+| Domínio(s) no proxy | Destino `http://container:porta` |
+| --- | --- |
+| `pay.flowcheckout.com.br` | `checkout-flowcheckout-prod:80` |
+| `n8n.leoceo.online` | `n8n:5678` |
+| `evo.leoceo.online` | `evolution-api:8080` |
+| `deepsecrets.site`, `www.deepsecrets.site` | `lp-deepsecrets:80` |
+| `app.flowmembers.com.br` | `areamembros-flowmembers:80` |
+| `old.flowcheckout.com.br` | `checkout-flowcheckout:80` |
+| `solucoes.digital` | `members-web:80` |
+| `teste.solucoes.digital` | `member-web:80` |
+| `teste.flowcheckout.com.br` | `checkout-flowcheckout-teste:80` |
+
+NPM routing inventory is not a claim about external DNS availability, TLS strength or security of published administrative ports. The Finance API remains unlisted as a public NPM Proxy Host in this inspected set. Existing management-port exposure is an explicitly accepted **residual risk**, not a hardened state.
+
+### Resultado da coleta
+
+**O inventário read-only previsto pelo Gate 0 está materialmente completo** para recursos host, Docker/Compose, containers, redes, named volumes/mountpoints/sizes, binds dos serviços relevantes, Proxy Hosts e segurança/backup conhecidos. Nenhum outro comando de inventário é solicitado neste fechamento. O revisor deve decidir o Gate 0 com as limitações explícitas da recuperação Hostinger (opção de restore não exercitada), credenciais/SSH e serviços publicados; não elevar resultados sintéticos a M09-P05 operacional.

@@ -133,6 +133,8 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     const first = run();
     expect(first.status, first.stderr).toBe(0);
     expect(first.stdout).toContain('OFFSITE_RETENTION_VERIFIED');
+    expect(first.stdout).toMatch(/LOCAL_BACKUP_COMPLETE dump_bytes=[0-9]+/);
+    expect(first.stdout).toMatch(/OFFSITE_RETENTION_VERIFIED snapshot=[a-f0-9]{64}/);
     expect(run('status').status).toBe(0);
     const stamp = readFileSync(join(root, '.finance-lab-p06-success'), 'utf8');
     const rclone = join(bin, 'rclone');

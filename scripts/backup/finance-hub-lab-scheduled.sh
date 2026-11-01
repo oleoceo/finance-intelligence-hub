@@ -73,7 +73,8 @@ PY
 }
 artifact=$target/$name
 verify_artifact "$artifact" || fail 'INVALID_DUMP_OR_MANIFEST'
-log 'LOCAL_BACKUP_COMPLETE'
+dump_bytes=$(stat -c %s "$artifact/archive.dump")
+log "LOCAL_BACKUP_COMPLETE dump_bytes=$dump_bytes"
 restic backup --quiet --tag finance-hub-lab-p06 -- "$artifact" >/dev/null 2>&1 || fail 'SNAPSHOT_FAILED'
 restic check --quiet >/dev/null 2>&1 || fail 'INTEGRITY_CHECK_FAILED'
 snapshots=$(restic snapshots --json 2>/dev/null) || fail 'SNAPSHOT_LIST_FAILED'
@@ -82,6 +83,14 @@ import json,os,sys
 s=json.loads(os.environ['SNAPSHOTS_JSON']); t=sys.argv[1]+'/'
 assert s and all('finance-hub-lab-p06' in x.get('tags',[]) and len(x.get('paths',[]))==1 and x['paths'][0].startswith(t) for x in s)
 PY
+snapshot_id=$(SNAPSHOTS_JSON="$snapshots" python3 - "$artifact" <<'PY'
+import json,os,sys
+matches=[x for x in json.loads(os.environ['SNAPSHOTS_JSON']) if x.get('paths')==[sys.argv[1]] and 'finance-hub-lab-p06' in x.get('tags',[])]
+assert matches
+print(sorted(matches,key=lambda x:x['time'])[-1]['id'])
+PY
+) || fail 'SNAPSHOT_ID_MISSING'
+[[ $snapshot_id =~ ^[a-f0-9]{64}$ ]] || fail 'SNAPSHOT_ID_MISSING'
 restic forget --tag finance-hub-lab-p06 --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune --quiet >/dev/null 2>&1 || fail 'RETENTION_FAILED'
 restic check --quiet >/dev/null 2>&1 || fail 'INTEGRITY_CHECK_FAILED'
 while IFS= read -r -d '' entry; do
@@ -108,7 +117,7 @@ fi
 rclone sync "$repository" "$FINANCE_RCLONE_REMOTE" --quiet >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
 rclone check "$repository" "$FINANCE_RCLONE_REMOTE" --quiet >/dev/null 2>&1 || fail 'REMOTE_INCOMPLETE'
 atomic_stamp "$success"
-log 'OFFSITE_RETENTION_VERIFIED'
+log "OFFSITE_RETENTION_VERIFIED snapshot=$snapshot_id"
 mapfile -t entries < <(find "$target" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
 for entry in "${entries[@]}"; do
   [[ $entry =~ ^finance-hub_lab_finance_hub_lab_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}_[0-9]+_[a-f0-9]{8}$ ]] || fail 'UNOWNED_LOCAL_ENTRY'

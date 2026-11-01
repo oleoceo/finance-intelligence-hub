@@ -103,3 +103,18 @@ authorizedkeysfile .ssh/authorized_keys .ssh/authorized_keys2
 Os arquivos padrão `/home/leoceo/.ssh/authorized_keys` (ausente) e `/root/.ssh/authorized_keys` (vazio, 0 bytes, modo 600) já foram examinados. **Nova informação:** `authorized_keys2` também é um arquivo configurado pelo sshd e **não foi inspecionado** nas contas relevantes. Não afirmar ausência total de chaves ou acesso de agentes. A configuração SSH aceita senha e root; o risco de exposição continua conhecido e com hardening adiado pelo proprietário.
 
 **Estado para decisão Gate 0:** backup pré-mudança oferecido por provedor e console alternativo têm agora **prova visual de interface** declarada, suficiente para sustentar somente seu alcance expresso. Antes da promoção formal a PASS, o revisor deve avaliar o critério de prova de recuperação do host versus disponibilidade da opção de restore e resolver a rota `authorized_keys2` (ou aceitar formalmente seu risco caso os contratos permitam), além do inventário faltante. Gate 0 não é prova de Restic/Google Drive e não autoriza implantação P05.
+
+## Encerramento direcionado de `authorized_keys2` — relato do operador, 2026-11-01
+
+No handoff de 2026-11-01, o proprietário informou expressamente os seguintes resultados para os **dois arquivos restantes** da configuração efetiva `AuthorizedKeysFile`:
+
+| Caminho | Resultado informado |
+| --- | --- |
+| `/home/leoceo/.ssh/authorized_keys2` | **NÃO EXISTE** |
+| `/root/.ssh/authorized_keys2` | **NÃO EXISTE** |
+
+Combinados aos exames anteriores, os **quatro arquivos de chaves explicitamente configurados** para `leoceo` e `root` não contêm entradas de chaves autorizadas: `leoceo/authorized_keys` e ambos os `authorized_keys2` ausentes, `root/authorized_keys` vazio (0 bytes). **Proveniência:** relato textual do operador; o revisor não executou SSH nem obteve novo comando assinado do host. Não houve alteração de arquivos, permissões ou do serviço SSH.
+
+**Limites mantidos:** a verificação está restrita a estas duas contas e aos caminhos da configuração `sshd -T` anteriormente registrada; não inventaria outras contas, serviços ou mecanismos de autenticação. `authorizedkeyscommand none` foi registrado anteriormente. Continuam ativos, por escolha e risco aceito do proprietário, `passwordauthentication yes` e `permitrootlogin yes`; não declarar hardening, impossibilidade absoluta de acesso por agentes ou revogação de credenciais a partir da ausência de arquivos.
+
+Esta evidência encerra apenas a **pendência dos dois `authorized_keys2`**. Não concede Gate 0 PASS; o revisor ainda deve examinar a adequação da recuperação da Hostinger e os metadados de inventário residuais contra o contrato congelado.

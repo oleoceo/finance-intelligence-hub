@@ -150,3 +150,20 @@ O proprietário informou, após executar o roteiro de teste, o resultado final l
 **Proveniência e limite:** a confirmação final é textual do operador; não foram fornecidos aqui logs sanitizados de cada comando ou prova externa de distribuição/revogação de credenciais. Ela sustenta **PASS relatado para a prova técnica sintética off-site**, não valida volumes financeiros, dump SQL, roles, integridade do histórico da aplicação, programação diária, política de retenção, RPO/RTO ou recuperação operacional M09-P05. Não houve alteração documentada de PostgreSQL, Docker ou serviços compartilhados nesse teste.
 
 **Governança:** o PR #78 continua sendo documentação de preflight/inspeção e **não concede Gate 0 PASS** por conta da prova sintética. A lista de inventário obrigatório residual, a decisão de riscos aceitos e o procedimento de recuperação Hostinger exigem decisão formal independente antes de ativar P05. O repositório de teste e seus segredos permanecem sob responsabilidade do operador; qualquer limpeza posterior deve ser específica e autorizada, sem remoção automática de dados existentes.
+
+## Inventário direcionado complementar — relato textual do operador (2026-11-01)
+
+O proprietário forneceu nova saída de terminal **read-only**. Parte das linhas de comandos foi intercalada/truncada durante a colagem; registrar apenas resultados que apareceram claramente, sem inferir execução dos demais comandos.
+
+| Campo | Evidência observada | Limite |
+| --- | --- | --- |
+| CPU lógico | `nproc` apresentou **4** no fluxo intercalado com texto do próximo comando | Não registra o modelo do processador |
+| Memória | `free -h`: **15 GiB total**, **3.9 GiB used**, **11 GiB available**, **0 B swap** | Fotografia pontual, não garantia de capacidade futura |
+| Docker Engine | `sudo docker version --format 'Engine={{.Server.Version}}'` retornou **Engine=29.3.0** | Não confirma versão Docker Compose, cujo resultado não veio |
+| Redes Finance | `finance-products-db` (`internal=true`) com `postgres-products, finance-lab-api-1`; `finance-hub-transport` (`internal=true`) com `n8n, finance-lab-api-1`; `finance-hub-restore-test-net` (`internal=true`) com `finance-hub-restore-test` | Nomes/associação observados neste comando; não substitui todos os metadados de container |
+| Redes compartilhadas | Listagem nome/driver/`internal`/membros para `apps-backend`, `n8n_internal`, `proxy`, redes WordPress, checkout, membros, NPM, Portainer e redes padrão `bridge`, `host`, `none` | Não foram incluídos IPs/sub-redes; nenhum ajuste de rede realizado |
+| Volumes nomeados | `finance_hub_restore_test_data`, `finance_postgres_products_data`, `members-platform_members-db-data`, `platform-members_member-db-data`, `platform-members_members-db-data`, `portainer_data` | **Seis nomes**, sem `Mountpoint`, tamanho ou associação a container demonstrada nesta saída |
+| Metadados de containers | Comando `docker ps -a --no-trunc ...` foi colado, mas não houve uma tabela de resultado claramente visível | IDs, imagens e portas continuam **não recebidos** nesta rodada |
+| Docker Compose e armazenamento detalhado | Comandos para `docker compose version --short` e `docker system df -v` foram colados, mas seus resultados não foram apresentados em linhas separadas | Permanecem **pendentes**, não FAIL |
+
+**Conclusão pontual:** evidência suficiente para fechar campos de CPU lógico, RAM, Engine e membership de redes Finance no inventário; não converter ausência de output de containers/Compose/mounts/tamanhos em prova técnica. Solicitar somente os comandos de leitura ainda faltantes, **um bloco de cada vez**, evitando novo paste intercalado. Nenhum segredo ou conteúdo de dados é necessário, nenhuma mudança na VPS foi feita pela integração GitHub. O Gate 0 permanece sujeito à revisão formal.

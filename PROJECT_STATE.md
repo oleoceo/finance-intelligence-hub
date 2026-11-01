@@ -12,6 +12,8 @@
 
 # PROJECT_STATE.md
 
+**M09 current handoff (2026-11-01):** PR #83 squash `b645d6f82cd9b3b7e9482101df33c19bc26eeeff` has exact post-merge main CI #41353473291 SUCCESS. P05 implementation remains technically reviewed and integrated, with real off-site recovery and isolated restore pending human-only VPS execution. Owner authorized bounded P06 local/CI preparation in `docs/tasks/active/M09-P06-LOCAL-PREP.md`; operational P06 remains PLANNED. M09 and Gate C are not accepted; Production remains untouched. The single P05 → P06 → Gate C operator sequence is `docs/runbooks/m09-final-operator-sequence.md`.
+
 # Finance Intelligence Hub
 
 **Current Gate B status (2026-10-30):** **PASS — local/CI financial integrity**. Source: `docs/tasks/completed/GATE-B.md`; independently checked accepted M07-P01–P06, `main@dc2c86314d6e66addbceb2ce85418e890a6bfbfe`, GitHub CI #185 (`41093451586`) SUCCESS. M08 Activation Review later passed. Gate 0 formal PASS remains absent; Gate C and Production remain pending. This Gate B record is historical.

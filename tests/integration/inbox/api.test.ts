@@ -1850,33 +1850,52 @@ describe('P05 Inbox API with PostgreSQL', () => {
       expect(result.statusCode, result.body).toBe(200);
       ids.push(result.json().data.result.transaction.id as string);
     }
-    const tieTime = new Date('2026-11-01T12:00:00Z');
-    await fixture.db
-      .updateTable('transactions')
-      .set({ created_at: tieTime })
+    // Fixed 2026 timestamps eventually fall behind database-generated created_at
+    // values in other tests. Keep the tie above every prior row, then restore
+    // those rows so subsequent tests are not affected by future timestamps.
+    const originals = await fixture.db
+      .selectFrom('transactions')
+      .select(['id', 'created_at'])
       .where('id', 'in', ids.slice(0, 2))
       .execute();
-    await fixture.db
-      .updateTable('transactions')
-      .set({
-        created_at: new Date('2026-11-02T12:00:00Z'),
-        status: 'voided',
-        voided_at: now,
-        void_reason: 'test ordering',
-      })
-      .where('id', '=', ids[2]!)
-      .execute();
-    const before = {
-      transactions: await count('transactions'),
-      audits: await count('audit_events'),
-      keys: await count('idempotency_keys'),
-    };
-    const result = await post(body('último empresa'));
-    expect(result.statusCode, result.body).toBe(200);
-    expect(result.json().data.result.transaction.id).toBe(ids.slice(0, 2).sort().at(-1));
-    expect(await count('transactions')).toBe(before.transactions);
-    expect(await count('audit_events')).toBe(before.audits);
-    expect(await count('idempotency_keys')).toBe(before.keys);
+    expect(originals).toHaveLength(2);
+    const tieTime = new Date(Date.now() + 60_000);
+    try {
+      await fixture.db
+        .updateTable('transactions')
+        .set({ created_at: tieTime })
+        .where('id', 'in', ids.slice(0, 2))
+        .execute();
+      await fixture.db
+        .updateTable('transactions')
+        .set({
+          created_at: new Date(tieTime.getTime() + 60_000),
+          status: 'voided',
+          voided_at: now,
+          void_reason: 'test ordering',
+        })
+        .where('id', '=', ids[2]!)
+        .execute();
+      const before = {
+        transactions: await count('transactions'),
+        audits: await count('audit_events'),
+        keys: await count('idempotency_keys'),
+      };
+      const result = await post(body('último empresa'));
+      expect(result.statusCode, result.body).toBe(200);
+      expect(result.json().data.result.transaction.id).toBe(ids.slice(0, 2).sort().at(-1));
+      expect(await count('transactions')).toBe(before.transactions);
+      expect(await count('audit_events')).toBe(before.audits);
+      expect(await count('idempotency_keys')).toBe(before.keys);
+    } finally {
+      for (const row of originals) {
+        await fixture.db
+          .updateTable('transactions')
+          .set({ created_at: row.created_at })
+          .where('id', '=', row.id)
+          .execute();
+      }
+    }
   });
 
   it('advances Book choice to Account choice and posts the original expense once', async () => {

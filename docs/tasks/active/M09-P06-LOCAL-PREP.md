@@ -11,3 +11,5 @@
 **Critérios operacionais preservados:** P05 deve primeiro comprovar recuperação real do off-site e restauração isolada; depois o operador humano deve comprovar scheduler, retenção, checks, alertas, segredos externos e medições de P06 no host. RPO/RTO não podem ser declarados cumpridos por testes locais. P06 só pode ser promovido/aceito em revisão operacional posterior. Gate C é avaliação separada.
 
 **Exclusões:** acesso ou alteração da VPS pelo agente; Production; instalação/ativação de timers; prune em dados reais; exclusão de backups, volumes ou serviços; declaração de P05/P06 DONE, M09 DONE ou Gate C PASS.
+
+**Implementação local em revisão:** runner Lab dedicado, sete unidades systemd preparadas sem ativação e procedimento manual no runbook final. O runner P03 permanece restrito a fixtures. Os testes descartáveis cobrem locks, dump inválido, credenciais, falha e recuperação remota, retenção e detecção de backup obsoleto. Esta fase só recebe `IMPLEMENTATION READY / AWAITING OPERATOR EXECUTION` após CI no HEAD exato e revisão independente. Isso não promove o contrato operacional PLANNED nem aceita P05.

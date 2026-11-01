@@ -46,3 +46,27 @@ Inventário ainda não fechado no presente documento: exatos IDs/imagens e mount
 Esta transcrição permite ao revisor mover as linhas efetivamente comprovadas de `EVIDÊNCIA PENDENTE` para `PASS COM EVIDÊNCIA DO OPERADOR`, com a qualificação de proveniência acima. Não autoriza declarar snapshot Hostinger verificado, acesso de agente tecnicamente bloqueado, Gate 0 PASS, M09-P05 ativo, operação na VPS nem Gate C PASS.
 
 **Próxima ação documental:** associar prova verificável mínima da Hostinger e decidir explicitamente eventual risco residual de chaves SSH/conta administrativa e inventário, depois submeter o Gate 0 à revisão independente. Sem necessidade de repetir a M06 ou alterar a infraestrutura.
+
+
+## Inspeção complementar — 2026-11-01 (operador)
+
+Estas saídas são do operador, reportadas na conversa; não houve acesso administrativo independente do revisor nem modificação pelo revisor. Não substituir `GATE-0.md` nem mudar status formal.
+
+| Critério | Saída e limite |
+| --- | --- |
+| Diretório real da API Finance Lab | `docker inspect finance-lab-api-1`: projeto Compose `finance-lab`, working_dir `/opt/apps/apps/lab/finance-hub/infra/finance-lab`. A árvore também confirmou `/opt/apps/apps/lab/finance-hub`. |
+| Diretório real do PostgreSQL | `docker inspect postgres-products`: projeto `postgres-products`, working_dir `/opt/apps/apps/databases/postgres-products`. |
+| Diretório de backup pai | `/opt/apps/backups/databases/finance-hub`: `root:root` mode 755. |
+| Diretório backup Lab (observação atual) | `/opt/apps/backups/databases/finance-hub/lab`: `leoceo:leoceo` mode **700**. Em 2026-10-31 havia sido visto como 750; não inferir causa ou afirmar mudança autorizada sem evidência. |
+| Runtime e arquitetura | Ubuntu 24.04.4 LTS, x86_64. |
+| Ferramentas de proteção instaladas pelo operador | `/usr/bin/restic` 0.16.4 e `/usr/bin/rclone` 1.75.2, versões confirmadas por comandos. `apt update` e instalação de Restic reportados. Essa instalação real ocorreu **antes** da decisão formal Gate 0, não altera retrospectivamente a elegibilidade para M09-P05 e **não comprova cópia off-site**. |
+| Conta operacional de backup | `getent passwd finance-backup`: inexistente; `/etc/finance-hub` e `/var/lib/finance-hub-backup` inexistentes na coleta; ainda não provisionar por inferência. |
+| Chaves autorizadas no caminho padrão do usuário | `/home/leoceo/.ssh/authorized_keys`: **não existe** no momento testado. |
+| Chaves autorizadas no caminho padrão do root | `/root/.ssh/authorized_keys`: arquivo `root:root`, modo **600**, **0 bytes**, contagem por `awk` **0 entradas**; erro do `ssh-keygen -lf` é esperado para arquivo vazio. |
+| Limite da auditoria de chaves | Os **dois caminhos padrão** não contêm chaves; **não prova ausência de AuthorizedKeysFile alternativo**, outras contas, certificados, `AuthorizedKeysCommand`, autenticação por senha ou acesso de agentes em outros caminhos. Não remover/modificar chaves nem alterar SSH no Gate 0. |
+
+**Decisão operacional reafirmada:** o proprietário mantém administração humana da VPS, sem autorização para agentes efetuarem ações operacionais, e adia endurecimento SSH e interfaces administrativas. A ausência de duas listas de chaves não é prova de que a restrição de agentes esteja tecnicamente imposta.
+
+**Progresso real vs. status formal:** descobertas de paths/ownership, ferramentas instaladas e achados SSH foram incorporados para impedir repetição. Ainda não há `Gate 0 PASS`, backup externo criptografado real, OAuth do rclone implantado, usuário `finance-backup`, restauração M09-P05, Gate C ou autorização genérica de deploy.
+
+**Próxima evidência humana estritamente necessária:** referência de backup Hostinger recuperável — o backup semanal informado de 2026-10-28 10:46, 20,09 GB, entrada de 2026-10-20, tipo/escopo, retenção e opção de recuperação do painel — por captura sanitizada ou documento equivalente. Não executar restauração destrutiva da VPS para gerar evidência documental.

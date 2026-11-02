@@ -29,7 +29,7 @@
 
 - [ ] Registrar **a primeira execução do timer diário** quando acontecer naturalmente (prevista 2026-11-03 06:00Z); observar `LastTriggerUSec`, `Result`, journal `OFFSITE_RETENTION_VERIFIED` e marcador de sucesso. A rotina `daily` já passou pelo serviço; não executar outro backup manual para antecipar o timer.
 - [ ] Montar aceite/revisão final P06 e registro das exceções do item B; documentação final deve citar hashes/timestamps reais conhecidos. Não criar SHA de transcript ausente.
-- [ ] Incluir no runbook operacional **procedimento mensal** de restauração isolada após entrada em produção, compatível com [restore existente](../../runbooks/finance-hub-restore.md); separar lançamento futuro de execução já realizada.
+- [x] **Procedimento mensal de restauração isolada documentado** em [sequência operacional, seção 3](../../runbooks/m09-final-operator-sequence.md), apoiado no [restore existente](../../runbooks/finance-hub-restore.md). A periodicidade começa somente após go-live; **a próxima restauração mensal real ainda não foi executada nem pode ser marcada PASS antecipadamente**.
 - [ ] Registrar a decisão do revisor sobre RPO/RTO não medidos, retenção longitudinal e risco de notificações externas; se condição inderrogável da autoridade congelada ficar sem prova, registrar BLOCKED e não fingir PASS.
 
 ## D. Gate C — pré-matriz de rastreabilidade, sem ativação prematura

@@ -4,8 +4,8 @@ OnFailure=finance-hub-lab-alert@stale.service
 
 [Service]
 Type=oneshot
-User=finance-backup
-Group=finance-backup
+User=leoceo
+Group=leoceo
 EnvironmentFile=/etc/finance-hub/backup-lab-p06.env
 ExecStart=/usr/bin/bash /opt/finance-hub/scripts/backup/finance-hub-lab-scheduled.sh status
 UMask=0077

@@ -12,6 +12,8 @@
 
 # PROJECT_STATE.md
 
+**M09-P06 operational readiness correction (2026-11-02):** PR #85 is integrated at `main@57cf452f42583fcaf8a2f442eecb0fcacb04fac1`; post-merge CI #41365696043 SUCCESS. A separate corrective branch addresses only the Lab 0700 owner and internal Docker network mismatch identified in technical comment #6566213577. This repository change does not record a VPS execution or operational acceptance. P05 remains ACTIVE pending human recovery evidence; operational P06 remains PLANNED; M09, Gate C and Production remain pending.
+
 **M09 current handoff (2026-11-01):** PR #84 squash `99f3daaa6b5547f8d8b8e5d898011c3e3246358b` and post-merge CI #41356511427 SUCCESS established the Sync Gate. P05 awaits human-only real recovery and isolated restore. P06 local/CI implementation passed independent technical re-review and is IMPLEMENTATION READY / AWAITING OPERATOR EXECUTION subject to exact-head CI; operational P06 remains PLANNED. M09 and Gate C are not accepted; Production remains untouched. The single P05 → P06 → Gate C operator sequence is `docs/runbooks/m09-final-operator-sequence.md`.
 
 # Finance Intelligence Hub

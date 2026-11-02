@@ -136,23 +136,34 @@ Compare the fingerprint files after removing only their first `database=` line. 
 
 ### Isolated API verification checkpoint
 
-The operator builds the reviewed `apps/api/Dockerfile` image from the same checkout and starts one temporary API container attached **only** to the recovery network. Its restricted mode 0600 Docker `--env-file` contains `DATABASE_URL` for the restored `finance_restore_*` database and fresh synthetic `FINANCE_ADMIN_TOKEN` and `FINANCE_INGEST_TOKEN`; it contains no source connection. Bind its HTTP port to `127.0.0.1` only, use a unique P05 container name, and verify the restricted container metadata shows just the inspected recovery network. Do not attach n8n, Evolution or operational WhatsApp traffic. Keep the env file outside the checkout and evidence. Stop and remove only this newly created API container after verification; retain the restored database for review.
+The operator builds the reviewed `apps/api/Dockerfile` image from the same checkout and starts one temporary API container attached **only** to the recovery network. **Important live-path correction (2026-11-02):** the normal `/app/entrypoint.mjs` hardcodes `postgres-products:5432/finance_hub_lab` and overwrites `DATABASE_URL` using the Lab secret files. The isolated API **must bypass that entrypoint** with `--entrypoint node` and run `/app/apps/api/dist/index.js` directly. Otherwise, the temporary API cannot prove access to the recovery database and must not be started. This override is exclusive to the disconnected P05 rehearsal; do not use it for the operational M06/M09 Lab service.
+
+The isolated `finance_hub_app` database role must receive a new, recovery-only password **on the already verified dedicated recovery cluster**; never change the role's password on `postgres-products`. Construct a private mode 0600 `--env-file` *outside the Git checkout and evidence directory*, with `DATABASE_URL` pointing only to the inspected recovery container DNS name and exact `finance_restore_*` database and new, independent synthetic `FINANCE_ADMIN_TOKEN` and `FINANCE_INGEST_TOKEN`. Use a password containing URL-safe characters or percent-encode it in the connection URL; do not pass secrets in command-line arguments or print them. The isolated database URL MUST NOT contain `postgres-products` or `finance_hub_lab`. Do not mount the source DB credential or any Lab Compose secrets.
+
+Bind the HTTP port only to `127.0.0.1`, use a unique P05 container name, and verify container metadata shows exactly the inspected recovery network, no source network or other connections. Never connect n8n, Evolution or operational WhatsApp traffic. Stop and remove only this newly created API container after verification; retain the restored database for review.
 
 ```bash
 test "$FINANCE_P05_RECOVERY_NETWORK" != finance-products-db
-test "$(stat -c %a "$FINANCE_P05_API_ENV_FILE")" = 600
+test "$(stat -c %U:%a "$FINANCE_P05_API_ENV_FILE")" = leoceo:600
+test "$(docker inspect --format '{{.HostConfig.NetworkMode}}' "$FINANCE_P05_RECOVERY_HOST")" = "$FINANCE_P05_RECOVERY_NETWORK"
+test "$(docker inspect --format '{{len .NetworkSettings.Networks}}' "$FINANCE_P05_RECOVERY_HOST")" = 1
+# Independently inspect the private DATABASE_URL host/database without printing its password.
+# Stop if it is not exactly the recovery host and finance_restore_* target.
 docker build -f apps/api/Dockerfile -t finance-hub-p05-api "$FINANCE_P05_CHECKOUT"
 docker run --detach --rm --name "$FINANCE_P05_API_CONTAINER" \
   --network "$FINANCE_P05_RECOVERY_NETWORK" \
+  --read-only --tmpfs /tmp \
+  --cap-drop ALL --security-opt no-new-privileges \
   --publish 127.0.0.1:13005:3000 \
   --env-file "$FINANCE_P05_API_ENV_FILE" \
-  finance-hub-p05-api
+  --entrypoint node \
+  finance-hub-p05-api /app/apps/api/dist/index.js
 docker inspect --format '{{.Id}}' "$FINANCE_P05_API_CONTAINER"
 docker inspect --format '{{json .NetworkSettings.Networks}}' "$FINANCE_P05_API_CONTAINER"
 docker inspect --format '{{json .NetworkSettings.Ports}}' "$FINANCE_P05_API_CONTAINER"
 ```
 
-Require `FINANCE_P05_API_CONTAINER` to be a new, unused name for this run and abort if loopback port 13005 is already occupied. Verify the env file's database host and database name privately before starting. Record only the restricted ID, network and port metadata above; do not run unrestricted `docker inspect` or include environment output in the review log.
+Require `FINANCE_P05_API_CONTAINER` to be new and unused, and abort if loopback port 13005 is already occupied. Require `GET /health` and `GET /ready` HTTP 200 before functional comparisons; `/ready` proves a live database connection but by itself does not prove the selected database, so verify the private URL and recovery-only network independently. Record only restricted ID/network/port metadata, never unrestricted `docker inspect` or environment/secret contents.
 
 Using a private client with the admin Bearer token supplied through a mode 0600 curl config file, request `GET /api/v1/transactions/<known-expense-id>`, `GET /api/v1/transactions/<known-expense-id>/refunds`, `GET /api/v1/transactions/<known-expense-id>/audit`, and `GET /api/v1/reports/summary?book_id=<known-book-id>&date_from=<date>&date_to=<date>` on the loopback endpoint. Require HTTP 200 and compare the returned IDs, statuses, refund links, exact decimal strings and summary fields against source evidence for the same book and dates. Replay one previously captured, authorized transaction request with its **same** `Idempotency-Key` and body against the isolated API; require the original response status/body and unchanged Transaction, Audit and Idempotency row counts/fingerprints. If the original request cannot be safely replayed with the synthetic admin token, record this as an unmet acceptance check and stop; never send a new financial request to the source. Redact the token, request body and personal data from the review log.
 

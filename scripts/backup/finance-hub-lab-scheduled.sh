@@ -60,7 +60,11 @@ log "STARTED mode=$mode environment=lab database=finance_hub_lab at=$(date -u +%
 restic check --quiet >/dev/null 2>&1 || fail 'INTEGRITY_CHECK_FAILED'
 if [[ $mode == weekly-check ]]; then log 'INTEGRITY_CHECK_COMPLETE'; exit 0; fi
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
-dump_output=$(bash "$script_dir/finance-hub-lab-dump.sh") || fail 'DUMP_FAILED'
+if [[ $root == /opt/apps/backups ]]; then
+  dump_output=$(bash "$script_dir/finance-hub-lab-docker-dump.sh") || fail 'DUMP_FAILED'
+else
+  dump_output=$(bash "$script_dir/finance-hub-lab-dump.sh") || fail 'DUMP_FAILED'
+fi
 name=$(printf '%s\n' "$dump_output" | sed -n 's/^finance backup: complete //p')
 [[ $name =~ ^finance-hub_lab_finance_hub_lab_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}_[0-9]+_[a-f0-9]{8}$ ]] || fail 'invalid artifact name'
 verify_artifact() {

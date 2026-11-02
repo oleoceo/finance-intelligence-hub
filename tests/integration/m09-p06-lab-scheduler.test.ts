@@ -122,6 +122,92 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     expect(readdirSync(target)).toEqual([]);
   });
 
+  it('routes the operational Lab dump through the internal Docker client with the existing directory owner', () => {
+    const units = ['backup', 'check', 'status'];
+    for (const unit of units) {
+      const service = readFileSync(
+        resolve(`infra/finance-backup/finance-hub-lab-${unit}.service`),
+        'utf8',
+      );
+      expect(service).toContain('User=leoceo\nGroup=leoceo');
+      expect(service).not.toContain('User=finance-backup');
+    }
+    const scheduler = readFileSync(script, 'utf8');
+    expect(scheduler).toContain('if [[ $root == /opt/apps/backups ]]; then');
+    expect(scheduler).toContain('finance-hub-lab-docker-dump.sh');
+    const adapter = readFileSync(resolve('scripts/backup/finance-hub-lab-docker-dump.sh'), 'utf8');
+    expect(adapter).toContain('leoceo:leoceo:700');
+    expect(adapter).toContain('docker network inspect');
+    expect(adapter).toContain('--network finance-products-db --user');
+    expect(adapter).toContain(
+      '--mount type=bind,src=/opt/apps/backups,dst=/opt/apps/backups,readonly',
+    );
+    expect(adapter).toContain(
+      '--mount type=bind,src=/opt/apps/backups/databases/finance-hub/lab,dst=/opt/apps/backups/databases/finance-hub/lab',
+    );
+    expect(adapter).toContain('docker image inspect finance-hub-p05-client');
+    expect(adapter).not.toMatch(/--publish|--privileged|sudo/);
+    const rejected = spawnSync('bash', [resolve('scripts/backup/finance-hub-lab-docker-dump.sh')], {
+      env,
+      encoding: 'utf8',
+    });
+    expect(rejected.status).not.toBe(0);
+    expect(rejected.stderr).toContain('FAILED');
+  });
+
+  it('executes the guarded Docker boundary with matching UID, internal network and scoped mounts', () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'finance-p06-boundary-'));
+    try {
+      const checkout = join(fixture, 'checkout');
+      const backups = join(fixture, 'backups');
+      const lab = join(backups, 'databases', 'finance-hub', 'lab');
+      const scripts = join(checkout, 'scripts', 'backup');
+      mkdirSync(scripts, { recursive: true });
+      mkdirSync(lab, { recursive: true, mode: 0o700 });
+      const credential = join(fixture, 'pgpass');
+      writeFileSync(credential, 'fixture', { mode: 0o600 });
+      writeFileSync(join(scripts, 'finance-hub-lab-dump.sh'), '#!/bin/sh\nexit 0\n');
+      const username = spawnSync('id', ['-un'], { encoding: 'utf8' }).stdout.trim();
+      const group = spawnSync('id', ['-gn'], { encoding: 'utf8' }).stdout.trim();
+      const adapter = readFileSync(resolve('scripts/backup/finance-hub-lab-docker-dump.sh'), 'utf8')
+        .replaceAll('/opt/apps/backups', backups)
+        .replaceAll('/opt/finance-hub', checkout)
+        .replaceAll('leoceo:leoceo:700', `${username}:${group}:700`)
+        .replace('$(id -un) == leoceo', `$(id -un) == ${username}`);
+      writeFileSync(join(scripts, 'finance-hub-lab-docker-dump.sh'), adapter);
+      const mockBin = join(fixture, 'bin');
+      mkdirSync(mockBin);
+      const argsFile = join(fixture, 'docker-args');
+      const imageId = `sha256:${'a'.repeat(64)}`;
+      writeFileSync(
+        join(mockBin, 'docker'),
+        `#!/bin/sh\ncase "$1 $2" in\n  'network inspect') echo true;;\n  'inspect --format') echo yes;;\n  'image inspect') echo '${imageId}';;\n  'run --rm') printf '%s\\n' "$@" > '${argsFile}';;\n  *) exit 1;;\nesac\n`,
+        { mode: 0o700 },
+      );
+      const result = spawnSync('bash', [join(scripts, 'finance-hub-lab-docker-dump.sh')], {
+        env: {
+          ...env,
+          PATH: `${mockBin}:${env.PATH}`,
+          FINANCE_BACKUP_ROOT: backups,
+          PGPASSFILE: credential,
+          FINANCE_P06_CLIENT_IMAGE_ID: imageId,
+        },
+        encoding: 'utf8',
+      });
+      expect(result.status, result.stderr).toBe(0);
+      const args = readFileSync(argsFile, 'utf8');
+      expect(args).toContain('finance-products-db\n--user\n');
+      expect(args).toContain(`${process.getuid?.()}:${process.getgid?.()}`);
+      expect(args).toContain(`src=${backups},dst=${backups},readonly`);
+      expect(args).toContain(`src=${lab},dst=${lab}`);
+      expect(args).toContain(`src=${credential},dst=${credential},readonly`);
+      expect(args).toContain(imageId);
+      expect(args).not.toContain('--publish');
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
+  });
+
   it('serializes runs and verifies off-site only after successful copy and check', () => {
     const held = spawnSync(
       'flock',

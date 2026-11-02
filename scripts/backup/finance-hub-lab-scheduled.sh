@@ -159,6 +159,13 @@ log "OFFSITE_RETENTION_VERIFIED snapshot=$snapshot_id slot=$next_slot"
 mapfile -t entries < <(find "$target" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
 eligible=()
 for entry in "${entries[@]}"; do
+  # Historical pre-P06 Finance Lab dumps are flat files, not managed P06 artifact directories.
+  # Preserve them unchanged and do not include them in local retention. Unknown entries still fail.
+  if [[ $entry =~ ^finance_hub_lab_[a-zA-Z0-9_-]+\.dump(\.gpg)?(\.sha256)?$ ]]; then
+    [[ -f $target/$entry && ! -L $target/$entry && $(stat -c %u -- "$target/$entry") == "$(id -u)" ]] || fail 'UNOWNED_LOCAL_ENTRY'
+    log "LOCAL_PRESERVED legacy_file=$entry"
+    continue
+  fi
   [[ $entry =~ ^finance-hub_lab_finance_hub_lab_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}_[0-9]+_[a-f0-9]{8}$ ]] || fail 'UNOWNED_LOCAL_ENTRY'
   verify_artifact "$target/$entry" || fail 'INVALID_LOCAL_ARTIFACT'
   marker=$registry/$entry

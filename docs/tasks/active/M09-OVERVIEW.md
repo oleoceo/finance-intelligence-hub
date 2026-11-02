@@ -1,6 +1,6 @@
 # M09 — Backup / Restore
 
-**Status:** ACTIVE — P01–P04 DONE (local/CI); Gate 0 inspection PASS; P05 implementation technically accepted/integrated via PR #82, with manual Finance Lab rehearsal pending; P06 PLANNED. M09 NOT DONE; Gate C/Production not approved.
+**Status:** ACTIVE — P01–P04 DONE (local/CI); Gate 0 inspection PASS; P05 **operator execution checks PASS 2026-11-02 / REVIEW REQUIRED** (off-VPS recovery credential custody and independent operational sign-off not yet evidenced); P06 operational PLANNED. M09 NOT DONE; Gate C/Production not approved.
 **Dependencies:** M08 accepted; Gate 0 evidence required for operational execution
 
 **2026-11-01 local preparation:** PR #84 post-merge main CI #41356511427 SUCCESS on `99f3daaa6b5547f8d8b8e5d898011c3e3246358b`. The owner's bounded [P06 local/CI preparation authorization](M09-P06-LOCAL-PREP.md) permits technical preparation while P05 remains ACTIVE awaiting real isolated restore and P06 remains PLANNED for operational acceptance. The Lab scheduler adaptation passed independent technical re-review and is IMPLEMENTATION READY / AWAITING OPERATOR EXECUTION subject to exact-head CI, without timer activation. [One manual operator sequence](../../runbooks/m09-final-operator-sequence.md) orders P05, then P06, then Gate C. No VPS action or Gate C acceptance follows.
@@ -8,7 +8,7 @@
 
 **Activation Review:** [accepted by PR #65](../completed/M09-ACTIVATION-REVIEW.md). P01–P04 were accepted and integrated for local/CI. Gate 0 inspection PASS was formalized by PR #81 after PR #78; P05 preparation PR #79 was integrated with exact-head and post-merge CI SUCCESS. The owner authorized the exact Finance Lab scope in [P05](M09-P05.md). Only `leoceo` may operate the VPS; implementation review precedes the real rehearsal.
 
-> **Current authorization:** [M09-P05](M09-P05.md) is active under the owner's exact-scope Finance Lab authorization; implementation was reviewed on SHA 9c6bc90, merged by PR #82; post-merge main CI must be verified GREEN before operator rehearsal. Only human operator `leoceo` may execute the real VPS backup and isolated restore after reviewed implementation. P05 remains AWAITING OPERATOR EXECUTION until real reconciliation evidence and independent review; P06, Gate C and Production remain pending.
+> **2026-11-02 real operator evidence:** [M09-P05](M09-P05.md) records completed operator-run real Finance Lab dump, independent Restic/rclone Google Drive recovery, a new PostgreSQL 18 isolated target, 13-table and migration-chain equality, unchanged source, isolated API reads/summary and synthetic-only idempotency replay/conflict **PASS**. Live task state is **REVIEW REQUIRED**: independent sign-off and off-VPS copies of both recovery credentials remain unconfirmed. [PR #88](https://github.com/oleoceo/finance-intelligence-hub/pull/88) corrected isolated API entrypoint/port assumptions; post-merge main CI #41446843681 SUCCESS. No P06 systemd timers or Production changes authorized. P06, Gate C and M09 closure remain pending.
 
 ---
 
@@ -118,7 +118,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 
 ---
 
-## 5. Task Decomposition (P01–P04 complete; P05 active; P06 planned)
+## 5. Task Decomposition (P01–P04 complete; P05 execution PASS/review required; P06 planned)
 
 | Task ID | Goal | Key Deliverables |
 |---------|------|-----------------|
@@ -129,7 +129,7 @@ Do NOT freeze concrete container names, host UID/GID, filesystem ownership, real
 | **M09-P05** | Executed isolated restore + validation | Actual restore performed, all validation items verified, evidence captured |
 | **M09-P06** | M09 milestone verification | Daily backup running, off-site copy confirmed, retention verified, restore evidence recorded |
 
-Accepted local/CI work: [P01](../completed/M09-P01.md), [P02](../completed/M09-P02.md), [P03](../completed/M09-P03.md), [P04](../completed/M09-P04.md). [P05](M09-P05.md) implementation integrated/technically reviewed; real execution by `leoceo` only after post-merge CI SUCCESS. [P06](../planned/M09-P06.md) PLANNED. M09/Gate C are not accepted.
+Accepted local/CI work: [P01](../completed/M09-P01.md), [P02](../completed/M09-P02.md), [P03](../completed/M09-P03.md), [P04](../completed/M09-P04.md). [P05](M09-P05.md) real manual operator execution tests PASS 2026-11-02 and evidence recorded; independent operational review and off-VPS credential custody still required before DONE. [P06](../planned/M09-P06.md) operational PLANNED. M09/Gate C are not accepted.
 
 ---
 

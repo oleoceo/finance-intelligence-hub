@@ -22,7 +22,7 @@ O destino P06 possui dois repositórios remotos completos, `slot-a` e `slot-b`, 
 
 ### Preparação manual dos timers, após P05 aceito
 
-**Correção de prontidão após PR #85:** as unidades diárias, semanais e de status executam como `leoceo`, a identidade já autorizada para Docker e proprietária do diretório Lab `leoceo:leoceo` 0700. A conta `finance-backup` permanece apenas no marcador de alerta e não recebe Docker nem sudo. O dump do agendamento chama `finance-hub-lab-docker-dump.sh`, que exige checkout `/opt/finance-hub`, diretório Lab gravável pelo proprietário, credencial 0600 pertencente ao mesmo UID, rede interna `finance-products-db` e `postgres-products` nessa rede. O cliente P05 PostgreSQL 18.6 é iniciado sem porta publicada, como UID:GID de `leoceo`, com checkout, credencial e raiz de backup somente leitura; apenas o diretório Lab é montado para escrita. O adaptador exige o ID SHA-256 da imagem revisada e executa por esse ID, evitando troca da tag após a conferência. O papel PostgreSQL continua somente leitura. Como `leoceo` já detém Docker, o operador deve verificar que o checkout e as unidades instaladas só podem ser alterados por administradores autorizados; não conceder escrita do checkout a outra conta. A revisão local/CI não comprova a topologia da VPS.
+**Correção de prontidão após PR #85:** as unidades diárias, semanais e de status executam como `leoceo`, a identidade já autorizada para Docker e proprietária do diretório Lab `leoceo:leoceo` 0700. A conta `finance-backup` permanece apenas no marcador de alerta e não recebe Docker nem sudo. O dump do agendamento chama `finance-hub-lab-docker-dump.sh`, que exige checkout `/opt/apps/apps/lab/finance-hub`, diretório Lab gravável pelo proprietário, credencial 0600 pertencente ao mesmo UID, rede interna `finance-products-db` e `postgres-products` nessa rede. O cliente P05 PostgreSQL 18.6 é iniciado sem porta publicada, como UID:GID de `leoceo`, com checkout, credencial e raiz de backup somente leitura; apenas o diretório Lab é montado para escrita. O adaptador exige o ID SHA-256 da imagem revisada e executa por esse ID, evitando troca da tag após a conferência. O papel PostgreSQL continua somente leitura. Como `leoceo` já detém Docker, o operador deve verificar que o checkout e as unidades instaladas só podem ser alterados por administradores autorizados; não conceder escrita do checkout a outra conta. A revisão local/CI não comprova a topologia da VPS.
 
 Antes de instalar ou ativar as unidades, `leoceo` registra privadamente o SHA revisado e executa estes checkpoints sem revelar segredos:
 
@@ -34,7 +34,7 @@ test "$(stat -c %U:%a "$PGPASSFILE")" = leoceo:600
 test "$(docker network inspect --format '{{.Internal}}' finance-products-db)" = true
 docker inspect --format '{{json .NetworkSettings.Networks}}' postgres-products
 docker image inspect finance-hub-p05-client --format '{{.Id}}'
-systemd-analyze verify /opt/finance-hub/infra/finance-backup/finance-hub-lab-*.service
+systemd-analyze verify /opt/apps/apps/lab/finance-hub/infra/finance-backup/finance-hub-lab-*.service
 ```
 
 Conferir visualmente que o container está na rede indicada. Construir a imagem P05 revisada se ausente, conforme o runbook P05. Registrar seu ID `sha256:...` no arquivo privado de ambiente como `FINANCE_P06_CLIENT_IMAGE_ID`, após comparação com a imagem revisada. O operador carrega apenas esse arquivo privado e executa o adaptador antes de ativar timers:
@@ -43,7 +43,7 @@ Conferir visualmente que o container está na rede indicada. Construir a imagem 
 set -a
 . /etc/finance-hub/backup-lab-p06.env
 set +a
-bash /opt/finance-hub/scripts/backup/finance-hub-lab-docker-dump.sh
+bash /opt/apps/apps/lab/finance-hub/scripts/backup/finance-hub-lab-docker-dump.sh
 ```
 
 Registrar exit status e nome do novo artefato, depois verificar `PGDMP`, manifesto, hash, UID e modo 0700 sem imprimir conteúdo financeiro. Se qualquer checkpoint falhar, interromper a instalação. O operador instala as unidades apenas depois do aceite operacional P05 e da revisão do resultado manual; registrar `systemctl show` para confirmar `User=leoceo`, `Group=leoceo` e o `ExecStart` efetivos. Nunca mudar proprietário/permissão global da árvore nem publicar PostgreSQL.

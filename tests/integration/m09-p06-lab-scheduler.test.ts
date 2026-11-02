@@ -462,9 +462,7 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
       const contents = readFileSync(join(target, name), 'utf8');
       expect(contents).toBe(`legacy-content-${index}`);
     }
-    const owned = readdirSync(target).filter((name) =>
-      name.startsWith('finance-hub_lab_'),
-    );
+    const owned = readdirSync(target).filter((name) => name.startsWith('finance-hub_lab_'));
     expect(owned).toHaveLength(4); // Historical P05 directory + the three retained P06 directories.
 
     const link = join(target, 'finance_hub_lab_link.dump');

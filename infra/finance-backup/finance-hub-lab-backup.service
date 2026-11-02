@@ -1,0 +1,17 @@
+[Unit]
+Description=Finance Hub Lab recurring backup
+OnFailure=finance-hub-lab-alert@daily.service
+
+[Service]
+Type=oneshot
+User=finance-backup
+Group=finance-backup
+EnvironmentFile=/etc/finance-hub/backup-lab-p06.env
+ExecStart=/usr/bin/bash /opt/finance-hub/scripts/backup/finance-hub-lab-scheduled.sh daily
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/apps/backups
+TimeoutStartSec=12h

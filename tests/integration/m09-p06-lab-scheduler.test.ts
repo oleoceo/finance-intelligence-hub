@@ -171,7 +171,7 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
       const group = spawnSync('id', ['-gn'], { encoding: 'utf8' }).stdout.trim();
       const adapter = readFileSync(resolve('scripts/backup/finance-hub-lab-docker-dump.sh'), 'utf8')
         .replaceAll('/opt/apps/backups', backups)
-        .replaceAll('/opt/finance-hub', checkout)
+        .replaceAll('/opt/apps/apps/lab/finance-hub', checkout)
         .replaceAll('leoceo:leoceo:700', `${username}:${group}:700`)
         .replace('$(id -un) == leoceo', `$(id -un) == ${username}`);
       writeFileSync(join(scripts, 'finance-hub-lab-docker-dump.sh'), adapter);

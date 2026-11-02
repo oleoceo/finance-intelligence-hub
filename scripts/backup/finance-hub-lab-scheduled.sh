@@ -90,10 +90,7 @@ assert m['format']=='pg_dump-custom' and m['environment']=='lab' and m['database
 assert m['bytes']==size and m['sha256']==h.hexdigest()
 PY
   if [[ $root == /opt/apps/backups ]]; then
-    docker run --rm --network none --user "$(id -u):$(id -g)" \
-      --cap-drop ALL --security-opt no-new-privileges --read-only \
-      --mount "type=bind,src=$path,dst=/artifact,readonly" \
-      "$FINANCE_P06_CLIENT_IMAGE_ID" pg_restore --list /artifact/archive.dump >/dev/null 2>&1
+    bash "$(dirname -- "${BASH_SOURCE[0]}")/finance-hub-lab-validate-dump.sh" "$path" >/dev/null 2>&1
   else
     pg_restore --list "$path/archive.dump" >/dev/null 2>&1
   fi

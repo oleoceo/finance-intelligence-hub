@@ -1,5 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+  readdirSync,
+} from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -135,10 +143,7 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     const scheduler = readFileSync(script, 'utf8');
     expect(scheduler).toContain('command -v docker');
     expect(scheduler).toContain('docker image inspect finance-hub-p05-client');
-    expect(scheduler).toContain('--network none --user');
-    expect(scheduler).toContain('--cap-drop ALL --security-opt no-new-privileges --read-only');
-    expect(scheduler).toContain('dst=/artifact,readonly');
-    expect(scheduler).toContain('"$FINANCE_P06_CLIENT_IMAGE_ID" pg_restore --list');
+    expect(scheduler).toContain('finance-hub-lab-validate-dump.sh');
     expect(scheduler).toContain('if [[ $root == /opt/apps/backups ]]; then');
     expect(scheduler).toContain('finance-hub-lab-docker-dump.sh');
     const adapter = readFileSync(resolve('scripts/backup/finance-hub-lab-docker-dump.sh'), 'utf8');
@@ -159,6 +164,50 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     });
     expect(rejected.status).not.toBe(0);
     expect(rejected.stderr).toContain('FAILED');
+  });
+
+  it('validates a dump with the pinned offline Docker client and propagates failures', () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'finance-p06-catalog-'));
+    try {
+      const artifact = join(fixture, 'artifact');
+      const mockBin = join(fixture, 'bin');
+      mkdirSync(artifact);
+      mkdirSync(mockBin);
+      writeFileSync(join(artifact, 'archive.dump'), 'PGDMPfixture');
+      const argsFile = join(fixture, 'args');
+      const imageId = `sha256:${'b'.repeat(64)}`;
+      writeFileSync(
+        join(mockBin, 'docker'),
+        `#!/bin/sh\nif [ "$1" = image ]; then echo '${imageId}'; exit 0; fi\nprintf '%s\\n' "$@" > '${argsFile}'\nexit "\${MOCK_DOCKER_EXIT:-0}"\n`,
+        { mode: 0o700 },
+      );
+      const helper = resolve('scripts/backup/finance-hub-lab-validate-dump.sh');
+      const localEnv = {
+        ...env,
+        PATH: `${mockBin}:/usr/bin:/bin`,
+        FINANCE_P06_CLIENT_IMAGE_ID: imageId,
+      };
+      const valid = spawnSync('bash', [helper, artifact], { env: localEnv, encoding: 'utf8' });
+      expect(valid.status, valid.stderr).toBe(0);
+      const args = readFileSync(argsFile, 'utf8');
+      expect(args).toContain('--network\nnone\n');
+      expect(args).toContain('--cap-drop\nALL\n');
+      expect(args).toContain('--read-only\n');
+      expect(args).toContain(`src=${artifact},dst=/artifact,readonly`);
+      expect(args).toContain(imageId);
+      expect(args).toContain('pg_restore\n--list\n/artifact/archive.dump');
+      expect(
+        spawnSync('bash', [helper, artifact], { env: { ...localEnv, MOCK_DOCKER_EXIT: '17' } })
+          .status,
+      ).toBe(17);
+      expect(
+        spawnSync('bash', [helper, artifact], {
+          env: { ...localEnv, FINANCE_P06_CLIENT_IMAGE_ID: `sha256:${'c'.repeat(64)}` },
+        }).status,
+      ).not.toBe(0);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
   });
 
   it('executes the guarded Docker boundary with matching UID, internal network and scoped mounts', () => {
@@ -227,6 +276,7 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     expect(first.stdout).toContain('OFFSITE_RETENTION_VERIFIED');
     expect(first.stdout).toMatch(/LOCAL_BACKUP_COMPLETE dump_bytes=[0-9]+/);
     expect(first.stdout).toMatch(/OFFSITE_RETENTION_VERIFIED snapshot=[a-f0-9]{64}/);
+    const firstName = readdirSync(target)[0];
     const historical = 'finance-hub_lab_finance_hub_lab_2020-01-01_000000_1_aaaaaaaa';
     cpSync(join(target, readdirSync(target)[0]), join(target, historical), { recursive: true });
     expect(run('status').status).toBe(0);
@@ -263,6 +313,16 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     expect(run().status).toBe(0);
     expect(run('status').status).toBe(0);
     expect(readdirSync(target)).toHaveLength(4);
+    expect(readdirSync(target)).toContain(historical);
+    expect(run().status).toBe(0);
+    expect(readdirSync(target)).not.toContain(firstName);
+    expect(readdirSync(target)).toContain(historical);
+    const owned = readdirSync(target).find((entry) => entry !== historical);
+    expect(owned).toBeDefined();
+    writeFileSync(join(root, '.finance-lab-p06-artifacts', owned!), 'bad-hash\n', { mode: 0o600 });
+    const rejectedRetention = run();
+    expect(rejectedRetention.status).not.toBe(0);
+    expect(rejectedRetention.stderr).toContain('P06 marker hash mismatch');
     expect(readdirSync(target)).toContain(historical);
     writeFileSync(join(root, '.finance-lab-p06-success'), '2020-01-01T00:00:00Z\n');
     expect(run('status').stderr).toContain('ALERT_BACKUP_OLDER_THAN_24H');

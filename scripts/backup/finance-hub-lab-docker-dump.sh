@@ -9,7 +9,7 @@ fail() { printf 'finance lab docker dump: FAILED %s\n' "$1" >&2; exit 1; }
 [[ -n ${PGPASSFILE:-} && -f $PGPASSFILE && ! -L $PGPASSFILE && $(stat -c %a -- "$PGPASSFILE") == 600 && $(stat -c %u -- "$PGPASSFILE") == "$(id -u)" ]] || fail 'operator-owned credential required'
 [[ -d /opt/apps/backups/databases/finance-hub/lab && ! -L /opt/apps/backups/databases/finance-hub/lab && $(stat -c %U:%G:%a -- /opt/apps/backups/databases/finance-hub/lab) == leoceo:leoceo:700 && -w /opt/apps/backups/databases/finance-hub/lab ]] || fail 'Lab directory inaccessible'
 checkout=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)
-[[ $checkout == /opt/apps/apps/lab/finance-hub && -f $checkout/scripts/backup/finance-hub-lab-dump.sh ]] || fail 'unexpected checkout'
+[[ $checkout == /opt/apps/apps/lab/finance-hub-p06 && -f $checkout/scripts/backup/finance-hub-lab-dump.sh ]] || fail 'unexpected checkout'
 [[ $(docker network inspect --format '{{.Internal}}' finance-products-db 2>/dev/null) == true ]] || fail 'source network is not internal'
 [[ $(docker inspect --format '{{if index .NetworkSettings.Networks "finance-products-db"}}yes{{end}}' postgres-products 2>/dev/null) == yes ]] || fail 'source not on expected network'
 [[ ${FINANCE_P06_CLIENT_IMAGE_ID:-} =~ ^sha256:[a-f0-9]{64}$ ]] || fail 'reviewed client image ID required'

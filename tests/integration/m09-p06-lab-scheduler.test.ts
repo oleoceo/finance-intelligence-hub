@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -133,6 +133,12 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
       expect(service).not.toContain('User=finance-backup');
     }
     const scheduler = readFileSync(script, 'utf8');
+    expect(scheduler).toContain('command -v docker');
+    expect(scheduler).toContain('docker image inspect finance-hub-p05-client');
+    expect(scheduler).toContain('--network none --user');
+    expect(scheduler).toContain('--cap-drop ALL --security-opt no-new-privileges --read-only');
+    expect(scheduler).toContain('dst=/artifact,readonly');
+    expect(scheduler).toContain('"$FINANCE_P06_CLIENT_IMAGE_ID" pg_restore --list');
     expect(scheduler).toContain('if [[ $root == /opt/apps/backups ]]; then');
     expect(scheduler).toContain('finance-hub-lab-docker-dump.sh');
     const adapter = readFileSync(resolve('scripts/backup/finance-hub-lab-docker-dump.sh'), 'utf8');
@@ -171,7 +177,7 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
       const group = spawnSync('id', ['-gn'], { encoding: 'utf8' }).stdout.trim();
       const adapter = readFileSync(resolve('scripts/backup/finance-hub-lab-docker-dump.sh'), 'utf8')
         .replaceAll('/opt/apps/backups', backups)
-        .replaceAll('/opt/apps/apps/lab/finance-hub', checkout)
+        .replaceAll('/opt/apps/apps/lab/finance-hub-p06', checkout)
         .replaceAll('leoceo:leoceo:700', `${username}:${group}:700`)
         .replace('$(id -un) == leoceo', `$(id -un) == ${username}`);
       writeFileSync(join(scripts, 'finance-hub-lab-docker-dump.sh'), adapter);
@@ -221,6 +227,8 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     expect(first.stdout).toContain('OFFSITE_RETENTION_VERIFIED');
     expect(first.stdout).toMatch(/LOCAL_BACKUP_COMPLETE dump_bytes=[0-9]+/);
     expect(first.stdout).toMatch(/OFFSITE_RETENTION_VERIFIED snapshot=[a-f0-9]{64}/);
+    const historical = 'finance-hub_lab_finance_hub_lab_2020-01-01_000000_1_aaaaaaaa';
+    cpSync(join(target, readdirSync(target)[0]), join(target, historical), { recursive: true });
     expect(run('status').status).toBe(0);
     const statusDuringLock = spawnSync(
       'flock',
@@ -254,7 +262,8 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     }
     expect(run().status).toBe(0);
     expect(run('status').status).toBe(0);
-    expect(readdirSync(target)).toHaveLength(3);
+    expect(readdirSync(target)).toHaveLength(4);
+    expect(readdirSync(target)).toContain(historical);
     writeFileSync(join(root, '.finance-lab-p06-success'), '2020-01-01T00:00:00Z\n');
     expect(run('status').stderr).toContain('ALERT_BACKUP_OLDER_THAN_24H');
   }, 120_000);

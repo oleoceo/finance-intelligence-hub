@@ -319,11 +319,15 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     expect(readdirSync(target)).toContain(historical);
     const owned = readdirSync(target).find((entry) => entry !== historical);
     expect(owned).toBeDefined();
-    writeFileSync(join(root, '.finance-lab-p06-artifacts', owned!), 'bad-hash\n', { mode: 0o600 });
+    const ownedMarker = join(root, '.finance-lab-p06-artifacts', owned!);
+    const originalMarker = readFileSync(ownedMarker, 'utf8');
+    writeFileSync(ownedMarker, 'bad-hash\n', { mode: 0o600 });
     const rejectedRetention = run();
     expect(rejectedRetention.status).not.toBe(0);
     expect(rejectedRetention.stderr).toContain('P06 marker hash mismatch');
     expect(readdirSync(target)).toContain(historical);
+    writeFileSync(ownedMarker, originalMarker, { mode: 0o600 });
+    rmSync(join(root, '.finance-lab-p06-failure'));
     writeFileSync(join(root, '.finance-lab-p06-success'), '2020-01-01T00:00:00Z\n');
     expect(run('status').stderr).toContain('ALERT_BACKUP_OLDER_THAN_24H');
   }, 120_000);
@@ -426,6 +430,9 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
     const after = list();
     expect(after.length).toBeLessThan(before.length);
     expect(after.some((snapshot) => snapshot.id === latest?.id)).toBe(true);
-    expect(readdirSync(target)).toHaveLength(3);
+    expect(readdirSync(target)).toHaveLength(4);
+    expect(readdirSync(target)).toContain(
+      'finance-hub_lab_finance_hub_lab_2020-01-01_000000_1_aaaaaaaa',
+    );
   }, 600_000);
 });

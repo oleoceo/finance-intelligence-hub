@@ -22,7 +22,7 @@ O destino P06 possui dois repositórios remotos completos, `slot-a` e `slot-b`, 
 
 ### Preparação manual dos timers — apenas por operador humano, após preflight P06 e autorização exata
 
-**Correção de prontidão após PR #85:** as unidades diárias, semanais e de status executam como `leoceo`, a identidade já autorizada para Docker e proprietária do diretório Lab `leoceo:leoceo` 0700. A conta `finance-backup` permanece apenas no marcador de alerta e não recebe Docker nem sudo. O dump do agendamento chama `finance-hub-lab-docker-dump.sh`, que exige checkout `/opt/apps/apps/lab/finance-hub`, diretório Lab gravável pelo proprietário, credencial 0600 pertencente ao mesmo UID, rede interna `finance-products-db` e `postgres-products` nessa rede. O cliente P05 PostgreSQL 18.6 é iniciado sem porta publicada, como UID:GID de `leoceo`, com checkout, credencial e raiz de backup somente leitura; apenas o diretório Lab é montado para escrita. O adaptador exige o ID SHA-256 da imagem revisada e executa por esse ID, evitando troca da tag após a conferência. O papel PostgreSQL continua somente leitura. Como `leoceo` já detém Docker, o operador deve verificar que o checkout e as unidades instaladas só podem ser alterados por administradores autorizados; não conceder escrita do checkout a outra conta. A revisão local/CI não comprova a topologia da VPS.
+**Correção de prontidão após PR #85:** as unidades diárias, semanais e de status executam como `leoceo`, a identidade já autorizada para Docker e proprietária do diretório Lab `leoceo:leoceo` 0700. A conta `finance-backup` permanece apenas no marcador de alerta e não recebe Docker nem sudo. O dump do agendamento chama `finance-hub-lab-docker-dump.sh`, que exige checkout `/opt/apps/apps/lab/finance-hub-p06`, diretório Lab gravável pelo proprietário, credencial 0600 pertencente ao mesmo UID, rede interna `finance-products-db` e `postgres-products` nessa rede. O cliente P05 PostgreSQL 18.6 é iniciado sem porta publicada, como UID:GID de `leoceo`, com checkout, credencial e raiz de backup somente leitura; apenas o diretório Lab é montado para escrita. O adaptador exige o ID SHA-256 da imagem revisada e executa por esse ID, evitando troca da tag após a conferência. O papel PostgreSQL continua somente leitura. Como `leoceo` já detém Docker, o operador deve verificar que o checkout e as unidades instaladas só podem ser alterados por administradores autorizados; não conceder escrita do checkout a outra conta. A revisão local/CI não comprova a topologia da VPS.
 
 Antes de instalar ou ativar as unidades, `leoceo` registra privadamente o SHA revisado e executa estes checkpoints sem revelar segredos:
 
@@ -34,7 +34,7 @@ test "$(stat -c %U:%a "$PGPASSFILE")" = leoceo:600
 test "$(docker network inspect --format '{{.Internal}}' finance-products-db)" = true
 docker inspect --format '{{json .NetworkSettings.Networks}}' postgres-products
 docker image inspect finance-hub-p05-client --format '{{.Id}}'
-systemd-analyze verify /opt/apps/apps/lab/finance-hub/infra/finance-backup/finance-hub-lab-*.service
+systemd-analyze verify /opt/apps/apps/lab/finance-hub-p06/infra/finance-backup/finance-hub-lab-*.service
 ```
 
 Conferir visualmente que o container está na rede indicada. Construir a imagem P05 revisada se ausente, conforme o runbook P05. Registrar seu ID `sha256:...` no arquivo privado de ambiente como `FINANCE_P06_CLIENT_IMAGE_ID`, após comparação com a imagem revisada. O operador carrega apenas esse arquivo privado e executa o adaptador antes de ativar timers:
@@ -43,7 +43,7 @@ Conferir visualmente que o container está na rede indicada. Construir a imagem 
 set -a
 . /etc/finance-hub/backup-lab-p06.env
 set +a
-bash /opt/apps/apps/lab/finance-hub/scripts/backup/finance-hub-lab-docker-dump.sh
+bash /opt/apps/apps/lab/finance-hub-p06/scripts/backup/finance-hub-lab-docker-dump.sh
 ```
 
 Registrar exit status e nome do novo artefato, depois verificar `PGDMP`, manifesto, hash, UID e modo 0700 sem imprimir conteúdo financeiro. Se qualquer checkpoint falhar, interromper a instalação. O operador instala as unidades apenas depois do aceite operacional P05 e da revisão do resultado manual; registrar `systemctl show` para confirmar `User=leoceo`, `Group=leoceo` e o `ExecStart` efetivos. Nunca mudar proprietário/permissão global da árvore nem publicar PostgreSQL.
@@ -53,3 +53,11 @@ O operador revisa o checkout e instala manualmente apenas as sete unidades `fina
 ## 3. Gate C: avaliação separada
 
 Após P05 e P06 aceitos, usar a [matriz Gate C](../tasks/planned/GATE-C.md) para reunir Core, integridade, ingestão, reporting, segurança, operações e recuperação no mesmo SHA aprovado e CI exato. Verificar condições de hard FAIL e obter aceite humano explícito antes de qualquer PASS, Production ou release. Nenhum teste local/CI substitui backup e restore reais.
+
+## P06 Issue #91: checkout and first-run evidence
+
+The Lab VPS checkout was observed at historical M06 commit `e43d63c`. Preserve that checkout and the running Finance Lab. The human operator prepares the approved `main` SHA in a separate, clean directory and verifies its SHA, permissions, scripts and units. No `git pull`, reset or branch switch is performed in the serving checkout. Run P06 only from the separate `/opt/apps/apps/lab/finance-hub-p06` checkout. Keep the M06 serving checkout and processes untouched. Stop if the separate path, permissions or source identity cannot be verified. Do not activate timers or run real retention in this preflight.
+
+Before the first authorized P06 run, create a private 0700 evidence directory outside Git and the backup tree. For each operation, record the actual UTC start/end, operator, checkout SHA, PostgreSQL 18 image digest, sanitized target, command without secrets, and actual exit code in 0600 files. Capture redacted output during the operation. Hash each evidence file with SHA-256 and timestamp the manifest. Keep detailed logs and credentials private; the Issue/PR receives only a redacted matrix, evidence hashes and independent review result. Label any later read-only verification with its actual timestamp; do not reconstruct an earlier transcript.
+
+P06 validates the dump catalog with the reviewed PostgreSQL 18 Docker image using a read-only artifact mount and no network. Local retention counts only P06 artifacts with a private matching hash marker under `.finance-lab-p06-artifacts`. Historical P05 dumps without that marker remain untouched even when total dump count exceeds three. Record their names and hashes before the first P06 run without moving or deleting them.

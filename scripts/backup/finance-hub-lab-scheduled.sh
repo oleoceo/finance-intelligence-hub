@@ -27,7 +27,14 @@ for secret in "${RESTIC_PASSWORD_FILE:-}" "${RCLONE_CONFIG_FILE:-}" "${PGPASSFIL
 done
 [[ -z ${RESTIC_PASSWORD:-} && -z ${RESTIC_PASSWORD_COMMAND:-} && -z ${PGPASSWORD:-} && -z ${DATABASE_URL:-} && -z ${RCLONE_CONFIG:-} ]] || fail 'inline secrets forbidden'
 export RESTIC_REPOSITORY="$repository" RCLONE_CONFIG="$RCLONE_CONFIG_FILE"
-for command in flock restic rclone python3 pg_restore sha256sum; do command -v "$command" >/dev/null || fail 'missing tool'; done
+for command in flock restic rclone python3 sha256sum; do command -v "$command" >/dev/null || fail 'missing tool'; done
+if [[ $root == /opt/apps/backups ]]; then
+  command -v docker >/dev/null || fail 'missing Docker client'
+  [[ ${FINANCE_P06_CLIENT_IMAGE_ID:-} =~ ^sha256:[a-f0-9]{64}$ ]] || fail 'reviewed client image ID required'
+  [[ $(docker image inspect finance-hub-p05-client --format '{{.Id}}' 2>/dev/null) == "$FINANCE_P06_CLIENT_IMAGE_ID" ]] || fail 'client image changed'
+else
+  command -v pg_restore >/dev/null || fail 'missing fixture tool'
+fi
 safe_control() { [[ ! -L $1 && ( ! -e $1 || ( -f $1 && $(stat -c %h "$1") == 1 && $(stat -c %u "$1") == "$(id -u)" ) ) ]]; }
 lock=$root/.finance-lab-p06.lock
 failure=$root/.finance-lab-p06-failure
@@ -82,10 +89,22 @@ with (p/'archive.dump').open('rb') as f:
 assert m['format']=='pg_dump-custom' and m['environment']=='lab' and m['database']=='finance_hub_lab'
 assert m['bytes']==size and m['sha256']==h.hexdigest()
 PY
-  pg_restore --list "$path/archive.dump" >/dev/null 2>&1
+  if [[ $root == /opt/apps/backups ]]; then
+    bash "$(dirname -- "${BASH_SOURCE[0]}")/finance-hub-lab-validate-dump.sh" "$path" >/dev/null 2>&1
+  else
+    pg_restore --list "$path/archive.dump" >/dev/null 2>&1
+  fi
 }
 artifact=$target/$name
 verify_artifact "$artifact" || fail 'INVALID_DUMP_OR_MANIFEST'
+registry=$root/.finance-lab-p06-artifacts
+[[ ! -L $registry ]] || fail 'unsafe P06 registry'
+if [[ ! -e $registry ]]; then mkdir -m 700 -- "$registry" || fail 'P06 registry creation failed'; fi
+[[ -d $registry && $(stat -c %a "$registry") == 700 && $(stat -c %u "$registry") == "$(id -u)" ]] || fail 'unsafe P06 registry'
+marker=$registry/$name
+[[ ! -e $marker && ! -L $marker ]] || fail 'duplicate P06 artifact marker'
+sha256sum "$artifact/archive.dump" | cut -d ' ' -f 1 >"$marker"
+chmod 600 "$marker"
 dump_bytes=$(stat -c %s "$artifact/archive.dump")
 log "LOCAL_BACKUP_COMPLETE dump_bytes=$dump_bytes"
 restic backup --quiet --tag finance-hub-lab-p06 -- "$artifact" >/dev/null 2>&1 || fail 'SNAPSHOT_FAILED'
@@ -138,14 +157,26 @@ atomic_value "$active_slot_file" "$next_slot"
 atomic_stamp "$success"
 log "OFFSITE_RETENTION_VERIFIED snapshot=$snapshot_id slot=$next_slot"
 mapfile -t entries < <(find "$target" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
+eligible=()
 for entry in "${entries[@]}"; do
   [[ $entry =~ ^finance-hub_lab_finance_hub_lab_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}_[0-9]+_[a-f0-9]{8}$ ]] || fail 'UNOWNED_LOCAL_ENTRY'
   verify_artifact "$target/$entry" || fail 'INVALID_LOCAL_ARTIFACT'
+  marker=$registry/$entry
+  if [[ ! -e $marker && ! -L $marker ]]; then
+    log "LOCAL_PRESERVED historical=$entry"
+    continue
+  fi
+  [[ -f $marker && ! -L $marker && $(stat -c %h "$marker") == 1 && $(stat -c %u "$marker") == "$(id -u)" && $(stat -c %a "$marker") == 600 ]] || fail 'unsafe P06 marker'
+  [[ $(cat "$marker") == "$(sha256sum "$target/$entry/archive.dump" | cut -d ' ' -f 1)" ]] || fail 'P06 marker hash mismatch'
+  eligible+=("$entry")
+  log "LOCAL_ELIGIBLE p06=$entry"
 done
-if (( ${#entries[@]} > 3 )); then
-  for entry in "${entries[@]:0:${#entries[@]}-3}"; do
+if (( ${#eligible[@]} > 3 )); then
+  for entry in "${eligible[@]:0:${#eligible[@]}-3}"; do
     rm -- "$target/$entry/archive.dump" "$target/$entry/manifest.json" || fail 'LOCAL_RETENTION_FAILED'
     rmdir -- "$target/$entry" || fail 'LOCAL_RETENTION_FAILED'
+    rm -- "$registry/$entry" || fail 'LOCAL_RETENTION_FAILED'
+    log "LOCAL_REMOVED p06=$entry"
   done
 fi
 safe_control "$failure" || fail 'unsafe failure marker'

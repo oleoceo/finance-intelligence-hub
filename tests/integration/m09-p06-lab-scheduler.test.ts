@@ -7,6 +7,7 @@ import {
   rmSync,
   writeFileSync,
   readdirSync,
+  symlinkSync,
 } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -435,4 +436,47 @@ describe('M09-P06 disposable Finance Lab adaptation', () => {
       'finance-hub_lab_finance_hub_lab_2020-01-01_000000_1_aaaaaaaa',
     );
   }, 600_000);
+
+  it('preserves legacy flat Finance Lab dumps and rejects matching symlinks', () => {
+    const legacy = [
+      'finance_hub_lab_20261028_224103.dump',
+      'finance_hub_lab_postmigrations.dump.gpg',
+      'finance_hub_lab_20261028_224103.dump.sha256',
+      'finance_hub_lab_postmigrations.dump',
+      'finance_hub_lab_20261028_224103.dump.gpg.sha256',
+      'finance_hub_lab_v2.dump.gpg.sha256',
+      'finance_hub_lab_20261028_224103.dump.gpg',
+      'finance_hub_lab_v2.dump.gpg',
+      'finance_hub_lab_postmigrations.dump.gpg.sha256',
+    ];
+    for (const [index, name] of legacy.entries())
+      writeFileSync(join(target, name), `legacy-content-${index}`, {
+        mode: index % 3 === 0 ? 0o600 : 0o664,
+      });
+
+    const result = run();
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain('SUCCESS finished_at');
+    for (const [index, name] of legacy.entries()) {
+      expect(result.stdout).toContain(`LOCAL_PRESERVED legacy_file=${name}`);
+      const contents = readFileSync(join(target, name), 'utf8');
+      expect(contents).toBe(`legacy-content-${index}`);
+    }
+    const owned = readdirSync(target).filter((name) => name.startsWith('finance-hub_lab_'));
+    expect(owned).toHaveLength(4); // Historical P05 directory + the three retained P06 directories.
+
+    const link = join(target, 'finance_hub_lab_link.dump');
+    symlinkSync(join(target, legacy[0]), link);
+    try {
+      const rejected = run();
+      expect(rejected.status).not.toBe(0);
+      expect(rejected.stdout + rejected.stderr).toContain('UNOWNED_LOCAL_ENTRY');
+      for (const [index, name] of legacy.entries()) {
+        const contents = readFileSync(join(target, name), 'utf8');
+        expect(contents).toBe(`legacy-content-${index}`);
+      }
+    } finally {
+      rmSync(link);
+    }
+  }, 120_000);
 });

@@ -60,7 +60,7 @@ describe('Issue #100 Production backup gate', () => {
     }
   });
 
-  it('accepts a fresh offsite-success status in an owned disposable Production fixture', () => {
+  it('accepts healthy status and weekly check in an owned disposable Production fixture', () => {
     const work = mkdtempSync(join(tmpdir(), 'finance-production-status-'));
     try {
       const root = join(work, 'backup');
@@ -89,9 +89,7 @@ describe('Issue #100 Production backup gate', () => {
       for (const file of ['pgpass', 'restic.password', 'rclone.conf']) {
         writeFileSync(join(secrets, file), 'test-fixture-only\n', { mode: 0o600 });
       }
-      const result = spawnSync('bash', [script, 'status'], {
-        encoding: 'utf8',
-        env: {
+      const env = {
           ...process.env,
           PATH: bin + ':' + process.env.PATH,
           FINANCE_PRODUCTION_SCHEDULE_ENABLED: 'yes',
@@ -111,10 +109,13 @@ describe('Issue #100 Production backup gate', () => {
           PGPASSWORD: undefined,
           DATABASE_URL: undefined,
           RCLONE_CONFIG: undefined,
-        },
-      });
+      };
+      const result = spawnSync('bash', [script, 'status'], { encoding: 'utf8', env });
       expect(result.status, result.stderr).toBe(0);
       expect(result.stdout).toContain('OFFSITE_VERIFIED last_success=');
+      const weekly = spawnSync('bash', [script, 'weekly-check'], { encoding: 'utf8', env });
+      expect(weekly.status, weekly.stderr).toBe(0);
+      expect(weekly.stdout).toContain('INTEGRITY_CHECK_COMPLETE');
     } finally {
       rmSync(work, { recursive: true, force: true });
     }

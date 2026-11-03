@@ -1,0 +1,10 @@
+[Unit]
+Description=Finance Hub Production hourly off-site freshness check
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+Unit=finance-hub-production-status.service
+
+[Install]
+WantedBy=timers.target

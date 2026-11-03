@@ -1,0 +1,10 @@
+[Unit]
+Description=Finance Hub Production daily backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 America/Sao_Paulo
+Persistent=true
+Unit=finance-hub-production-backup.service
+
+[Install]
+WantedBy=timers.target

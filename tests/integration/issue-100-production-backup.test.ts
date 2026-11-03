@@ -44,7 +44,8 @@ describe('Issue #100 Production backup gate', () => {
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
-
+    }
+  });
 
   it('uses the same pinned client-image variable in the production execution path', () => {
     for (const path of [
@@ -118,5 +119,4 @@ describe('Issue #100 Production backup gate', () => {
       rmSync(work, { recursive: true, force: true });
     }
   });
-
 });

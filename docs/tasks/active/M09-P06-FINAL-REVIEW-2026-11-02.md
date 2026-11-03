@@ -45,3 +45,18 @@ A [matriz oficial Gate C](../planned/GATE-C.md) continua `PLANNED` e requer acei
 | RECOVERY | P05 real isolated SQL restore (aceite com exceção), P06 serviço diário, backup offsite criptografado e recuperação de snapshot, timer/retention/status; distinguir prova diária por serviço de disparo diário pelo timer e as exceções do item B. |
 
 **Critério de saída:** P06 só vai a DONE após decisão independente sobre a matriz e seus requisitos; Gate C só pode ser ativado e julgado depois de M09 aceita. Não conceder `REAL DATA READY`, uso de dados financeiros reais ou criação de tag/release `v0.1.0` por este documento. **Operações na VPS continuam exclusivas de `leoceo`**; checkout funcional em execução não deve sofrer `git pull` apenas por mudanças de documentação.
+
+
+## E. Parecer técnico de revisão P06 — 2026-11-03 (escopo Lab)
+
+**Veredito de revisão:** **PASS das evidências operacionais já coletadas**, com todas as limitações da seção B mantidas; **P06 DONE não concedido neste parecer**. O cenário `daily` com Restic + Google Drive + validações executou com sucesso tanto manualmente quanto como unidade systemd, e o `status.timer` executou automaticamente. **Não existe ainda prova de disparo do `backup.timer` diário**, logo esse ponto permanece `NOT OBSERVED`, e não `FAIL`. Essa comprovação pode ser anexada posteriormente sem repetir backups manualmente; não impede preparar a revisão do Gate C em paralelo.
+
+**Aceite por alcance:**
+- **Operacional Finance Lab:** as provas acima sustentam funcionamento do serviço de backup e recuperação do snapshot criptografado em staging privado na VPS; integridade e preservação de backups históricos PASS.
+- **Exceção de notificações:** decisão do proprietário de não configurar entrega externa até após V0.1 está registrada no Issue #95; o risco de falha não notificada proativamente **permanece**. O revisor não declara esse controle PASS e deve requerer nova decisão no Gate C/Production.
+- **Exceção off-host:** decisão do proprietário de não testar em Windows/WSL está registrada, e não será pedido teste local. A capacidade de restauração após perda completa da VPS **não está demonstrada**. Não transformá-la em RTO de desastre satisfatório.
+- **Retenção:** política 14/8/12 testada em fixtures e aplicada pelo runner; não é razoável exigir esperar 12 meses para validar a configuração. Não atribuir observação histórica de 12 meses.
+- **RPO/RTO:** P06 offsite verificado às 2026-11-02T21:36:42Z e monitorado às 22:00:19Z; isso demonstra idade pontual abaixo de 24h, **não** uma garantia de RPO futuro nem restauração de desastre no mesmo dia. Reaproveitar durações P05 apenas se registradas com início/fim e escopo; não fabricar tempo.
+- **Integridade P05:** restauração SQL isolada executada e já aceita com ressalva documental, sem reabrir o procedimento ou atribuir assinatura independente inexistente.
+
+**Encaminhamento:** preservar P06 como `ACTIVE / final acceptance pending`; obter apenas evidência futura do timer diário quando naturalmente executado; em seguida tomar decisão formal de fechamento P06/M09 por revisão específica, respeitando requisitos congelados e exceções limitadas. A matriz [Gate C preflight](../planned/GATE-C-EVIDENCE-PREFLIGHT-2026-11-03.md) pode avançar **sem** ativar Gate C ou liberar dados reais.

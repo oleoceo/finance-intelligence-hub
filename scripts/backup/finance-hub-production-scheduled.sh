@@ -32,8 +32,8 @@ export RESTIC_REPOSITORY="$repository" RCLONE_CONFIG="$RCLONE_CONFIG_FILE"
 for command in flock timeout restic rclone python3 sha256sum; do command -v "$command" >/dev/null || fail 'missing tool'; done
 if [[ $root == /opt/apps/backups ]]; then
   command -v docker >/dev/null || fail 'missing Docker client'
-  [[ ${FINANCE_Production_CLIENT_IMAGE_ID:-} =~ ^sha256:[a-f0-9]{64}$ ]] || fail 'reviewed client image ID required'
-  [[ $(docker image inspect finance-hub-p05-client --format '{{.Id}}' 2>/dev/null) == "$FINANCE_Production_CLIENT_IMAGE_ID" ]] || fail 'client image changed'
+  [[ ${FINANCE_P06_CLIENT_IMAGE_ID:-} =~ ^sha256:[a-f0-9]{64}$ ]] || fail 'reviewed client image ID required'
+  [[ $(docker image inspect finance-hub-p05-client --format '{{.Id}}' 2>/dev/null) == "$FINANCE_P06_CLIENT_IMAGE_ID" ]] || fail 'client image changed'
 else
   command -v pg_restore >/dev/null || fail 'missing fixture tool'
 fi

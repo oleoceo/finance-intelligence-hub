@@ -1,0 +1,17 @@
+[Unit]
+Description=Finance Hub Production recurring backup
+OnFailure=finance-hub-production-alert@daily.service
+
+[Service]
+Type=oneshot
+User=leoceo
+Group=leoceo
+EnvironmentFile=/etc/finance-hub/backup-production-v01.env
+ExecStart=/usr/bin/bash /opt/apps/apps/production/finance-hub-v01/scripts/backup/finance-hub-production-scheduled.sh daily
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/apps/backups
+TimeoutStartSec=12h

@@ -1,0 +1,8 @@
+[Unit]
+Description=Finance Hub Production backup alert (%i)
+
+[Service]
+Type=oneshot
+User=finance-backup
+Group=finance-backup
+ExecStart=/usr/bin/logger -t finance-hub-production-backup ALERT instance=%i

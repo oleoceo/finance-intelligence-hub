@@ -1,0 +1,16 @@
+[Unit]
+Description=Finance Hub Production weekly integrity check
+OnFailure=finance-hub-production-alert@weekly.service
+
+[Service]
+Type=oneshot
+User=leoceo
+Group=leoceo
+EnvironmentFile=/etc/finance-hub/backup-production-v01.env
+ExecStart=/usr/bin/bash /opt/apps/apps/production/finance-hub-v01/scripts/backup/finance-hub-production-scheduled.sh weekly-check
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/apps/backups

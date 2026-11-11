@@ -15,6 +15,7 @@ function sendable(response) {
   if (
     ![
       'transaction_created',
+      'transaction_mutated',
       'query_last',
       'query_summary',
       'confirmation_required',

@@ -78,7 +78,14 @@ test('sends Finance text verbatim to verified sender without financial interpret
 });
 
 test('sends M08 query_summary reply verbatim only to its verified sender', async () => {
-  const summary = 'Resumo Empresa (01/11/2026 a 30/11/2026)\nReceitas ordinárias: R$ 2.500,00\nDespesas brutas: R$ 35,00\nEstornos: R$ 0,00\nDespesas líquidas: R$ 35,00\nResultado líquido: R$ 2.465,00';
+  const summary = [
+    'Resumo Empresa (01/11/2026 a 30/11/2026)',
+    'Receitas ordinárias: R$ 2.500,00',
+    'Despesas brutas: R$ 35,00',
+    'Estornos: R$ 0,00',
+    'Despesas líquidas: R$ 35,00',
+    'Resultado líquido: R$ 2.465,00',
+  ].join('\n');
   const sent = [];
   const result = await processEventWithReply(
     event,

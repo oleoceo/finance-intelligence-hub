@@ -336,7 +336,14 @@ test('packaged n8n node executes actual bundled P03 and provider adapter', async
 test('packaged n8n transport forwards M08 query_summary to Evolution', async () => {
   const require = createRequire(import.meta.url);
   const { FinanceLabTransport } = require('./dist/FinanceLabTransport.node.js');
-  const summary = 'Resumo Empresa (01/11/2026 a 30/11/2026)\nReceitas ordinárias: R$ 2.500,00\nDespesas brutas: R$ 35,00\nEstornos: R$ 0,00\nDespesas líquidas: R$ 35,00\nResultado líquido: R$ 2.465,00';
+  const summary = [
+    'Resumo Empresa (01/11/2026 a 30/11/2026)',
+    'Receitas ordinárias: R$ 2.500,00',
+    'Despesas brutas: R$ 35,00',
+    'Estornos: R$ 0,00',
+    'Despesas líquidas: R$ 35,00',
+    'Resultado líquido: R$ 2.465,00',
+  ].join('\n');
   const calls = [];
   const result = await new FinanceLabTransport().execute.call({
     getNodeParameter: (name) => config[name],

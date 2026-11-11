@@ -381,3 +381,50 @@ test('packaged n8n transport forwards M08 query_summary to Evolution', async () 
     linkPreview: false,
   });
 });
+
+test('packaged n8n transport sends M07 mutation completion replies', async () => {
+  const require = createRequire(import.meta.url);
+  const { FinanceLabTransport } = require('./dist/FinanceLabTransport.node.js');
+  for (const [action, text] of [
+    ['correction', 'Lançamento corrigido: R$ 38,90.\nRef: ABC123'],
+    ['void', 'Lançamento cancelado: R$ 35,00.\nRef: ABC123'],
+    ['refund', 'Lançamento estornado: R$ 20,00.\nRef: ABC123'],
+  ]) {
+    const calls = [];
+    const result = await new FinanceLabTransport().execute.call({
+      getNodeParameter: (name) => config[name],
+      getInputData: () => [{ json: input() }],
+      getCredentials: async (name) =>
+        name === 'httpHeaderAuth'
+          ? { name: 'x-finance-webhook', value: credentials.webhook }
+          : { token: name === 'financeLabIngest' ? credentials.finance : credentials.evolution },
+      helpers: {
+        httpRequest: async (request) => {
+          calls.push(request);
+          return calls.length === 1
+            ? {
+                statusCode: 200,
+                body: {
+                  data: {
+                    result: { type: 'transaction_mutated', action },
+                    reply: {
+                      should_send: true,
+                      text,
+                      contract: { version: 'm06-p03-v1', max_code_points: 500 },
+                    },
+                  },
+                },
+              }
+            : { statusCode: 200 };
+        },
+      },
+    });
+    assert.equal(result[0][0].json.stage, 'sent');
+    assert.equal(calls.length, 2);
+    assert.deepEqual(calls[1].body, {
+      number: '5511999999999',
+      text,
+      linkPreview: false,
+    });
+  }
+});

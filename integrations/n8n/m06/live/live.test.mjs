@@ -332,3 +332,52 @@ test('packaged n8n node executes actual bundled P03 and provider adapter', async
   });
   assert.equal(actual[0][0].json.stage, 'sent');
 });
+
+test('packaged n8n transport forwards M08 query_summary to Evolution', async () => {
+  const require = createRequire(import.meta.url);
+  const { FinanceLabTransport } = require('./dist/FinanceLabTransport.node.js');
+  const summary = [
+    'Resumo Empresa (01/11/2026 a 30/11/2026)',
+    'Receitas ordinárias: R$ 2.500,00',
+    'Despesas brutas: R$ 35,00',
+    'Estornos: R$ 0,00',
+    'Despesas líquidas: R$ 35,00',
+    'Resultado líquido: R$ 2.465,00',
+  ].join('\n');
+  const calls = [];
+  const result = await new FinanceLabTransport().execute.call({
+    getNodeParameter: (name) => config[name],
+    getInputData: () => [{ json: input() }],
+    getCredentials: async (name) =>
+      name === 'httpHeaderAuth'
+        ? { name: 'x-finance-webhook', value: credentials.webhook }
+        : { token: name === 'financeLabIngest' ? credentials.finance : credentials.evolution },
+    helpers: {
+      httpRequest: async (request) => {
+        calls.push(request);
+        return calls.length === 1
+          ? {
+              statusCode: 200,
+              body: {
+                data: {
+                  result: { type: 'query_summary' },
+                  reply: {
+                    should_send: true,
+                    text: summary,
+                    contract: { version: 'm06-p03-v1', max_code_points: 500 },
+                  },
+                },
+              },
+            }
+          : { statusCode: 200 };
+      },
+    },
+  });
+  assert.equal(result[0][0].json.stage, 'sent');
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[1].body, {
+    number: '5511999999999',
+    text: summary,
+    linkPreview: false,
+  });
+});

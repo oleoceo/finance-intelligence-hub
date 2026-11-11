@@ -77,6 +77,38 @@ test('sends Finance text verbatim to verified sender without financial interpret
   assert.deepEqual(calls, [{ recipient: event.sender, text: accepted.body.data.reply.text }]);
 });
 
+test('sends M08 query_summary reply verbatim only to its verified sender', async () => {
+  const summary = [
+    'Resumo Empresa (01/11/2026 a 30/11/2026)',
+    'Receitas ordinárias: R$ 2.500,00',
+    'Despesas brutas: R$ 35,00',
+    'Estornos: R$ 0,00',
+    'Despesas líquidas: R$ 35,00',
+    'Resultado líquido: R$ 2.465,00',
+  ].join('\n');
+  const sent = [];
+  const result = await processEventWithReply(
+    event,
+    deps({
+      finance: async () => ({
+        status: 200,
+        body: {
+          data: {
+            result: { type: 'query_summary' },
+            reply: { should_send: true, text: summary, contract },
+          },
+        },
+      }),
+      send: async (message) => {
+        sent.push(message);
+        return { status: 200 };
+      },
+    }),
+  );
+  assert.deepEqual(result, { stage: 'sent', status: 200, possiblyDeliveredEarlier: false });
+  assert.deepEqual(sent, [{ recipient: event.sender, text: summary }]);
+});
+
 test('suppresses no-reply outcomes and rejects malformed Finance replies', async () => {
   for (const type of ['ignored', 'duplicate_message', 'processing', 'stale_claim']) {
     let sends = 0;

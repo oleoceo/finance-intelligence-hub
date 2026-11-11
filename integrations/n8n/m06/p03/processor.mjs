@@ -16,6 +16,7 @@ function sendable(response) {
     ![
       'transaction_created',
       'query_last',
+      'query_summary',
       'confirmation_required',
       'cancelled',
       'expired',
